@@ -1,0 +1,11 @@
+language: go
+go:
+  - 1.7
+before_install:
+  - go get -u github.com/kardianos/govendor
+before_script:
+  - go get -d ./...
+script:
+  - ./scripts/licensecheck.sh
+  - govendor sync
+  - make test build

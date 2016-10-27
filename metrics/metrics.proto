@@ -1,0 +1,53 @@
+// Copyright 2013 Prometheus Team
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+// http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+//
+//
+// DO: this is a heavily paired down extract of prometheus metric definitions.
+// TODO(vgough): remove entirely once the server supports a more compact format.
+
+syntax = "proto2";
+
+package metrics;
+
+message LabelPair {
+  required string name  = 1;
+  required string value = 2;
+}
+
+enum MetricType {
+  COUNTER    = 0;
+  GAUGE      = 1;
+  // reserved 2, 3, 4;
+}
+
+message Gauge {
+  required double value = 1;
+}
+
+message Counter {
+  required double value = 1;
+}
+
+message Metric {
+  repeated LabelPair label        = 1;
+  optional Gauge     gauge        = 2;
+  optional Counter   counter      = 3;
+  // reserved 4, 5, 6, 7;
+}
+
+message MetricFamily {
+  required string     name   = 1;
+  // reserved 2;
+  required MetricType type   = 3;
+  repeated Metric     metric = 4;
+}
