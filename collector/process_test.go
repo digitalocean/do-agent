@@ -45,6 +45,14 @@ func TestRegisterProcessMetrics(t *testing.T) {
 			Comm:           "foo",
 			CmdLine:        []string{"a", "b"},
 		},
+		procfs.ProcProc{
+			PID:            int(2),
+			CPUTime:        float64(3),
+			ResidentMemory: int(2),
+			VirtualMemory:  int(1),
+			Comm:           "foo",
+			CmdLine:        []string{"a", "b"},
+		},
 	}
 
 	expectedNames := []string{
@@ -66,5 +74,13 @@ func TestRegisterProcessMetrics(t *testing.T) {
 
 	if r.AddCollectorFunc == nil {
 		t.Error("expected collector function, found none")
+	}
+
+	if len(s.UpdateSet) != 2 {
+		t.Fatalf("wrong number of updates were called")
+	}
+
+	if s.UpdateSet[0].Value != 5 {
+		t.Fatalf("multiple processes were not added together")
 	}
 }
