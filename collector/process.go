@@ -44,13 +44,13 @@ func RegisterProcessMetrics(r metrics.Registry, fn procprocFunc) {
 			return
 		}
 
-		m := make(map[string]process)
+		m := make(map[string]*process)
 		for _, proc := range procs {
 			if value, ok := m[proc.Comm]; ok {
 				value.totalCPUTime += proc.CPUTime
 				value.totalMemory += float64(proc.ResidentMemory)
 			} else {
-				m[proc.Comm] = process{
+				m[proc.Comm] = &process{
 					totalCPUTime: proc.CPUTime,
 					totalMemory:  float64(proc.ResidentMemory),
 				}
