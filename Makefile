@@ -68,14 +68,14 @@ release-minor-version: master-branch-check
 	@echo "release minor version"
 	$(eval RELEASE_VERSION=$(shell echo $(LAST_RELEASE) | awk '{split($$0,a,"."); print a[1]"."a[2]+1"."0}'))
 	@echo "Updating release version from=$(LAST_RELEASE) to=$(RELEASE_VERSION)"
-	git tag $(RELEASE_VERSION) -m"make release-major-version $(RELEASE_VERSION)"
+	git tag $(RELEASE_VERSION) -m"make release-minor-version $(RELEASE_VERSION)"
 	git push origin --tags
 
 release-patch-version: master-branch-check
 	@echo "release patch version"
 	$(eval RELEASE_VERSION=$(shell echo $(LAST_RELEASE) | awk '{split($$0,a,"."); print a[1]"."a[2]"."a[3]+1}'))
 	@echo "Updating release version from=$(LAST_RELEASE) to=$(RELEASE_VERSION)"
-	git tag $(RELEASE_VERSION) -m"make release-major-version $(RELEASE_VERSION)"
+	git tag $(RELEASE_VERSION) -m"make release-patch-version $(RELEASE_VERSION)"
 	git push origin --tags
 
 master-branch-check:
