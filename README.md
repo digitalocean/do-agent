@@ -92,7 +92,7 @@ yum install do-agent
 
 ### Apt
 
-`sudo apt-get remove do-agent`
+`sudo apt-get purge do-agent`
 
 
 ## Package installation
