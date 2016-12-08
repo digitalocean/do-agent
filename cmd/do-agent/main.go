@@ -95,7 +95,7 @@ func main() {
 		log.Info("Checking for newer version of do-agent")
 
 		if err := updater.FetchLatest(true); err != nil {
-			if err != update.ErrUpdateNotAvailable {
+			if err != update.ErrUpdateNotAvailable || err != update.ErrUnableToRetrieveTargets {
 				log.Info(err)
 				os.Exit(0)
 			}
@@ -179,7 +179,12 @@ func updateAgent(updater update.Updater) {
 			log.Info("No update available")
 			return
 		}
+
+		if err == update.ErrUnableToRetrieveTargets {
+			log.Info("No target available for update")
+			return
+		}
+
 		log.Error(err)
-		return
 	}
 }
