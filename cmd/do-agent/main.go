@@ -92,18 +92,7 @@ func main() {
 	updater := update.NewUpdate(*debugLocalRepoPath, *debugUpdateURL)
 
 	if *forceUpdate {
-		log.Info("Checking for newer version of do-agent")
-
-		if err := updater.FetchLatest(true); err != nil {
-			if err != update.ErrUpdateNotAvailable {
-				log.Info(err)
-				os.Exit(0)
-			}
-			log.Info("No update available")
-			os.Exit(0)
-		}
-		log.Info("Updated successfully")
-		os.Exit(0)
+		updateAgentWithExit(updater)
 	}
 
 	metadataClient := metadata.NewClient()
@@ -140,7 +129,7 @@ func main() {
 		log.Fatal("Error creating monitoring client: ", err)
 	}
 
-	updateAgent(updater)
+	updateAgentWithRestart(updater)
 	lastUpdate := time.Now()
 
 	r := smc.Registry()
@@ -166,12 +155,15 @@ func main() {
 
 		if time.Now().After(lastUpdate.Add(1 * time.Hour)) {
 			lastUpdate = time.Now()
-			updateAgent(updater)
+			updateAgentWithRestart(updater)
 		}
 	}
 }
 
-func updateAgent(updater update.Updater) {
+// updateAgentWithRestart looks for any available updates to the agent. If an update is found, it will
+// update the agent binary and reinitialize itself. If an update isn't found or fails, it will
+// only log the results of its attempt.
+func updateAgentWithRestart(updater update.Updater) {
 	log.Info("Checking for newer version of do-agent")
 
 	if err := updater.FetchLatestAndExec(false); err != nil {
@@ -179,7 +171,36 @@ func updateAgent(updater update.Updater) {
 			log.Info("No update available")
 			return
 		}
-		log.Error(err)
-		return
+
+		if err == update.ErrUnableToRetrieveTargets {
+			log.Info("No target available for update")
+			return
+		}
+
+		log.Errorf("Unable to update do-agent: %s\n", err)
 	}
+}
+
+// updateAgentWithExit looks for any available updates to the agent. After attempting to update
+// the agent it will gracefully terminate execution.
+func updateAgentWithExit(updater update.Updater) {
+	log.Info("Checking for newer version of do-agent")
+
+	if err := updater.FetchLatest(true); err != nil {
+		if err == update.ErrUpdateNotAvailable {
+			log.Info("No update available")
+			os.Exit(0)
+		}
+
+		if err == update.ErrUnableToRetrieveTargets {
+			log.Info("No target available for update")
+			os.Exit(0)
+		}
+
+		log.Errorf("Unable to update do-agent: %s\n", err)
+		os.Exit(1)
+	}
+
+	log.Info("Updated successfully")
+	os.Exit(0)
 }
