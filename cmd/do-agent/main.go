@@ -177,6 +177,13 @@ func updateAgentWithRestart(updater update.Updater) {
 			return
 		}
 
+		// covers when the agent can’t confirm that the update that is on the server is a valid
+		// update because the timestamp update itself has expired.
+		if _, ok := err.(update.ErrUnableToUpdateRepo); ok {
+			log.Info("No repository update available")
+			return
+		}
+
 		log.Errorf("Unable to update do-agent: %s\n", err)
 	}
 }
@@ -194,6 +201,13 @@ func updateAgentWithExit(updater update.Updater) {
 
 		if err == update.ErrUnableToRetrieveTargets {
 			log.Info("No target available for update")
+			os.Exit(0)
+		}
+
+		// covers when the agent can’t confirm that the update that is on the server is a valid
+		// update because the timestamp update itself has expired.
+		if _, ok := err.(update.ErrUnableToUpdateRepo); ok {
+			log.Info("No repository update available")
 			os.Exit(0)
 		}
 
