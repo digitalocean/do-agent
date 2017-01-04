@@ -91,30 +91,33 @@ func readNetwork(f io.Reader) ([]Network, error) {
 // parseNetwork parses a string and returns a Network if the string is
 // in the expected format.
 func parseNetwork(line string) (Network, error) {
-	lineArray := strings.Fields(line)
+	fields := strings.FieldsFunc(line, func(c rune) bool {
+		cStr := string(c)
+		return cStr == " " || cStr == ":"
+	})
 
-	if len(lineArray) != 17 {
+	if len(fields) != 17 {
 		return Network{}, errors.New("Field mismatch error while parsing: " + networkPath)
 	}
 
 	network := Network{}
-	network.Interface = strings.TrimRight(lineArray[0], ":")
-	network.RXBytes, _ = strconv.ParseUint(lineArray[1], 10, 64)
-	network.RXPackets, _ = strconv.ParseUint(lineArray[2], 10, 64)
-	network.RXErrs, _ = strconv.ParseUint(lineArray[3], 10, 64)
-	network.RXDrop, _ = strconv.ParseUint(lineArray[4], 10, 64)
-	network.RXFifo, _ = strconv.ParseUint(lineArray[5], 10, 64)
-	network.RXFrame, _ = strconv.ParseUint(lineArray[6], 10, 64)
-	network.RXCompressed, _ = strconv.ParseUint(lineArray[7], 10, 64)
-	network.RXMulticast, _ = strconv.ParseUint(lineArray[8], 10, 64)
-	network.TXBytes, _ = strconv.ParseUint(lineArray[9], 10, 64)
-	network.TXPackets, _ = strconv.ParseUint(lineArray[10], 10, 64)
-	network.TXErrs, _ = strconv.ParseUint(lineArray[11], 10, 64)
-	network.TXDrop, _ = strconv.ParseUint(lineArray[12], 10, 64)
-	network.TXFifo, _ = strconv.ParseUint(lineArray[13], 10, 64)
-	network.TXColls, _ = strconv.ParseUint(lineArray[14], 10, 64)
-	network.TXCarrier, _ = strconv.ParseUint(lineArray[15], 10, 64)
-	network.TXCompressed, _ = strconv.ParseUint(lineArray[16], 10, 64)
+	network.Interface = fields[0]
+	network.RXBytes, _ = strconv.ParseUint(fields[1], 10, 64)
+	network.RXPackets, _ = strconv.ParseUint(fields[2], 10, 64)
+	network.RXErrs, _ = strconv.ParseUint(fields[3], 10, 64)
+	network.RXDrop, _ = strconv.ParseUint(fields[4], 10, 64)
+	network.RXFifo, _ = strconv.ParseUint(fields[5], 10, 64)
+	network.RXFrame, _ = strconv.ParseUint(fields[6], 10, 64)
+	network.RXCompressed, _ = strconv.ParseUint(fields[7], 10, 64)
+	network.RXMulticast, _ = strconv.ParseUint(fields[8], 10, 64)
+	network.TXBytes, _ = strconv.ParseUint(fields[9], 10, 64)
+	network.TXPackets, _ = strconv.ParseUint(fields[10], 10, 64)
+	network.TXErrs, _ = strconv.ParseUint(fields[11], 10, 64)
+	network.TXDrop, _ = strconv.ParseUint(fields[12], 10, 64)
+	network.TXFifo, _ = strconv.ParseUint(fields[13], 10, 64)
+	network.TXColls, _ = strconv.ParseUint(fields[14], 10, 64)
+	network.TXCarrier, _ = strconv.ParseUint(fields[15], 10, 64)
+	network.TXCompressed, _ = strconv.ParseUint(fields[16], 10, 64)
 
 	return network, nil
 }
