@@ -153,7 +153,7 @@ func main() {
 		log.Debug(fmt.Sprintf("sleeping for %d seconds", pushInterval))
 		time.Sleep(time.Duration(pushInterval) * time.Second)
 
-		if time.Now().After(lastUpdate.Add(1 * time.Hour)) {
+		if time.Now().After(lastUpdate.Add(24 * time.Hour)) {
 			lastUpdate = time.Now()
 			updateAgentWithRestart(updater)
 		}
