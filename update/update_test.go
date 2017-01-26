@@ -26,7 +26,7 @@ func TestCreateTufClient(t *testing.T) {
 
 	_, err := u.createTufClient()
 	if err == nil {
-		t.Error("expected error, recieved nil")
+		t.Error("expected error, received nil")
 	}
 
 	u2 := &update{
@@ -37,6 +37,6 @@ func TestCreateTufClient(t *testing.T) {
 
 	_, err2 := u2.createTufClient()
 	if err2 == nil {
-		t.Error("expected error, recieved nil")
+		t.Error("expected error, received nil")
 	}
 }

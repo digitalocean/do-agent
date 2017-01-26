@@ -39,7 +39,7 @@ func TestParseLoadValues(t *testing.T) {
 
 	l, err := parseLoad(testLine)
 	if err != nil {
-		t.Errorf("Unexpected error occured while parsing \"%s\" error=%s", testLine, err)
+		t.Errorf("Unexpected error occurred while parsing \"%s\" error=%s", testLine, err)
 	}
 
 	lr := reflect.ValueOf(l)

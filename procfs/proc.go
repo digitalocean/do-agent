@@ -18,7 +18,7 @@ package procfs
 import "github.com/prometheus/procfs"
 
 // ProcProc contains the data exposed by various proc files in the
-// psuedo-file system.
+// pseudo-file system.
 type ProcProc struct {
 	PID            int
 	CPUTime        float64 //value in seconds
@@ -34,7 +34,7 @@ type Procer interface {
 	NewProcProc() ([]ProcProc, error)
 }
 
-//NewProcProc collects data from various proc psuedo-file system files
+//NewProcProc collects data from various proc pseudo-file system files
 //and converts it into a ProcProc structure.
 func NewProcProc() ([]ProcProc, error) {
 	procs, err := procfs.AllProcs()

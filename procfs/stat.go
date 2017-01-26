@@ -26,7 +26,7 @@ import (
 
 const statPath = "/proc/stat"
 
-// CPU contains the data exposed by the /proc/stat psuedo-file system
+// CPU contains the data exposed by the /proc/stat pseudo-file system
 // file for cpus.
 type CPU struct {
 	CPU       string
@@ -42,11 +42,11 @@ type CPU struct {
 	GuestNice uint64 // since Linux 2.6.33
 }
 
-// Stat contains the data exposed by the /proc/stat psuedo-file system
+// Stat contains the data exposed by the /proc/stat pseudo-file system
 // file.
 type Stat struct {
 	CPUS             []CPU
-	Interupt         uint64
+	Interrupt        uint64
 	ContextSwitch    uint64
 	Processes        uint64
 	ProcessesRunning uint64
@@ -59,7 +59,7 @@ type Stater interface {
 	NewStat() (Stat, error)
 }
 
-// NewStat collects data from the /proc/stat psuedo-file system file
+// NewStat collects data from the /proc/stat pseudo-file system file
 // and converts it into a stat struct.
 func NewStat() (Stat, error) {
 	f, err := os.Open(statPath)
@@ -149,7 +149,7 @@ func parseStat(line string, statMetric *Stat) error {
 
 	switch lineArray[0] {
 	case "intr":
-		statMetric.Interupt, _ = strconv.ParseUint(lineArray[1], 10, 64)
+		statMetric.Interrupt, _ = strconv.ParseUint(lineArray[1], 10, 64)
 	case "ctxt":
 		statMetric.ContextSwitch, _ = strconv.ParseUint(lineArray[1], 10, 64)
 	case "processes":
@@ -159,6 +159,6 @@ func parseStat(line string, statMetric *Stat) error {
 	case "procs_blocked":
 		statMetric.ProcessesBlocked, _ = strconv.ParseUint(lineArray[1], 10, 64)
 	}
-	//Default ommitted due to unsupported fields.
+	//Default omitted due to unsupported fields.
 	return nil
 }

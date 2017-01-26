@@ -50,7 +50,7 @@ func TestRegisterCPUMetrics(t *testing.T) {
 				GuestNice: uint64(10),
 			},
 		},
-		Interupt:         uint64(1),
+		Interrupt:         uint64(1),
 		ContextSwitch:    uint64(2),
 		Processes:        uint64(3),
 		ProcessesRunning: uint64(4),

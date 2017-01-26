@@ -31,7 +31,7 @@ type statFunc func() (procfs.Stat, error)
 func RegisterCPUMetrics(r metrics.Registry, fn statFunc) {
 	cpu := r.Register("cpu", metrics.WithMeasuredLabels("cpu", "mode"),
 		metrics.AsType(metrics.MetricType_COUNTER))
-	interupt := r.Register("intr",
+	interrupt := r.Register("intr",
 		metrics.AsType(metrics.MetricType_COUNTER))
 	contextSwitch := r.Register("context_switches")
 	procsBlocked := r.Register("procs_blocked")
@@ -60,7 +60,7 @@ func RegisterCPUMetrics(r metrics.Registry, fn statFunc) {
 			r.Update(cpu, float64(value.GuestNice)/ticksPerSecond, value.CPU, "guestnice")
 		}
 
-		r.Update(interupt, float64(stat.Interupt))
+		r.Update(interrupt, float64(stat.Interrupt))
 		r.Update(contextSwitch, float64(stat.ContextSwitch))
 		r.Update(procsBlocked, float64(stat.ProcessesBlocked))
 		r.Update(procsRunning, float64(stat.ProcessesRunning))
