@@ -25,7 +25,7 @@ import (
 
 const mountPath = "/proc/mounts"
 
-// Mount contains the data exposed by the /proc/mounts psuedo-file
+// Mount contains the data exposed by the /proc/mounts pseudo-file
 // system file.
 type Mount struct {
 	Device     string

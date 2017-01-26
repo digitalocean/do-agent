@@ -45,9 +45,9 @@ func TestNewStat(t *testing.T) {
 		t.Errorf("Expected %d cpus items, actual was %d", expectedLen, len(s.CPUS))
 	}
 
-	expectedInterupt := uint64(339569)
-	if s.Interupt != expectedInterupt {
-		t.Errorf("Expected %d cpus items, actual was %d", expectedInterupt, s.Interupt)
+	expectedInterrupt := uint64(339569)
+	if s.Interrupt != expectedInterrupt {
+		t.Errorf("Expected %d cpus items, actual was %d", expectedInterrupt, s.Interrupt)
 	}
 }
 
@@ -56,7 +56,7 @@ func TestParseCPUValues(t *testing.T) {
 
 	c, err := parseCPU(testLine)
 	if err != nil {
-		t.Errorf("Unexpected error occured while parsing \"%s\" error=%s", testLine, err)
+		t.Errorf("Unexpected error occurred while parsing \"%s\" error=%s", testLine, err)
 	}
 
 	cr := reflect.ValueOf(c)
@@ -108,7 +108,7 @@ func TestParseStat(t *testing.T) {
 
 	err := parseStat(testLine1, &s)
 	if err != nil {
-		t.Errorf("Unexpected error occured while parsing \"%s\" error=%s", testLine1, err)
+		t.Errorf("Unexpected error occurred while parsing \"%s\" error=%s", testLine1, err)
 	}
 
 	expectedCTXT := uint64(450500)
@@ -118,7 +118,7 @@ func TestParseStat(t *testing.T) {
 
 	err = parseStat(testLine2, &s)
 	if err != nil {
-		t.Errorf("Unexpected error occured while parsing \"%s\" error=%s", testLine2, err)
+		t.Errorf("Unexpected error occurred while parsing \"%s\" error=%s", testLine2, err)
 	}
 
 	expectedProcessesRunning := uint64(1)

@@ -32,7 +32,7 @@ const memoryPath = "/proc/meminfo"
 // system file in kb.
 type Memory struct {
 	MemTotal          float64 // total physical ram kb
-	MemFree           float64 // unused physcial ram kb
+	MemFree           float64 // unused physical ram kb
 	MemAvailable      float64
 	Buffers           float64 // physical ram used for buffers kb
 	Cached            float64 // physical ram used as cache

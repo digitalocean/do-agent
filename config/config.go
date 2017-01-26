@@ -31,7 +31,7 @@ func Version() string {
 	return "dev"
 }
 
-// Build is the git branch and commit hash provided durring compilation
+// Build is the git branch and commit hash provided during compilation
 func Build() string {
 	return build
 }

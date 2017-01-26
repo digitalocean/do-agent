@@ -55,7 +55,7 @@ type Networker interface {
 	NewNetwork() ([]Network, error)
 }
 
-// NewNetwork collects data from the /proc/net/dev psuedo-file system
+// NewNetwork collects data from the /proc/net/dev pseudo-file system
 // file and converts it into a Network struct.
 func NewNetwork() ([]Network, error) {
 	f, err := os.Open(networkPath)
