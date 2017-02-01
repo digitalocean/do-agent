@@ -26,6 +26,12 @@ type ProcProc struct {
 	VirtualMemory  int     //value in bytes
 	Comm           string
 	CmdLine        []string
+
+	UserCPUTime        float64
+	KernelCPUTime      float64
+	ChildUserCPUTime   float64
+	ChildKernelCPUTime float64
+	StartTimeCPUTime   float64
 }
 
 // Procer is a collection of process metrics exposed by the
@@ -62,6 +68,12 @@ func NewProcProc() ([]ProcProc, error) {
 		if err != nil {
 			continue // because the rest of the values can't be queried
 		}
+
+		p.UserCPUTime = float64(stat.UTime)
+		p.KernelCPUTime = float64(stat.STime)
+		p.ChildUserCPUTime = float64(stat.CUTime)
+		p.ChildKernelCPUTime = float64(stat.CSTime)
+		p.StartTimeCPUTime, _ = stat.StartTime()
 
 		p.VirtualMemory = stat.VirtualMemory()
 		p.ResidentMemory = stat.ResidentMemory()
