@@ -37,12 +37,12 @@ DO_AGENT_PLUGIN_PATH | string | Override plugin directory path
 
 ## Building and running
 
-    `make build`
-    `sudo -u nobody ./do-agent <flags>`
+    make build
+    sudo -u nobody ./do-agent <flags>
 
 ## Running Tests
 
-    `make test`
+    make test
 
 ## Installing via package managers
 
