@@ -17,21 +17,18 @@ package procfs
 
 import "github.com/prometheus/procfs"
 
+// Borrowed from github.com/prometheus/procfs/proc_stat.go
+const userHZ = 100
+
 // ProcProc contains the data exposed by various proc files in the
 // pseudo-file system.
 type ProcProc struct {
 	PID            int
-	CPUTime        float64 //value in seconds
+	CPUUsage       float64 //value in % (0.0 ~ 100.0)
 	ResidentMemory int     //value in bytes
 	VirtualMemory  int     //value in bytes
 	Comm           string
 	CmdLine        []string
-
-	UserCPUTime        float64
-	KernelCPUTime      float64
-	ChildUserCPUTime   float64
-	ChildKernelCPUTime float64
-	StartTimeCPUTime   float64
 }
 
 // Procer is a collection of process metrics exposed by the
@@ -69,15 +66,17 @@ func NewProcProc() ([]ProcProc, error) {
 			continue // because the rest of the values can't be queried
 		}
 
-		p.UserCPUTime = float64(stat.UTime)
-		p.KernelCPUTime = float64(stat.STime)
-		p.ChildUserCPUTime = float64(stat.CUTime)
-		p.ChildKernelCPUTime = float64(stat.CSTime)
-		p.StartTimeCPUTime, _ = stat.StartTime()
-
 		p.VirtualMemory = stat.VirtualMemory()
 		p.ResidentMemory = stat.ResidentMemory()
-		p.CPUTime = stat.CPUTime()
+
+		startTime, err := stat.StartTime()
+		if err != nil {
+			continue // because the rest of the values can't be queried
+		}
+
+		// As described in http://stackoverflow.com/a/16736599/16944
+		ticks := float64(stat.UTime + stat.STime + stat.CUTime + stat.CSTime)
+		p.CPUUsage = float64(100 * ((ticks / userHZ) / startTime))
 
 		ps = append(ps, p)
 	}

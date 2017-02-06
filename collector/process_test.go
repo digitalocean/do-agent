@@ -39,7 +39,7 @@ func TestRegisterProcessMetrics(t *testing.T) {
 	p.NewProcProcResultProcProcs = []procfs.ProcProc{
 		procfs.ProcProc{
 			PID:            int(1),
-			CPUTime:        float64(2),
+			CPUUsage:       float64(2),
 			ResidentMemory: int(3),
 			VirtualMemory:  int(4),
 			Comm:           "foo",
@@ -47,7 +47,7 @@ func TestRegisterProcessMetrics(t *testing.T) {
 		},
 		procfs.ProcProc{
 			PID:            int(2),
-			CPUTime:        float64(3),
+			CPUUsage:       float64(3),
 			ResidentMemory: int(2),
 			VirtualMemory:  int(1),
 			Comm:           "foo",
