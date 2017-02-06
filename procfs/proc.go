@@ -29,6 +29,8 @@ type ProcProc struct {
 	VirtualMemory  int     //value in bytes
 	Comm           string
 	CmdLine        []string
+	StartTime      float64
+	BootTime       float64
 }
 
 // Procer is a collection of process metrics exposed by the
@@ -69,14 +71,15 @@ func NewProcProc() ([]ProcProc, error) {
 		p.VirtualMemory = stat.VirtualMemory()
 		p.ResidentMemory = stat.ResidentMemory()
 
-		startTime, err := stat.StartTime()
-		if err != nil {
-			continue // because the rest of the values can't be queried
-		}
+		p.StartTime = float64(stat.Starttime)
+
+		x, err := procfs.NewFS(procfs.DefaultMountPoint)
+		y, err := x.NewStat()
+		p.BootTime = float64(y.BootTime)
 
 		// As described in http://stackoverflow.com/a/16736599/16944
 		ticks := float64(stat.UTime + stat.STime + stat.CUTime + stat.CSTime)
-		p.CPUUsage = float64(100 * ((ticks / userHZ) / startTime))
+		p.CPUUsage = float64(100 * ((ticks / userHZ) / p.StartTime))
 
 		ps = append(ps, p)
 	}
