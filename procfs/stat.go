@@ -72,6 +72,11 @@ func NewStat() (Stat, error) {
 	return readStat(f)
 }
 
+// TotalTime (in jiffies) executed by this CPU
+func (c CPU) TotalTime() uint64 {
+	return c.User + c.Nice + c.System + c.Idle + c.Iowait + c.Irq + c.Softirq + c.Steal + c.Guest + c.GuestNice
+}
+
 func readStat(f io.Reader) (Stat, error) {
 	var stat Stat
 
