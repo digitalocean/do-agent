@@ -17,15 +17,24 @@ package procfs
 
 import "github.com/prometheus/procfs"
 
+// Borrowed from github.com/prometheus/procfs/proc_stat.go
+const userHZ = 100
+
 // ProcProc contains the data exposed by various proc files in the
 // pseudo-file system.
 type ProcProc struct {
 	PID            int
-	CPUTime        float64 //value in seconds
+	CPUUsage       float64 //value in % (0.0 ~ 100.0)
 	ResidentMemory int     //value in bytes
 	VirtualMemory  int     //value in bytes
 	Comm           string
 	CmdLine        []string
+	StartTime      float64
+	BootTime       float64
+	UTime          uint
+	STime          uint
+	CUTime         uint
+	CSTime         uint
 }
 
 // Procer is a collection of process metrics exposed by the
@@ -65,7 +74,21 @@ func NewProcProc() ([]ProcProc, error) {
 
 		p.VirtualMemory = stat.VirtualMemory()
 		p.ResidentMemory = stat.ResidentMemory()
-		p.CPUTime = stat.CPUTime()
+
+		p.StartTime = float64(stat.Starttime)
+
+		x, err := procfs.NewFS(procfs.DefaultMountPoint)
+		y, err := x.NewStat()
+		p.BootTime = float64(y.BootTime)
+
+		p.UTime = stat.UTime
+		p.STime = stat.STime
+		p.CUTime = stat.CUTime
+		p.CSTime = stat.CSTime
+
+		// As described in http://stackoverflow.com/a/16736599/16944
+		ticks := float64(stat.UTime + stat.STime + stat.CUTime + stat.CSTime)
+		p.CPUUsage = float64(100 * ((ticks / userHZ) / p.StartTime))
 
 		ps = append(ps, p)
 	}

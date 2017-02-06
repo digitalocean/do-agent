@@ -24,8 +24,8 @@ import (
 const processSystem = "process"
 
 type process struct {
-	totalCPUTime float64
-	totalMemory  float64
+	totalCPUUsage float64
+	totalMemory   float64
 }
 
 type procprocFunc func() ([]procfs.ProcProc, error)
@@ -47,19 +47,19 @@ func RegisterProcessMetrics(r metrics.Registry, fn procprocFunc) {
 		m := make(map[string]*process)
 		for _, proc := range procs {
 			if value, ok := m[proc.Comm]; ok {
-				value.totalCPUTime += proc.CPUTime
+				value.totalCPUUsage = proc.CPUUsage
 				value.totalMemory += float64(proc.ResidentMemory)
 			} else {
 				m[proc.Comm] = &process{
-					totalCPUTime: proc.CPUTime,
-					totalMemory:  float64(proc.ResidentMemory),
+					totalCPUUsage: proc.CPUUsage,
+					totalMemory:   float64(proc.ResidentMemory),
 				}
 			}
 		}
 
 		for key, value := range m {
 			r.Update(memory, value.totalMemory, key)
-			r.Update(cpu, value.totalCPUTime, key)
+			r.Update(cpu, value.totalCPUUsage, key)
 		}
 	})
 }
