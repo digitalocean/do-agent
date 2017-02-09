@@ -42,6 +42,11 @@ type CPU struct {
 	GuestNice uint64 // since Linux 2.6.33
 }
 
+// TotalTime (in jiffies) executed by this CPU
+func (c CPU) TotalTime() uint64 {
+	return c.User + c.Nice + c.System + c.Idle + c.Iowait + c.Irq + c.Softirq + c.Steal + c.Guest + c.GuestNice
+}
+
 // Stat contains the data exposed by the /proc/stat pseudo-file system
 // file.
 type Stat struct {
