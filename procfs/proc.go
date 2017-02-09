@@ -15,7 +15,11 @@
 
 package procfs
 
-import "github.com/prometheus/procfs"
+import (
+	"sync"
+
+	"github.com/prometheus/procfs"
+)
 
 // ProcProc contains the data exposed by various proc files in the
 // pseudo-file system.
@@ -34,10 +38,11 @@ type Procer interface {
 	NewProcProc() ([]ProcProc, error)
 }
 
-var (
-	processCPUTally      = map[int]uint64{}
-	previousTotalCPUTime = totalCPUTime()
-)
+var state struct {
+	lock         sync.Mutex
+	cpuTally     map[int]uint64
+	totalCPUTime uint64
+}
 
 // NewProcProc collects data from various proc pseudo-file system files
 // and converts it into a ProcProc structure.
@@ -48,9 +53,9 @@ func NewProcProc() ([]ProcProc, error) {
 	}
 
 	var (
-		output             = []ProcProc{}
-		newProcessCPUTally = map[int]uint64{}
-		newTotalCPUTime    = totalCPUTime()
+		output          = []ProcProc{}
+		newCPUTally     = map[int]uint64{}
+		newTotalCPUTime = totalCPUTime()
 	)
 
 	for _, proc := range allProcs {
@@ -71,9 +76,9 @@ func NewProcProc() ([]ProcProc, error) {
 
 		var utilization float64
 		newProcCPUTime := uint64(stat.UTime + stat.STime)
-		newProcessCPUTally[proc.PID] = newProcCPUTime
-		if _, exists := processCPUTally[proc.PID]; exists {
-			utilization = float64(newProcCPUTime-processCPUTally[proc.PID]) / float64(newTotalCPUTime-previousTotalCPUTime)
+		newCPUTally[proc.PID] = newProcCPUTime
+		if _, exists := state.cpuTally[proc.PID]; exists {
+			utilization = float64(newProcCPUTime-state.cpuTally[proc.PID]) / float64(newTotalCPUTime-state.totalCPUTime)
 		}
 
 		output = append(output, ProcProc{
@@ -85,8 +90,11 @@ func NewProcProc() ([]ProcProc, error) {
 			CPUUtilization: utilization,
 		})
 	}
-	processCPUTally = newProcessCPUTally
-	previousTotalCPUTime = newTotalCPUTime
+
+	state.lock.Lock()
+	defer state.lock.Unlock()
+	state.cpuTally = newCPUTally
+	state.totalCPUTime = newTotalCPUTime
 
 	return output, nil
 }
