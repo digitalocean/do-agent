@@ -16,6 +16,7 @@
 package procfs
 
 import (
+	"fmt"
 	"sync"
 
 	"github.com/prometheus/procfs"
@@ -52,11 +53,13 @@ func NewProcProc() ([]ProcProc, error) {
 		return []ProcProc{}, err
 	}
 
-	var (
-		output          = []ProcProc{}
-		newCPUTally     = map[int]uint64{}
-		newTotalCPUTime = totalCPUTime()
-	)
+	output := []ProcProc{}
+	newCPUTally := map[int]uint64{}
+	newTotalCPUTime, err := totalCPUTime()
+
+	if err != nil {
+		return []ProcProc{}, err
+	}
 
 	for _, proc := range allProcs {
 		cli, err := proc.CmdLine()
@@ -99,18 +102,22 @@ func NewProcProc() ([]ProcProc, error) {
 	return output, nil
 }
 
-func totalCPUTime() uint64 {
+func totalCPUTime() (uint64, error) {
 	stats, err := NewStat()
 	if err != nil {
-		return 0
+		return 0, err
 	}
 
-	var aggregateCPU CPU
+	var aggregateCPU *CPU
 	for _, stat := range stats.CPUS {
 		if stat.CPU == "cpu" {
-			aggregateCPU = stat
+			aggregateCPU = &stat
 		}
 	}
 
-	return aggregateCPU.TotalTime()
+	if aggregateCPU == nil {
+		return 0, fmt.Errorf("could not find 'cpu' line in /proc/stat")
+	}
+
+	return aggregateCPU.TotalTime(), nil
 }
