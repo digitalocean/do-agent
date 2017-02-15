@@ -66,6 +66,12 @@
 			"revision": "0496a6c14df020789376f4d4a261273d5ddb36ec"
 		},
 		{
+			"checksumSHA1": "Mnp6EGM0pdGxMe19f6dg+ipjaSo=",
+			"path": "github.com/kardianos/osext",
+			"revision": "9b883c5eb462dd5cb1b0a7a104fe86bc6b9bd391",
+			"revisionTime": "2017-02-07T19:16:55Z"
+		},
+		{
 			"checksumSHA1": "kO2MAzPuortudABaRd7fY+7EaoM=",
 			"path": "github.com/prometheus/procfs",
 			"revision": "406e5b7bfd8201a36e2bb5f7bdae0b03380c2ce8"
