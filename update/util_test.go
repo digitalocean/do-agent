@@ -23,15 +23,6 @@ import (
 	"testing"
 )
 
-func TestCurrentExecPath(t *testing.T) {
-	if _, err := os.Stat("/proc/self/exe"); err != nil {
-		_, err2 := currentExecPath()
-		if err2 == nil {
-			t.Error("expected an error, got nil")
-		}
-	}
-}
-
 func TestParseKeys(t *testing.T) {
 	const (
 		key1 = ""

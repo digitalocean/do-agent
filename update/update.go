@@ -23,6 +23,7 @@ import (
 	"strings"
 
 	"github.com/digitalocean/do-agent/config"
+	"github.com/kardianos/osext"
 
 	"github.com/flynn/go-tuf/client"
 	tufdata "github.com/flynn/go-tuf/data"
@@ -129,7 +130,7 @@ func (u *update) findUpdates(forceUpdate bool) (string, error) {
 // the running binary and calls exec on the new binary.
 func (u *update) FetchLatestAndExec(forceUpdate bool) error {
 	// record bin path before update
-	binPathOrig, err := currentExecPath()
+	binPathOrig, err := osext.Executable()
 	if err != nil {
 		return ErrUnableToDetermineRunningProcess{Reason: err.Error()}
 	}
@@ -145,7 +146,7 @@ func (u *update) FetchLatestAndExec(forceUpdate bool) error {
 		return err
 	}
 
-	binPath, err := currentExecPath()
+	binPath, err := osext.Executable()
 	if err != nil {
 		return ErrUnableToDetermineRunningProcess{Reason: err.Error()}
 	}
@@ -194,7 +195,7 @@ func (u *update) FetchLatest(forceUpdate bool) error {
 		return err
 	}
 
-	curFilePath, err := currentExecPath()
+	curFilePath, err := osext.Executable()
 	if err != nil {
 		return ErrUnableToDetermineRunningProcess{Reason: err.Error()}
 	}

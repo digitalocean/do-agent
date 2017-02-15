@@ -29,19 +29,6 @@ import (
 	tufdata "github.com/flynn/go-tuf/data"
 )
 
-const deletedTag = " (deleted)"
-
-// currentExecPath returns the path of the current running executable
-func currentExecPath() (string, error) {
-	path, err := os.Readlink("/proc/self/exe")
-	if err != nil {
-		return "", err
-	}
-	path = strings.TrimSuffix(path, deletedTag)
-	path = strings.TrimPrefix(path, deletedTag)
-	return path, nil
-}
-
 func parseKeys(rootKeyJSON string) ([]*tufdata.Key, error) {
 	var rootKeys []*tufdata.Key
 
