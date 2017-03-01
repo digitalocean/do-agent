@@ -19,6 +19,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"regexp"
 	"runtime"
 	"time"
 
@@ -50,6 +51,52 @@ var (
 	debugUpdateURL     = envflag.String("DO_AGENT_UPDATE_URL", update.RepoURL, "Override Update URL")
 	debugLocalRepoPath = envflag.String("DO_AGENT_REPO_PATH", update.RepoLocalStore, "Override Local repository path")
 	pluginPath         = envflag.String("DO_AGENT_PLUGIN_PATH", defaultPluginPath, "Override plugin path")
+
+	// By default, only collect these metrics _and_ any plugins metrics. In a future version of
+	// the agent, the server will be requesting the metrics to gather.
+	defaultMetrics = map[string]collector.Filters{
+		"cpu": collector.Filters{Regexps: []*regexp.Regexp{
+			regexp.MustCompile("cpu_cpu.*system"),
+			regexp.MustCompile("cpu_cpu.*user"),
+			regexp.MustCompile("cpu_cpu.*idle"),
+			regexp.MustCompile("cpu_cpu.*guest"),
+			regexp.MustCompile("cpu_cpu.*guestnice"),
+			regexp.MustCompile("cpu_cpu.*irq"),
+			regexp.MustCompile("cpu_cpu.*nice"),
+			regexp.MustCompile("cpu_cpu.*softirq"),
+			regexp.MustCompile("cpu_cpu.*steal"),
+		}},
+
+		"disk": collector.Filters{Regexps: []*regexp.Regexp{
+			regexp.MustCompile("disk_bytes_read.*"),
+			regexp.MustCompile("disk_bytes_written.*"),
+		}},
+
+		"filesystem": collector.Filters{Regexps: []*regexp.Regexp{
+			regexp.MustCompile("filesystem_free.*"),
+			regexp.MustCompile("filesystem_size.*"),
+		}},
+
+		// load metrics are not collected at this time.
+		"load": collector.Filters{},
+
+		"memory": collector.Filters{Regexps: []*regexp.Regexp{
+			regexp.MustCompile("memory_free"),
+			regexp.MustCompile("memory_total"),
+		}},
+
+		// Restrict network metrics to physical nics such as 'eno1' or 'eth1'.
+		// This prevents measuring VPN and other pseudo network devices.
+		"network": collector.Filters{Regexps: []*regexp.Regexp{
+			regexp.MustCompile(`network_receive_bytes_.*(eno|eth)\d{1,}`),
+			regexp.MustCompile(`network_transmit_bytes_.*(eno|eth)\d{1,}`),
+		}},
+
+		// node metrics are not collected at this time.
+		"node": collector.Filters{},
+
+		"process": collector.Filters{IncludeAll: true},
+	}
 )
 
 func main() {
@@ -133,14 +180,14 @@ func main() {
 	lastUpdate := time.Now()
 
 	r := smc.Registry()
-	collector.RegisterCPUMetrics(r, procfs.NewStat)
-	collector.RegisterDiskMetrics(r, procfs.NewDisk)
-	collector.RegisterFSMetrics(r, procfs.NewMount)
-	collector.RegisterLoadMetrics(r, procfs.NewLoad)
-	collector.RegisterMemoryMetrics(r, procfs.NewMemory)
-	collector.RegisterNetworkMetrics(r, procfs.NewNetwork)
-	collector.RegisterNodeMetrics(r, procfs.NewOSRelease)
-	collector.RegisterProcessMetrics(r, procfs.NewProcProc)
+	collector.RegisterCPUMetrics(r, procfs.NewStat, defaultMetrics["cpu"])
+	collector.RegisterDiskMetrics(r, procfs.NewDisk, defaultMetrics["disk"])
+	collector.RegisterFSMetrics(r, procfs.NewMount, defaultMetrics["filesystem"])
+	collector.RegisterLoadMetrics(r, procfs.NewLoad, defaultMetrics["load"])
+	collector.RegisterMemoryMetrics(r, procfs.NewMemory, defaultMetrics["memory"])
+	collector.RegisterNetworkMetrics(r, procfs.NewNetwork, defaultMetrics["network"])
+	collector.RegisterNodeMetrics(r, procfs.NewOSRelease, defaultMetrics["node"])
+	collector.RegisterProcessMetrics(r, procfs.NewProcProc, defaultMetrics["process"])
 	plugins.RegisterPluginDir(r, *pluginPath)
 
 	for {

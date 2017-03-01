@@ -43,7 +43,7 @@ var networkNames = []string{
 type networkFunc func() ([]procfs.Network, error)
 
 //RegisterNetworkMetrics creates a reference to a NewtworkCollector.
-func RegisterNetworkMetrics(r metrics.Registry, fn networkFunc) {
+func RegisterNetworkMetrics(r metrics.Registry, fn networkFunc, f Filters) {
 	nc := map[string]metrics.MetricRef{}
 	deviceLabel := metrics.WithMeasuredLabels("device")
 	for _, name := range networkNames {
@@ -58,20 +58,20 @@ func RegisterNetworkMetrics(r metrics.Registry, fn networkFunc) {
 		}
 
 		for _, value := range network {
-			r.Update(nc["receive_bytes"], float64(value.RXBytes), value.Interface)
-			r.Update(nc["receive_compressed"], float64(value.RXCompressed), value.Interface)
-			r.Update(nc["receive_drop"], float64(value.RXDrop), value.Interface)
-			r.Update(nc["receive_errs"], float64(value.RXErrs), value.Interface)
-			r.Update(nc["receive_fifo"], float64(value.RXFifo), value.Interface)
-			r.Update(nc["receive_frame"], float64(value.RXFrame), value.Interface)
-			r.Update(nc["receive_multicast"], float64(value.RXMulticast), value.Interface)
-			r.Update(nc["receive_packets"], float64(value.RXPackets), value.Interface)
-			r.Update(nc["transmit_bytes"], float64(value.TXBytes), value.Interface)
-			r.Update(nc["transmit_compressed"], float64(value.TXCompressed), value.Interface)
-			r.Update(nc["transmit_drop"], float64(value.TXDrop), value.Interface)
-			r.Update(nc["transmit_errs"], float64(value.TXErrs), value.Interface)
-			r.Update(nc["transmit_fifo"], float64(value.TXFifo), value.Interface)
-			r.Update(nc["transmit_packets"], float64(value.TXPackets), value.Interface)
+			f.UpdateIfIncluded(r, nc["receive_bytes"], float64(value.RXBytes), value.Interface)
+			f.UpdateIfIncluded(r, nc["receive_compressed"], float64(value.RXCompressed), value.Interface)
+			f.UpdateIfIncluded(r, nc["receive_drop"], float64(value.RXDrop), value.Interface)
+			f.UpdateIfIncluded(r, nc["receive_errs"], float64(value.RXErrs), value.Interface)
+			f.UpdateIfIncluded(r, nc["receive_fifo"], float64(value.RXFifo), value.Interface)
+			f.UpdateIfIncluded(r, nc["receive_frame"], float64(value.RXFrame), value.Interface)
+			f.UpdateIfIncluded(r, nc["receive_multicast"], float64(value.RXMulticast), value.Interface)
+			f.UpdateIfIncluded(r, nc["receive_packets"], float64(value.RXPackets), value.Interface)
+			f.UpdateIfIncluded(r, nc["transmit_bytes"], float64(value.TXBytes), value.Interface)
+			f.UpdateIfIncluded(r, nc["transmit_compressed"], float64(value.TXCompressed), value.Interface)
+			f.UpdateIfIncluded(r, nc["transmit_drop"], float64(value.TXDrop), value.Interface)
+			f.UpdateIfIncluded(r, nc["transmit_errs"], float64(value.TXErrs), value.Interface)
+			f.UpdateIfIncluded(r, nc["transmit_fifo"], float64(value.TXFifo), value.Interface)
+			f.UpdateIfIncluded(r, nc["transmit_packets"], float64(value.TXPackets), value.Interface)
 		}
 	})
 }

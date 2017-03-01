@@ -31,7 +31,7 @@ type process struct {
 type procprocFunc func() ([]procfs.ProcProc, error)
 
 // RegisterProcessMetrics registers process metrics.
-func RegisterProcessMetrics(r metrics.Registry, fn procprocFunc) {
+func RegisterProcessMetrics(r metrics.Registry, fn procprocFunc, f Filters) {
 	memory := r.Register(processSystem+"_memory",
 		metrics.WithMeasuredLabels("process"))
 	cpu := r.Register(processSystem+"_cpu",
@@ -58,8 +58,8 @@ func RegisterProcessMetrics(r metrics.Registry, fn procprocFunc) {
 		}
 
 		for key, value := range m {
-			r.Update(memory, value.totalMemory, key)
-			r.Update(cpu, value.totalCPUUtilization, key)
+			f.UpdateIfIncluded(r, memory, value.totalMemory, key)
+			f.UpdateIfIncluded(r, cpu, value.totalCPUUtilization, key)
 		}
 	})
 }

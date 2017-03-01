@@ -43,8 +43,8 @@ func TestRegisterNodeMetrics(t *testing.T) {
 	var actualNames []string
 
 	r := &stubRegistry{}
-
-	RegisterNodeMetrics(r, o.NewOSRelease)
+	f := Filters{IncludeAll: true}
+	RegisterNodeMetrics(r, o.NewOSRelease, f)
 
 	for i := range r.RegisterNameOpts {
 		actualNames = append(actualNames, r.RegisterNameOpts[i].Name)

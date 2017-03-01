@@ -79,8 +79,8 @@ func TestRegisterNetworkMetrics(t *testing.T) {
 	var actualNames []string
 
 	r := &stubRegistry{}
-
-	RegisterNetworkMetrics(r, n.NewNetwork)
+	f := Filters{IncludeAll: true}
+	RegisterNetworkMetrics(r, n.NewNetwork, f)
 
 	for i := range r.RegisterNameOpts {
 		actualNames = append(actualNames, r.RegisterNameOpts[i].Name)

@@ -87,8 +87,8 @@ func TestRegisterMemoryMetrics(t *testing.T) {
 	var actualNames []string
 
 	r := &stubRegistry{}
-
-	RegisterMemoryMetrics(r, m.NewMemory)
+	f := Filters{IncludeAll: true}
+	RegisterMemoryMetrics(r, m.NewMemory, f)
 
 	for i := range r.RegisterNameOpts {
 		actualNames = append(actualNames, r.RegisterNameOpts[i].Name)

@@ -35,7 +35,7 @@ var edp = regexp.MustCompile(excludedDisks)
 type diskFunc func() ([]procfs.Disk, error)
 
 // RegisterDiskMetrics registers disk metrics.
-func RegisterDiskMetrics(r metrics.Registry, fn diskFunc) {
+func RegisterDiskMetrics(r metrics.Registry, fn diskFunc, f Filters) {
 	deviceLabel := metrics.WithMeasuredLabels("device")
 	ioNow := r.Register(diskSystem+"_io_now", deviceLabel)
 	ioTime := r.Register(diskSystem+"_io_time_ms", deviceLabel)
@@ -64,19 +64,19 @@ func RegisterDiskMetrics(r metrics.Registry, fn diskFunc) {
 				continue
 			}
 
-			r.Update(ioNow, float64(value.IOInProgress), value.DeviceName)
-			r.Update(ioTime, float64(value.TimeSpentDoingIO), value.DeviceName)
-			r.Update(ioTimeWeighted, float64(value.WeightedTimeSpentDoingIO), value.DeviceName)
-			r.Update(readTime, float64(value.TimeSpentReading), value.DeviceName)
-			r.Update(readsCompleted, float64(value.ReadsCompleted), value.DeviceName)
-			r.Update(readsMerged, float64(value.ReadsMerged), value.DeviceName)
-			r.Update(sectorsRead, float64(value.SectorsRead), value.DeviceName)
-			r.Update(sectorsWritten, float64(value.SectorsWritten), value.DeviceName)
-			r.Update(writeTime, float64(value.TimeSpendWriting), value.DeviceName)
-			r.Update(writesCompleted, float64(value.WritesCompleted), value.DeviceName)
-			r.Update(writesMerged, float64(value.WritesMerged), value.DeviceName)
-			r.Update(bytesRead, float64(value.ReadsMerged)*sectorSize, value.DeviceName)
-			r.Update(bytesWritten, float64(value.WritesMerged)*sectorSize, value.DeviceName)
+			f.UpdateIfIncluded(r, ioNow, float64(value.IOInProgress), value.DeviceName)
+			f.UpdateIfIncluded(r, ioTime, float64(value.TimeSpentDoingIO), value.DeviceName)
+			f.UpdateIfIncluded(r, ioTimeWeighted, float64(value.WeightedTimeSpentDoingIO), value.DeviceName)
+			f.UpdateIfIncluded(r, readTime, float64(value.TimeSpentReading), value.DeviceName)
+			f.UpdateIfIncluded(r, readsCompleted, float64(value.ReadsCompleted), value.DeviceName)
+			f.UpdateIfIncluded(r, readsMerged, float64(value.ReadsMerged), value.DeviceName)
+			f.UpdateIfIncluded(r, sectorsRead, float64(value.SectorsRead), value.DeviceName)
+			f.UpdateIfIncluded(r, sectorsWritten, float64(value.SectorsWritten), value.DeviceName)
+			f.UpdateIfIncluded(r, writeTime, float64(value.TimeSpendWriting), value.DeviceName)
+			f.UpdateIfIncluded(r, writesCompleted, float64(value.WritesCompleted), value.DeviceName)
+			f.UpdateIfIncluded(r, writesMerged, float64(value.WritesMerged), value.DeviceName)
+			f.UpdateIfIncluded(r, bytesRead, float64(value.ReadsMerged)*sectorSize, value.DeviceName)
+			f.UpdateIfIncluded(r, bytesWritten, float64(value.WritesMerged)*sectorSize, value.DeviceName)
 		}
 	})
 }

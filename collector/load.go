@@ -24,7 +24,7 @@ import (
 type loadFunc func() (procfs.Load, error)
 
 // RegisterLoadMetrics registers system load related metrics.
-func RegisterLoadMetrics(r metrics.Registry, fn loadFunc) {
+func RegisterLoadMetrics(r metrics.Registry, fn loadFunc, f Filters) {
 	load1 := r.Register("load1")
 	load5 := r.Register("load5")
 	load15 := r.Register("load15")
@@ -35,8 +35,8 @@ func RegisterLoadMetrics(r metrics.Registry, fn loadFunc) {
 			log.Debugf("couldn't get load: %s", err)
 			return
 		}
-		r.Update(load1, loads.Load1)
-		r.Update(load5, loads.Load5)
-		r.Update(load15, loads.Load15)
+		f.UpdateIfIncluded(r, load1, loads.Load1)
+		f.UpdateIfIncluded(r, load5, loads.Load5)
+		f.UpdateIfIncluded(r, load15, loads.Load15)
 	})
 }

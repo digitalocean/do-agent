@@ -55,8 +55,8 @@ func TestRegisterFSMetrics(t *testing.T) {
 	var actualNames []string
 
 	r := &stubRegistry{}
-
-	RegisterFSMetrics(r, m.NewMount)
+	f := Filters{IncludeAll: true}
+	RegisterFSMetrics(r, m.NewMount, f)
 
 	for i := range r.RegisterNameOpts {
 		actualNames = append(actualNames, r.RegisterNameOpts[i].Name)

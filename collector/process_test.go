@@ -63,8 +63,8 @@ func TestRegisterProcessMetrics(t *testing.T) {
 	var actualNames []string
 
 	r := &stubRegistry{}
-
-	RegisterProcessMetrics(r, p.NewProcProc)
+	f := Filters{IncludeAll: true}
+	RegisterProcessMetrics(r, p.NewProcProc, f)
 
 	for i := range r.RegisterNameOpts {
 		actualNames = append(actualNames, r.RegisterNameOpts[i].Name)

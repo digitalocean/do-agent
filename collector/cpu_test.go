@@ -50,7 +50,7 @@ func TestRegisterCPUMetrics(t *testing.T) {
 				GuestNice: uint64(10),
 			},
 		},
-		Interrupt:         uint64(1),
+		Interrupt:        uint64(1),
 		ContextSwitch:    uint64(2),
 		Processes:        uint64(3),
 		ProcessesRunning: uint64(4),
@@ -68,8 +68,8 @@ func TestRegisterCPUMetrics(t *testing.T) {
 	var actualNames []string
 
 	r := &stubRegistry{}
-
-	RegisterCPUMetrics(r, stat.NewStat)
+	f := Filters{IncludeAll: true}
+	RegisterCPUMetrics(r, stat.NewStat, f)
 
 	for i := range r.RegisterNameOpts {
 		actualNames = append(actualNames, r.RegisterNameOpts[i].Name)
