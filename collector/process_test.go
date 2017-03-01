@@ -39,7 +39,7 @@ func TestRegisterProcessMetrics(t *testing.T) {
 	p.NewProcProcResultProcProcs = []procfs.ProcProc{
 		procfs.ProcProc{
 			PID:            int(1),
-			CPUTime:        float64(2),
+			CPUUtilization: float64(1.0 / 3.0),
 			ResidentMemory: int(3),
 			VirtualMemory:  int(4),
 			Comm:           "foo",
@@ -47,7 +47,7 @@ func TestRegisterProcessMetrics(t *testing.T) {
 		},
 		procfs.ProcProc{
 			PID:            int(2),
-			CPUTime:        float64(3),
+			CPUUtilization: float64(3.0 / 4.0),
 			ResidentMemory: int(2),
 			VirtualMemory:  int(1),
 			Comm:           "foo",
@@ -63,8 +63,8 @@ func TestRegisterProcessMetrics(t *testing.T) {
 	var actualNames []string
 
 	r := &stubRegistry{}
-
-	RegisterProcessMetrics(r, p.NewProcProc)
+	f := Filters{IncludeAll: true}
+	RegisterProcessMetrics(r, p.NewProcProc, f)
 
 	for i := range r.RegisterNameOpts {
 		actualNames = append(actualNames, r.RegisterNameOpts[i].Name)

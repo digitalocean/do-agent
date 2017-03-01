@@ -24,14 +24,14 @@ import (
 const processSystem = "process"
 
 type process struct {
-	totalCPUTime float64
-	totalMemory  float64
+	totalCPUUtilization float64
+	totalMemory         float64
 }
 
 type procprocFunc func() ([]procfs.ProcProc, error)
 
 // RegisterProcessMetrics registers process metrics.
-func RegisterProcessMetrics(r metrics.Registry, fn procprocFunc) {
+func RegisterProcessMetrics(r metrics.Registry, fn procprocFunc, f Filters) {
 	memory := r.Register(processSystem+"_memory",
 		metrics.WithMeasuredLabels("process"))
 	cpu := r.Register(processSystem+"_cpu",
@@ -47,19 +47,19 @@ func RegisterProcessMetrics(r metrics.Registry, fn procprocFunc) {
 		m := make(map[string]*process)
 		for _, proc := range procs {
 			if value, ok := m[proc.Comm]; ok {
-				value.totalCPUTime += proc.CPUTime
+				value.totalCPUUtilization += proc.CPUUtilization
 				value.totalMemory += float64(proc.ResidentMemory)
 			} else {
 				m[proc.Comm] = &process{
-					totalCPUTime: proc.CPUTime,
-					totalMemory:  float64(proc.ResidentMemory),
+					totalCPUUtilization: proc.CPUUtilization,
+					totalMemory:         float64(proc.ResidentMemory),
 				}
 			}
 		}
 
 		for key, value := range m {
-			r.Update(memory, value.totalMemory, key)
-			r.Update(cpu, value.totalCPUTime, key)
+			f.UpdateIfIncluded(r, memory, value.totalMemory, key)
+			f.UpdateIfIncluded(r, cpu, value.totalCPUUtilization, key)
 		}
 	})
 }

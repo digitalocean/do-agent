@@ -15,13 +15,18 @@
 
 package procfs
 
-import "github.com/prometheus/procfs"
+import (
+	"fmt"
+	"sync"
+
+	"github.com/prometheus/procfs"
+)
 
 // ProcProc contains the data exposed by various proc files in the
 // pseudo-file system.
 type ProcProc struct {
 	PID            int
-	CPUTime        float64 //value in seconds
+	CPUUtilization float64 //value in % (0.0 ~ 1.0)
 	ResidentMemory int     //value in bytes
 	VirtualMemory  int     //value in bytes
 	Comm           string
@@ -34,40 +39,85 @@ type Procer interface {
 	NewProcProc() ([]ProcProc, error)
 }
 
-//NewProcProc collects data from various proc pseudo-file system files
-//and converts it into a ProcProc structure.
+var state struct {
+	lock         sync.Mutex
+	cpuTally     map[int]uint64
+	totalCPUTime uint64
+}
+
+// NewProcProc collects data from various proc pseudo-file system files
+// and converts it into a ProcProc structure.
 func NewProcProc() ([]ProcProc, error) {
-	procs, err := procfs.AllProcs()
+	allProcs, err := procfs.AllProcs()
 	if err != nil {
 		return []ProcProc{}, err
 	}
 
-	var ps []ProcProc
+	output := []ProcProc{}
+	newCPUTally := map[int]uint64{}
+	newTotalCPUTime, err := totalCPUTime()
 
-	for _, proc := range procs {
+	if err != nil {
+		return []ProcProc{}, err
+	}
+
+	for _, proc := range allProcs {
 		cli, err := proc.CmdLine()
 		if err != nil || len(cli) == 0 {
 			continue
 		}
 
-		var p ProcProc
-		p.CmdLine = cli
-
-		p.PID = proc.PID
-
-		comm, _ := proc.Comm()
-		p.Comm = comm
+		comm, err := proc.Comm()
+		if err != nil {
+			continue
+		}
 
 		stat, err := proc.NewStat()
 		if err != nil {
-			continue // because the rest of the values can't be queried
+			continue
 		}
 
-		p.VirtualMemory = stat.VirtualMemory()
-		p.ResidentMemory = stat.ResidentMemory()
-		p.CPUTime = stat.CPUTime()
+		var utilization float64
+		newProcCPUTime := uint64(stat.UTime + stat.STime)
+		newCPUTally[proc.PID] = newProcCPUTime
+		if _, exists := state.cpuTally[proc.PID]; exists {
+			utilization = float64(newProcCPUTime-state.cpuTally[proc.PID]) / float64(newTotalCPUTime-state.totalCPUTime)
+		}
 
-		ps = append(ps, p)
+		output = append(output, ProcProc{
+			CmdLine:        cli,
+			PID:            proc.PID,
+			Comm:           comm,
+			VirtualMemory:  stat.VirtualMemory(),
+			ResidentMemory: stat.ResidentMemory(),
+			CPUUtilization: utilization,
+		})
 	}
-	return ps, nil
+
+	state.lock.Lock()
+	defer state.lock.Unlock()
+	state.cpuTally = newCPUTally
+	state.totalCPUTime = newTotalCPUTime
+
+	return output, nil
+}
+
+func totalCPUTime() (uint64, error) {
+	stats, err := NewStat()
+	if err != nil {
+		return 0, err
+	}
+
+	var aggregateCPU *CPU
+	for _, stat := range stats.CPUS {
+		if stat.CPU == "cpu" {
+			aggregateCPU = &stat
+		}
+	}
+
+	if aggregateCPU == nil {
+		return 0, fmt.Errorf("could not find 'cpu' line in /proc/stat")
+	}
+
+	return aggregateCPU.TotalTime(), nil
 }
