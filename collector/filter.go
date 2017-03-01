@@ -29,7 +29,7 @@ type Filters struct {
 	Regexps    []*regexp.Regexp
 }
 
-// ifIncluded call r.Update if the metric should be included.
+// UpodateIfIncluded call r.Update if the metric should be included.
 func (f *Filters) UpdateIfIncluded(r metrics.Reporter, ref metrics.MetricRef, value float64, labelValues ...string) {
 	def, ok := ref.(*metrics.Definition)
 	if !ok {
@@ -44,17 +44,17 @@ func (f *Filters) UpdateIfIncluded(r metrics.Reporter, ref metrics.MetricRef, va
 
 	if f.IncludeAll {
 		r.Update(ref, value, labelValues...)
-		log.Debugf("(+) catch all rule for metric %v", l)
+		log.Debugf("(+) included via catch all: %v", l)
 		return
 	}
 
 	for _, e := range f.Regexps {
 		if e.MatchString(l) {
 			r.Update(ref, value, labelValues...)
-			log.Debugf("(+) included metric %v", l)
+			log.Debugf("(+) included via regex: %v", l)
 			return
 		}
 	}
 
-	log.Debugf("(-) excluded metric %v", l)
+	log.Debugf("(-) excluded: %v", l)
 }

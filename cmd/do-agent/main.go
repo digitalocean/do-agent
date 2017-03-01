@@ -56,40 +56,25 @@ var (
 	// the agent, the server will be requesting the metrics to gather.
 	defaultMetrics = map[string]collector.Filters{
 		"cpu": collector.Filters{Regexps: []*regexp.Regexp{
-			regexp.MustCompile("cpu_cpu.*system"),
-			regexp.MustCompile("cpu_cpu.*user"),
-			regexp.MustCompile("cpu_cpu.*idle"),
-			regexp.MustCompile("cpu_cpu.*guest"),
-			regexp.MustCompile("cpu_cpu.*guestnice"),
-			regexp.MustCompile("cpu_cpu.*irq"),
-			regexp.MustCompile("cpu_cpu.*nice"),
-			regexp.MustCompile("cpu_cpu.*softirq"),
-			regexp.MustCompile("cpu_cpu.*steal"),
+			regexp.MustCompile("cpu_cpu.*"),
 		}},
 
-		"disk": collector.Filters{Regexps: []*regexp.Regexp{
-			regexp.MustCompile("disk_bytes_read.*"),
-			regexp.MustCompile("disk_bytes_written.*"),
-		}},
+		"disk": collector.Filters{IncludeAll: true},
 
 		"filesystem": collector.Filters{Regexps: []*regexp.Regexp{
-			regexp.MustCompile("filesystem_free.*"),
-			regexp.MustCompile("filesystem_size.*"),
+			regexp.MustCompile("filesystem_(free|size).*"),
 		}},
 
-		// load metrics are not collected at this time.
-		"load": collector.Filters{},
+		"load": collector.Filters{IncludeAll: true},
 
 		"memory": collector.Filters{Regexps: []*regexp.Regexp{
-			regexp.MustCompile("memory_free"),
-			regexp.MustCompile("memory_total"),
+			regexp.MustCompile("memory_(free|cached|swap*|total)"),
 		}},
 
 		// Restrict network metrics to physical nics such as 'eno1' or 'eth1'.
-		// This prevents measuring VPN and other pseudo network devices.
+		// This prevents measuring VPN 'tun' or 'tap' devices and container 'veth'.
 		"network": collector.Filters{Regexps: []*regexp.Regexp{
-			regexp.MustCompile(`network_receive_bytes_.*(eno|eth)\d{1,}`),
-			regexp.MustCompile(`network_transmit_bytes_.*(eno|eth)\d{1,}`),
+			regexp.MustCompile(`network_(receive|transmit)_(bytes|packets)_(eno|eth)\d{1,}`),
 		}},
 
 		// node metrics are not collected at this time.

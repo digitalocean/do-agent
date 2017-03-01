@@ -28,7 +28,7 @@ const (
 	fsSystem = "filesystem"
 )
 
-// excludedPsudeoFSs are psudeo filesystems that are excluded from metrics.
+// excludedDevices are psudeo filesystems that are excluded from metrics.
 var excludedDevices = []string{
 	"autofs",
 	"binfmt_misc",
