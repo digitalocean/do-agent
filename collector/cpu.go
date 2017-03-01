@@ -28,7 +28,7 @@ const ticksPerSecond = 100
 type statFunc func() (procfs.Stat, error)
 
 // RegisterCPUMetrics registers CPU related metrics.
-func RegisterCPUMetrics(r metrics.Registry, fn statFunc) {
+func RegisterCPUMetrics(r metrics.Registry, fn statFunc, f Filters) {
 	cpu := r.Register("cpu", metrics.WithMeasuredLabels("cpu", "mode"),
 		metrics.AsType(metrics.MetricType_COUNTER))
 	interrupt := r.Register("intr",
@@ -48,21 +48,21 @@ func RegisterCPUMetrics(r metrics.Registry, fn statFunc) {
 			if value.CPU == "cpu" {
 				continue
 			}
-			r.Update(cpu, float64(value.User)/ticksPerSecond, value.CPU, "user")
-			r.Update(cpu, float64(value.Nice)/ticksPerSecond, value.CPU, "nice")
-			r.Update(cpu, float64(value.System)/ticksPerSecond, value.CPU, "system")
-			r.Update(cpu, float64(value.Idle)/ticksPerSecond, value.CPU, "idle")
-			r.Update(cpu, float64(value.Iowait)/ticksPerSecond, value.CPU, "iowait")
-			r.Update(cpu, float64(value.Irq)/ticksPerSecond, value.CPU, "irq")
-			r.Update(cpu, float64(value.Softirq)/ticksPerSecond, value.CPU, "softirq")
-			r.Update(cpu, float64(value.Steal)/ticksPerSecond, value.CPU, "steal")
-			r.Update(cpu, float64(value.Guest)/ticksPerSecond, value.CPU, "guest")
-			r.Update(cpu, float64(value.GuestNice)/ticksPerSecond, value.CPU, "guestnice")
+			f.UpdateIfIncluded(r, cpu, float64(value.Guest)/ticksPerSecond, value.CPU, "guest")
+			f.UpdateIfIncluded(r, cpu, float64(value.GuestNice)/ticksPerSecond, value.CPU, "guestnice")
+			f.UpdateIfIncluded(r, cpu, float64(value.Idle)/ticksPerSecond, value.CPU, "idle")
+			f.UpdateIfIncluded(r, cpu, float64(value.Iowait)/ticksPerSecond, value.CPU, "iowait")
+			f.UpdateIfIncluded(r, cpu, float64(value.Irq)/ticksPerSecond, value.CPU, "irq")
+			f.UpdateIfIncluded(r, cpu, float64(value.Nice)/ticksPerSecond, value.CPU, "nice")
+			f.UpdateIfIncluded(r, cpu, float64(value.Softirq)/ticksPerSecond, value.CPU, "softirq")
+			f.UpdateIfIncluded(r, cpu, float64(value.Steal)/ticksPerSecond, value.CPU, "steal")
+			f.UpdateIfIncluded(r, cpu, float64(value.System)/ticksPerSecond, value.CPU, "system")
+			f.UpdateIfIncluded(r, cpu, float64(value.User)/ticksPerSecond, value.CPU, "user")
 		}
 
-		r.Update(interrupt, float64(stat.Interrupt))
-		r.Update(contextSwitch, float64(stat.ContextSwitch))
-		r.Update(procsBlocked, float64(stat.ProcessesBlocked))
-		r.Update(procsRunning, float64(stat.ProcessesRunning))
+		f.UpdateIfIncluded(r, interrupt, float64(stat.Interrupt))
+		f.UpdateIfIncluded(r, contextSwitch, float64(stat.ContextSwitch))
+		f.UpdateIfIncluded(r, procsBlocked, float64(stat.ProcessesBlocked))
+		f.UpdateIfIncluded(r, procsRunning, float64(stat.ProcessesRunning))
 	})
 }

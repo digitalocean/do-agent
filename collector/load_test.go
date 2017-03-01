@@ -54,8 +54,8 @@ func TestRegisterLoadMetrics(t *testing.T) {
 	var actualNames []string
 
 	r := &stubRegistry{}
-
-	RegisterLoadMetrics(r, l.NewLoad)
+	f := Filters{IncludeAll: true}
+	RegisterLoadMetrics(r, l.NewLoad, f)
 
 	for i := range r.RegisterNameOpts {
 		actualNames = append(actualNames, r.RegisterNameOpts[i].Name)

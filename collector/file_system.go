@@ -16,6 +16,7 @@
 package collector
 
 import (
+	"strings"
 	"syscall"
 
 	"github.com/digitalocean/do-agent/log"
@@ -27,10 +28,45 @@ const (
 	fsSystem = "filesystem"
 )
 
+// excludedDevices are psudeo filesystems that are excluded from metrics.
+var excludedDevices = []string{
+	"autofs",
+	"binfmt_misc",
+	"cgroup",
+	"debugfs",
+	"devpts",
+	"efivarfs",
+	"fuse",
+	"hugetlbfs",
+	"lxcfs",
+	"mqueue",
+	"none",
+	"proc",
+	"pstore",
+	"rootfs",
+	"securityfs",
+	"sysfs",
+	"systemd",
+	"tracefs",
+	"tmpfs",
+	"udev",
+}
+
 type mountFunc func() ([]procfs.Mount, error)
 
+// isExlcuded checks if a filesystems matches the exlcudedDevice list. Regexp's were
+// considered but they can be slow.
+func isExcluded(c string) bool {
+	for _, x := range excludedDevices {
+		if strings.Contains(c, x) {
+			return true
+		}
+	}
+	return false
+}
+
 // RegisterFSMetrics registers Filesystem related metrics..
-func RegisterFSMetrics(r metrics.Registry, fn mountFunc) {
+func RegisterFSMetrics(r metrics.Registry, fn mountFunc, f Filters) {
 	labels := metrics.WithMeasuredLabels("device", "mountpoint", "fstype")
 	available := r.Register(fsSystem+"_avail", labels)
 	files := r.Register(fsSystem+"_files", labels)
@@ -46,8 +82,8 @@ func RegisterFSMetrics(r metrics.Registry, fn mountFunc) {
 		}
 
 		for _, mount := range mounts {
-			if mount.Device == "rootfs" {
-				log.Debugf("Ignoring mount device: %s", mount.Device)
+			if isExcluded(mount.Device) {
+				log.Debugf("Ignoring mount device : %s", mount.Device)
 				continue
 			}
 
@@ -58,15 +94,15 @@ func RegisterFSMetrics(r metrics.Registry, fn mountFunc) {
 				continue
 			}
 
-			r.Update(available, float64(fsStats.Bavail)*float64(fsStats.Bsize),
+			f.UpdateIfIncluded(r, available, float64(fsStats.Bavail)*float64(fsStats.Bsize),
 				mount.Device, mount.MountPoint, mount.FSType)
-			r.Update(files, float64(fsStats.Files),
+			f.UpdateIfIncluded(r, files, float64(fsStats.Files),
 				mount.Device, mount.MountPoint, mount.FSType)
-			r.Update(filesFree, float64(fsStats.Ffree),
+			f.UpdateIfIncluded(r, filesFree, float64(fsStats.Ffree),
 				mount.Device, mount.MountPoint, mount.FSType)
-			r.Update(free, float64(fsStats.Bfree)*float64(fsStats.Bsize),
+			f.UpdateIfIncluded(r, free, float64(fsStats.Bfree)*float64(fsStats.Bsize),
 				mount.Device, mount.MountPoint, mount.FSType)
-			r.Update(size, float64(fsStats.Blocks)*float64(fsStats.Bsize),
+			f.UpdateIfIncluded(r, size, float64(fsStats.Blocks)*float64(fsStats.Bsize),
 				mount.Device, mount.MountPoint, mount.FSType)
 		}
 	})

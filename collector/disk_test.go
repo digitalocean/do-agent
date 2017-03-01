@@ -96,8 +96,8 @@ func TestRegisterDiskMetrics(t *testing.T) {
 			var actualNames []string
 
 			r := &stubRegistry{}
-
-			RegisterDiskMetrics(r, tc.disker.NewDisk)
+			f := Filters{IncludeAll: true}
+			RegisterDiskMetrics(r, tc.disker.NewDisk, f)
 
 			for i := range r.RegisterNameOpts {
 				actualNames = append(actualNames, r.RegisterNameOpts[i].Name)

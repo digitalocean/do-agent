@@ -41,7 +41,7 @@ func kernelVersion(f osReleaseFunc) string {
 }
 
 //RegisterNodeMetrics creates a reference to a NodeCollector.
-func RegisterNodeMetrics(r metrics.Registry, fn osReleaseFunc) {
+func RegisterNodeMetrics(r metrics.Registry, fn osReleaseFunc, f Filters) {
 	labels := map[string]string{
 		"os":                  runtime.GOOS,
 		"architecture":        runtime.GOARCH,
@@ -84,6 +84,6 @@ func RegisterNodeMetrics(r metrics.Registry, fn osReleaseFunc) {
 			hostName = "Unavailable Hostname"
 		}
 
-		r.Update(info, 0, hostName)
+		f.UpdateIfIncluded(r, info, 0, hostName)
 	})
 }
