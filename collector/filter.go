@@ -29,7 +29,7 @@ type Filters struct {
 	Regexps    []*regexp.Regexp
 }
 
-// UpodateIfIncluded call r.Update if the metric should be included.
+// UpdateIfIncluded call r.Update if the metric should be included.
 func (f *Filters) UpdateIfIncluded(r metrics.Reporter, ref metrics.MetricRef, value float64, labelValues ...string) {
 	def, ok := ref.(*metrics.Definition)
 	if !ok {
