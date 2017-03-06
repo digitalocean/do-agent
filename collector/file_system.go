@@ -30,35 +30,55 @@ const (
 
 // excludedDevices are psudeo filesystems that are excluded from metrics.
 var excludedDevices = []string{
-	"autofs",
-	"binfmt_misc",
-	"cgroup",
-	"debugfs",
-	"devpts",
-	"efivarfs",
-	"fuse",
-	"hugetlbfs",
+	"fusectl",
 	"lxcfs",
 	"mqueue",
 	"none",
+	"rootfs",
+	"sunrpc",
+	"systemd",
+	"udev",
+}
+
+// excludedFSes are pseudo filesystems that are excluded from metrics
+var excludedFSes = []string{
+	"aufs",
+	"autofs",
+	"binfmt_misc",
+	"cifs",
+	"cgroup",
+	"debugfs",
+	"devpts",
+	"devtmpfs",
+	"ecryptfs",
+	"efivarfs",
+	"fuse",
+	"hugetlbfs",
+	"mqueue",
+	"nfs",
+	"overlayfs",
 	"proc",
 	"pstore",
-	"rootfs",
+	"rpc_pipefs",
 	"securityfs",
+	"smb",
 	"sysfs",
-	"systemd",
-	"tracefs",
 	"tmpfs",
-	"udev",
+	"tracefs",
 }
 
 type mountFunc func() ([]procfs.Mount, error)
 
 // isExlcuded checks if a filesystems matches the exlcudedDevice list. Regexp's were
 // considered but they can be slow.
-func isExcluded(c string) bool {
+func isExcluded(d, t string) bool {
 	for _, x := range excludedDevices {
-		if strings.Contains(c, x) {
+		if strings.Contains(d, x) {
+			return true
+		}
+	}
+	for _, y := range excludedFSes {
+		if strings.Contains(t, y) {
 			return true
 		}
 	}
@@ -82,8 +102,8 @@ func RegisterFSMetrics(r metrics.Registry, fn mountFunc, f Filters) {
 		}
 
 		for _, mount := range mounts {
-			if isExcluded(mount.Device) {
-				log.Debugf("Ignoring mount device : %s", mount.Device)
+			if isExcluded(mount.Device, mount.FSType) {
+				log.Debugf("Ignoring filesystem for device : %s %s ", mount.Device, mount.FSType)
 				continue
 			}
 
