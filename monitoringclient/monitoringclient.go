@@ -32,6 +32,9 @@ const (
 	// AuthURL is the address to the Sonar authentication server
 	AuthURL = "https://sonar.digitalocean.com"
 
+	// MetadataURL is the address to the metadata service
+	MetadataURL = "http://169.254.169.254"
+
 	userAgentHeader = "User-Agent"
 )
 
