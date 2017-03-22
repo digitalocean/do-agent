@@ -18,6 +18,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"net/url"
 	"os"
 	"regexp"
 	"runtime"
@@ -43,6 +44,7 @@ var (
 	forceUpdate        = flag.Bool("force_update", false, "Update the version of do-agent.")
 	logToSyslog        = flag.Bool("log_syslog", false, "Log to syslog.")
 	logLevel           = flag.String("log_level", "INFO", "Log level to log: ERROR, INFO, DEBUG")
+	debugMetadataURL   = envflag.String("DO_AGENT_METADATA_URL", monitoringclient.MetadataURL, "Override metadata URL")
 	debugAuthURL       = envflag.String("DO_AGENT_AUTHENTICATION_URL", monitoringclient.AuthURL, "Override authentication URL")
 	debugAppKey        = envflag.String("DO_AGENT_APPKEY", "", "Override AppKey")
 	debugMetricsURL    = envflag.String("DO_AGENT_METRICS_URL", "", "Override metrics URL")
@@ -97,6 +99,9 @@ func main() {
 	log.Info("Architecture: ", runtime.GOARCH)
 	log.Info("Operating System: ", runtime.GOOS)
 
+	if *debugMetadataURL != monitoringclient.MetadataURL {
+		log.Info("Metadata URL Override: ", *debugMetadataURL)
+	}
 	if *debugAuthURL != monitoringclient.AuthURL {
 		log.Info("Authentication URL Override: ", *debugAuthURL)
 	}
@@ -127,7 +132,12 @@ func main() {
 		updateAgentWithExit(updater)
 	}
 
-	metadataClient := metadata.NewClient()
+	metadataURL, err := url.Parse(*debugMetadataURL)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	metadataClient := metadata.NewClient(metadata.WithBaseURL(metadataURL))
 	monitoringClient := monitoringclient.NewClient(*debugAuthURL)
 
 	errorBackoffTimer := backoff.Backoff{
@@ -137,7 +147,6 @@ func main() {
 		Jitter: true,
 	}
 
-	var err error
 	var credentials *bootstrap.Credentials
 	for {
 		credentials, err = bootstrap.InitCredentials(metadataClient, monitoringClient, *debugAppKey, *debugDropletID, *debugAuthToken)
