@@ -18,9 +18,7 @@ GOVENDOR=$(GOPATH)/bin/govendor
 
 all: build test
 
-build:
-	@echo ">> fetching govendor"
-	@go get -u github.com/kardianos/govendor
+build: $(GOVENDOR)
 	@echo ">> fetching dependencies"
 	@$(GOVENDOR) sync
 	@echo ">> build version=$(RELEASE)"
@@ -55,6 +53,10 @@ test:
 clean:
 	rm do-agent
 	rm -fr build
+
+$(GOVENDOR):
+	@echo ">> fetching govendor"
+	@go get -u github.com/kardianos/govendor
 
 list-latest-release:
 	@echo $(LAST_RELEASE)
