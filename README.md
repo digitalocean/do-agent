@@ -219,6 +219,25 @@ add your name and email address to the
 under the "Contributors" section using the format:
 `First Last <email@example.com>`.
 
+First, to setup the project, ensure that `$GOPATH` variable is pointing to an
+existing directory, where all your Go code will be available.
+
+After forking the repo on Github, run:
+
+```sh
+go get github.com/digitalocean/do-agent
+cd $GOPATH/src/github.com/digitalocean/do-agent
+
+git remote add my-fork <the url for your fork>
+make test # ensure tests are passing
+```
+
+Push your changes to your fork:
+
+```sh
+git push -u master my-fork
+```
+
 Finally, submit a pull request for review!
 
 ## Report a bug
