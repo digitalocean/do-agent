@@ -14,13 +14,15 @@ endif
 LAST_RELEASE=$(shell git describe --tags $(shell git rev-list --tags --max-count=1))
 GOFLAGS=-ldflags "-X $(CONFIG_PATH).build=$(CURRENT_BRANCH).$(CURRENT_HASH) -X $(CONFIG_PATH).version=$(RELEASE)"
 
+GOVENDOR=$(GOPATH)/bin/govendor
+
 all: build test
 
 build:
 	@echo ">> fetching govendor"
 	@go get -u github.com/kardianos/govendor
 	@echo ">> fetching dependencies"
-	@govendor sync
+	@$(GOVENDOR) sync
 	@echo ">> build version=$(RELEASE)"
 	@echo ">> Building system native"
 	@go build $(GOFLAGS) -o do-agent cmd/do-agent/main.go
