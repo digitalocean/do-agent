@@ -79,8 +79,7 @@ var (
 			regexp.MustCompile(`network_(receive|transmit)_(bytes|packets)_(eno|eth)\d{1,}`),
 		}},
 
-		// node metrics are not collected at this time.
-		"node": collector.Filters{},
+		"node": collector.Filters{IncludeAll: true},
 
 		"process": collector.Filters{IncludeAll: true},
 	}
