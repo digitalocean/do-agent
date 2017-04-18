@@ -1,4 +1,4 @@
-.PHONY: all test clean build
+.PHONY: all test clean build dependencies
 
 CONFIG_PATH=github.com/digitalocean/do-agent/config
 
@@ -14,13 +14,11 @@ endif
 LAST_RELEASE=$(shell git describe --tags $(shell git rev-list --tags --max-count=1))
 GOFLAGS=-ldflags "-X $(CONFIG_PATH).build=$(CURRENT_BRANCH).$(CURRENT_HASH) -X $(CONFIG_PATH).version=$(RELEASE)"
 
+GOVENDOR=$(GOPATH)/bin/govendor
+
 all: build test
 
-build:
-	@echo ">> fetching govendor"
-	@go get -u github.com/kardianos/govendor
-	@echo ">> fetching dependencies"
-	@govendor sync
+build: dependencies
 	@echo ">> build version=$(RELEASE)"
 	@echo ">> Building system native"
 	@go build $(GOFLAGS) -o do-agent cmd/do-agent/main.go
@@ -40,7 +38,7 @@ checkout-latest-release: master-branch-check
 install:
 	@go get $(GOFLAGS) ./...
 
-test:
+test: dependencies
 	@echo " ==Running go test=="
 	@go test -v $(shell go list ./... | grep -v /vendor/)
 	@echo " ==Running go vet=="
@@ -53,6 +51,14 @@ test:
 clean:
 	rm do-agent
 	rm -fr build
+
+dependencies: $(GOVENDOR)
+	@echo ">> fetching dependencies"
+	@$(GOVENDOR) sync
+
+$(GOVENDOR):
+	@echo ">> fetching govendor"
+	@go get -u github.com/kardianos/govendor
 
 list-latest-release:
 	@echo $(LAST_RELEASE)
