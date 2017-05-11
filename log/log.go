@@ -49,7 +49,7 @@ func setLevel(level level) {
 
 // setSyslogger enables the syslog writer
 func setSyslogger() {
-	if logwriter, err := syslog.New(syslog.LOG_NOTICE, "do-agent"); err == nil {
+	if logwriter, err := syslog.New(syslog.LOG_NOTICE|syslog.LOG_DAEMON, "do-agent"); err == nil {
 		stdlog.SetOutput(logwriter)
 	}
 }
