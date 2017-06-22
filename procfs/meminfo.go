@@ -26,7 +26,7 @@ import (
 	"github.com/digitalocean/do-agent/log"
 )
 
-const memoryPath = "/proc/meminfo"
+const memoryPathSuffix = "meminfo"
 
 // Memory contains the data exposed by the /proc/meminfo pseudo-file
 // system file in kb.
@@ -92,12 +92,17 @@ type Memoryer interface {
 	NewMemory() (Memory, error)
 }
 
+// Path returns the relative procfs location.
+func memoryPath() string {
+	return fmt.Sprintf("%s/%s", ProcPath, memoryPathSuffix)
+}
+
 // NewMemory collects data from the /proc/meminfo system file and
 // converts it into a Memory structure.
 func NewMemory() (Memory, error) {
-	f, err := os.Open(memoryPath)
+	f, err := os.Open(memoryPath())
 	if err != nil {
-		err = fmt.Errorf("Unable to collect memory metrics from %s - error: %s", memoryPath, err)
+		err = fmt.Errorf("Unable to collect memory metrics from %s - error: %s", memoryPath(), err)
 		return Memory{}, err
 	}
 	defer f.Close()

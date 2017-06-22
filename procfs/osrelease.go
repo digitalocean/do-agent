@@ -22,7 +22,7 @@ import (
 	"os"
 )
 
-const osReleasePath = "/proc/sys/kernel/osrelease"
+const osReleaseSuffix = "sys/kernel/osrelease"
 
 // OSRelease contains the data exposed by the /proc/sys/kernel/osrelease psudo-file
 // system file.
@@ -34,12 +34,17 @@ type OSReleaser interface {
 	NewOSRelease() (OSRelease, error)
 }
 
+// Path returns the relative procfs location.
+func osReleasePath() string {
+	return fmt.Sprintf("%s/%s", ProcPath, osReleaseSuffix)
+}
+
 // NewOSRelease collects data from the /proc/sys/kernel/osrelease psudo-file system file
 // and converts it into a OSRelease.
 func NewOSRelease() (OSRelease, error) {
-	f, err := os.Open(osReleasePath)
+	f, err := os.Open(osReleasePath())
 	if err != nil {
-		err = fmt.Errorf("Unable to collect kernel version from %s - error: %s", osReleasePath, err)
+		err = fmt.Errorf("Unable to collect kernel version from %s - error: %s", osReleasePath(), err)
 		return "", err
 	}
 	defer f.Close()

@@ -24,7 +24,7 @@ import (
 	"strings"
 )
 
-const diskPath = "/proc/diskstats"
+const diskPathSuffix = "diskstats"
 
 // Disk contains the data exposed by the /proc/diskstats pseudo-file
 // system file since Linux 2.5.69.
@@ -65,12 +65,17 @@ type Disker interface {
 	NewDisk() ([]Disk, error)
 }
 
+// diskPath returns the relative procfs location.
+func diskPath() string {
+	return fmt.Sprintf("%s/%s", ProcPath, diskPathSuffix)
+}
+
 // NewDisk collects data from the /proc/diskstats pseudo-file system
 // and converts it into an slice of Disk structures.
 func NewDisk() ([]Disk, error) {
-	f, err := os.Open(diskPath)
+	f, err := os.Open(diskPath())
 	if err != nil {
-		err = fmt.Errorf("Unable to collect disk metrics from %s - error: %s", diskPath, err)
+		err = fmt.Errorf("Unable to collect disk metrics from %s - error: %s", diskPath(), err)
 		return []Disk{}, err
 	}
 	defer f.Close()
@@ -100,7 +105,7 @@ func parseDisk(line string) (Disk, error) {
 	lineArray := strings.Fields(line)
 
 	if len(lineArray) < 14 {
-		err := fmt.Errorf("Unsupported %s format: %s", diskPath, line)
+		err := fmt.Errorf("Unsupported %s format: %s", diskPath(), line)
 		return Disk{}, err
 	}
 

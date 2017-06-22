@@ -24,7 +24,7 @@ import (
 	"strings"
 )
 
-const loadPath = "/proc/loadavg"
+const loadPathSuffix = "loadavg"
 
 // Load contains the data exposed by the /proc/loadavg psudo-file
 // system file.
@@ -43,12 +43,17 @@ type Loader interface {
 	NewLoad() (Load, error)
 }
 
+// Path returns the relative procfs location.
+func loadPath() string {
+	return fmt.Sprintf("%s/%s", ProcPath, loadPathSuffix)
+}
+
 // NewLoad collects data from the /proc/loadavg psudo-file system file
 // and converts it into a Load structure.
 func NewLoad() (Load, error) {
-	f, err := os.Open(loadPath)
+	f, err := os.Open(loadPath())
 	if err != nil {
-		err = fmt.Errorf("Unable to collect load metrics from %s - error: %s", loadPath, err)
+		err = fmt.Errorf("Unable to collect load metrics from %s - error: %s", loadPath(), err)
 		return Load{}, err
 	}
 	defer f.Close()
@@ -71,7 +76,7 @@ func parseLoad(line string) (Load, error) {
 	lineArray := strings.Fields(line)
 
 	if len(lineArray) < 5 {
-		err := fmt.Errorf("Unsupported %s format: %s", loadPath, line)
+		err := fmt.Errorf("Unsupported %s format: %s", loadPath(), line)
 		return Load{}, err
 	}
 

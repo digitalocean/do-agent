@@ -87,7 +87,7 @@ func TestNewMemory(t *testing.T) {
 func TestParseMemoryValues(t *testing.T) {
 	m, err := readMemory(strings.NewReader(testMemoryValues))
 	if err != nil {
-		t.Errorf("Unable to open test file %s", memoryPath)
+		t.Errorf("Unable to open test file %s", memoryPath())
 	}
 
 	mr := reflect.ValueOf(m)
