@@ -44,15 +44,16 @@ var (
 	forceUpdate        = flag.Bool("force_update", false, "Update the version of do-agent.")
 	logToSyslog        = flag.Bool("log_syslog", false, "Log to syslog.")
 	logLevel           = flag.String("log_level", "INFO", "Log level to log: ERROR, INFO, DEBUG")
-	debugMetadataURL   = envflag.String("DO_AGENT_METADATA_URL", monitoringclient.MetadataURL, "Override metadata URL")
-	debugAuthURL       = envflag.String("DO_AGENT_AUTHENTICATION_URL", monitoringclient.AuthURL, "Override authentication URL")
 	debugAppKey        = envflag.String("DO_AGENT_APPKEY", "", "Override AppKey")
-	debugMetricsURL    = envflag.String("DO_AGENT_METRICS_URL", "", "Override metrics URL")
-	debugDropletID     = envflag.Int64("DO_AGENT_DROPLET_ID", 0, "Override Droplet ID")
 	debugAuthToken     = envflag.String("DO_AGENT_AUTHTOKEN", "", "Override AuthToken")
-	debugUpdateURL     = envflag.String("DO_AGENT_UPDATE_URL", update.RepoURL, "Override Update URL")
+	debugAuthURL       = envflag.String("DO_AGENT_AUTHENTICATION_URL", monitoringclient.AuthURL, "Override authentication URL")
+	debugDropletID     = envflag.Int64("DO_AGENT_DROPLET_ID", 0, "Override Droplet ID")
 	debugLocalRepoPath = envflag.String("DO_AGENT_REPO_PATH", update.RepoLocalStore, "Override Local repository path")
+	debugMetadataURL   = envflag.String("DO_AGENT_METADATA_URL", monitoringclient.MetadataURL, "Override metadata URL")
+	debugMetricsURL    = envflag.String("DO_AGENT_METRICS_URL", "", "Override metrics URL")
+	debugUpdateURL     = envflag.String("DO_AGENT_UPDATE_URL", update.RepoURL, "Override Update URL")
 	pluginPath         = envflag.String("DO_AGENT_PLUGIN_PATH", defaultPluginPath, "Override plugin path")
+	procFSRoot         = envflag.String("DO_AGENT_PROCFS_ROOT", "/proc", "Override location of /proc")
 
 	// By default, only collect these metrics _and_ any plugins metrics. In a future version of
 	// the agent, the server will be requesting the metrics to gather.
@@ -122,6 +123,9 @@ func main() {
 	if *debugLocalRepoPath != update.RepoLocalStore {
 		log.Info("Local Repository Path Override: ", *debugLocalRepoPath)
 	}
+	if *procFSRoot != "/proc" {
+		log.Info("Using alternative location for procFS: ", *procFSRoot)
+	}
 	if *pluginPath != defaultPluginPath {
 		log.Info("Plugin path Override: ", *pluginPath)
 	}
@@ -171,6 +175,7 @@ func main() {
 
 	updateAgentWithRestart(updater)
 	lastUpdate := time.Now()
+	procfs.ProcPath = *procFSRoot
 
 	r := smc.Registry()
 	collector.RegisterCPUMetrics(r, procfs.NewStat, defaultMetrics["cpu"])

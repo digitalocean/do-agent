@@ -25,7 +25,7 @@ import (
 	"strings"
 )
 
-const networkPath = "/proc/net/dev"
+const networkPathSuffix = "net/dev"
 
 // Network contains the data exposed by the /proc/net/dev psudo-file
 // system file.
@@ -55,12 +55,17 @@ type Networker interface {
 	NewNetwork() ([]Network, error)
 }
 
+// networkPath returns the relative procfs location.
+func networkPath() string {
+	return fmt.Sprintf("%s/%s", ProcPath, networkPathSuffix)
+}
+
 // NewNetwork collects data from the /proc/net/dev pseudo-file system
 // file and converts it into a Network struct.
 func NewNetwork() ([]Network, error) {
-	f, err := os.Open(networkPath)
+	f, err := os.Open(networkPath())
 	if err != nil {
-		err = fmt.Errorf("Unable to collect network metrics from %s - error: %s", networkPath, err)
+		err = fmt.Errorf("Unable to collect network metrics from %s - error: %s", networkPath(), err)
 		return []Network{}, err
 	}
 	defer f.Close()
@@ -97,7 +102,7 @@ func parseNetwork(line string) (Network, error) {
 	})
 
 	if len(fields) != 17 {
-		return Network{}, errors.New("Field mismatch error while parsing: " + networkPath)
+		return Network{}, errors.New("Field mismatch error while parsing: " + networkPath())
 	}
 
 	network := Network{}

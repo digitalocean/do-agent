@@ -23,7 +23,7 @@ import (
 	"strings"
 )
 
-const mountPath = "/proc/mounts"
+const mountPathSuffix = "mounts"
 
 // Mount contains the data exposed by the /proc/mounts pseudo-file
 // system file.
@@ -39,12 +39,17 @@ type Mounter interface {
 	NewMount() ([]Mount, error)
 }
 
+// mountPath returns the relative procfs location.
+func mountPath() string {
+	return fmt.Sprintf("%s/%s", ProcPath, memoryPathSuffix)
+}
+
 // NewMount collects data from the /proc/mounts system file and
 // converts it into a slice of Mounts.
 func NewMount() ([]Mount, error) {
-	f, err := os.Open(mountPath)
+	f, err := os.Open(mountPath())
 	if err != nil {
-		err = fmt.Errorf("Unable to collect mount metrics from %s - error: %s", mountPath, err)
+		err = fmt.Errorf("Unable to collect mount metrics from %s - error: %s", mountPath(), err)
 		return []Mount{}, err
 	}
 	defer f.Close()
@@ -75,7 +80,7 @@ func parseMount(line string) (Mount, error) {
 	lineArray := strings.Fields(line)
 
 	if len(lineArray) != 6 || len(lineArray) < 3 {
-		err := fmt.Errorf("Unsupported %s format: %s", mountPath, line)
+		err := fmt.Errorf("Unsupported %s format: %s", mountPath(), line)
 		return Mount{}, err
 	}
 

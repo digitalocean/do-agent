@@ -12,7 +12,7 @@ else
 endif
 
 LAST_RELEASE=$(shell git describe --tags $(shell git rev-list --tags --max-count=1))
-GOFLAGS=-ldflags "-X $(CONFIG_PATH).build=$(CURRENT_BRANCH).$(CURRENT_HASH) -X $(CONFIG_PATH).version=$(RELEASE)"
+GOFLAGS = -ldflags="-X $(CONFIG_PATH).build=$(CURRENT_BRANCH).$(CURRENT_HASH) -X $(CONFIG_PATH).version=$(RELEASE) -extldflags -static"
 
 GOVENDOR=$(GOPATH)/bin/govendor
 
@@ -21,13 +21,13 @@ all: build test
 build: dependencies
 	@echo ">> build version=$(RELEASE)"
 	@echo ">> Building system native"
-	@go build $(GOFLAGS) -o do-agent cmd/do-agent/main.go
+	@env CGO=0 go build $(GOFLAGS) -o do-agent cmd/do-agent/main.go
 	@echo ">> Creating build directory"
 	@mkdir -p build
 	@echo ">> Building linux 386"
-	@env GOOS=linux GOARCH=386 go build $(GOFLAGS) -o build/do-agent_linux_386 cmd/do-agent/main.go
+	@env CGO=0 GOOS=linux GOARCH=386 go build $(GOFLAGS) -o build/do-agent_linux_386 cmd/do-agent/main.go
 	@echo ">> Building linux amd64"
-	@env GOOS=linux GOARCH=amd64 go build $(GOFLAGS) -o build/do-agent_linux_amd64 cmd/do-agent/main.go
+	@env CGO=0 GOOS=linux GOARCH=amd64 go build $(GOFLAGS) -o build/do-agent_linux_amd64 cmd/do-agent/main.go
 
 build-latest-release: checkout-latest-release build
 
@@ -59,6 +59,9 @@ dependencies: $(GOVENDOR)
 $(GOVENDOR):
 	@echo ">> fetching govendor"
 	@go get -u github.com/kardianos/govendor
+
+docker: build
+	docker build . -t do-agent -t do-agent:$(LAST_RELEASE)
 
 list-latest-release:
 	@echo $(LAST_RELEASE)

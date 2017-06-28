@@ -24,7 +24,7 @@ import (
 	"strings"
 )
 
-const statPath = "/proc/stat"
+const statPathSuffix = "stat"
 
 // CPU contains the data exposed by the /proc/stat pseudo-file system
 // file for cpus.
@@ -40,6 +40,11 @@ type CPU struct {
 	Steal     uint64 // since Linux 2.6.11
 	Guest     uint64 // since Linux 2.6.24
 	GuestNice uint64 // since Linux 2.6.33
+}
+
+// statPath returns the relative procfs location.
+func statPath() string {
+	return fmt.Sprintf("%s/%s", ProcPath, statPathSuffix)
 }
 
 // TotalTime (in jiffies) executed by this CPU
@@ -67,9 +72,9 @@ type Stater interface {
 // NewStat collects data from the /proc/stat pseudo-file system file
 // and converts it into a stat struct.
 func NewStat() (Stat, error) {
-	f, err := os.Open(statPath)
+	f, err := os.Open(statPath())
 	if err != nil {
-		err = fmt.Errorf("Unable to collect stat metrics from %s - error: %s", statPath, err)
+		err = fmt.Errorf("Unable to collect stat metrics from %s - error: %s", statPath(), err)
 		return Stat{}, err
 	}
 	defer f.Close()
@@ -108,7 +113,7 @@ func parseCPU(line string) (CPU, error) {
 	lineArray := strings.Fields(line)
 
 	if len(lineArray) < 5 {
-		err := fmt.Errorf("Unsupported %s format: %s", statPath, line)
+		err := fmt.Errorf("Unsupported %s format: %s", statPath(), line)
 		return CPU{}, err
 	}
 
