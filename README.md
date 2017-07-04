@@ -29,6 +29,7 @@ Flag |Option |Description
 DO_AGENT_AUTHENTICATION_URL | string | Override the authentication URL
 DO_AGENT_APPKEY | string | Override AppKey
 DO_AGENT_METRICS_URL | string | Override metrics URL
+DO_AGENT_METADATA_URL | string | Override metadata URL
 DO_AGENT_DROPLET_ID | int64 | Override Droplet ID
 DO_AGENT_AUTHTOKEN | string | Override AuthToken
 DO_AGENT_UPDATE_URL | string | Override Update URL
