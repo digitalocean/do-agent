@@ -41,7 +41,7 @@ type Mounter interface {
 
 // mountPath returns the relative procfs location.
 func mountPath() string {
-	return fmt.Sprintf("%s/%s", ProcPath, memoryPathSuffix)
+	return fmt.Sprintf("%s/%s", ProcPath, mountPathSuffix)
 }
 
 // NewMount collects data from the /proc/mounts system file and
