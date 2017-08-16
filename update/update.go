@@ -29,7 +29,7 @@ import (
 )
 
 const (
-	rootKey = `[{"keytype":"ed25519","keyval":{"public":"7d0f2d29aa628f40109fae8c1345f3da5f6ec19cc0e7e2becda83caafcb0d981"}}]`
+	rootKey = `[{"keytype":"ed25519","keyval":{"public":"288a52b43e69e1c1a1a5552707aa50900e59cfead3870d2d17f9a49a48d9407c"}}]`
 
 	// RepoURL is the remote TUF repository URL
 	RepoURL = "https://repos.sonar.digitalocean.com/tuf"
