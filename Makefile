@@ -60,8 +60,13 @@ $(GOVENDOR):
 	@echo ">> fetching govendor"
 	@go get -u github.com/kardianos/govendor
 
-docker: build
-	docker build . -t do-agent -t do-agent:$(LAST_RELEASE)
+docker:
+	docker build . \
+		--build-arg CURRENT_HASH="$(CURRENT_HASH)" \
+		--build-arg CURRENT_BRANCH="$(CURRENT_BRANCH)" \
+		--build-arg LAST_RELEASE="$(LAST_RELEASE).$(CURRENT_HASH)-docker" \
+		-t do-agent \
+		-t do-agent:$(LAST_RELEASE)
 
 list-latest-release:
 	@echo $(LAST_RELEASE)
@@ -86,6 +91,7 @@ release-patch-version: master-branch-check
 	@echo "Updating release version from=$(LAST_RELEASE) to=$(RELEASE_VERSION)"
 	git tag $(RELEASE_VERSION) -m"make release-patch-version $(RELEASE_VERSION)"
 	git push origin --tags
+
 
 master-branch-check:
 ifeq ("$(shell git rev-parse --abbrev-ref HEAD)", "master")
