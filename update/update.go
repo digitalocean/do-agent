@@ -21,6 +21,7 @@ import (
 	"os"
 	"runtime"
 	"strings"
+	"time"
 
 	"github.com/digitalocean/do-agent/config"
 
@@ -33,6 +34,9 @@ const (
 
 	// RepoURL is the remote TUF repository URL
 	RepoURL = "https://repos.sonar.digitalocean.com/tuf"
+
+	// Interval is the time in seconds between update checks
+	Interval = 3600
 
 	// RepoLocalStore is the local repository path
 	RepoLocalStore = "/var/opt/digitalocean/do-agent"
@@ -47,6 +51,7 @@ const (
 type Updater interface {
 	FetchLatestAndExec(bool) error
 	FetchLatest(bool) error
+	Interval() time.Duration
 }
 
 // Update manages the communication with the local repository, the
@@ -54,14 +59,16 @@ type Updater interface {
 type update struct {
 	localStorePath string
 	repositoryURL  string
+	interval       uint
 	client         *client.Client
 }
 
 // NewUpdate returns an Update object which has the components for a tuf client.
-func NewUpdate(localStorePath, repositoryURL string) Updater {
+func NewUpdate(localStorePath, repositoryURL string, interval uint) Updater {
 	return &update{
 		localStorePath: localStorePath,
 		repositoryURL:  repositoryURL,
+		interval:       interval,
 	}
 }
 
@@ -212,4 +219,9 @@ func (u *update) FetchLatest(forceUpdate bool) error {
 	}
 
 	return nil
+}
+
+// Interval returns the update interval
+func (u *update) Interval() time.Duration {
+	return time.Duration(u.interval) * time.Second
 }

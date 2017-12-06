@@ -16,11 +16,13 @@
 package update
 
 import "testing"
+import "time"
 
 func TestCreateTufClient(t *testing.T) {
 	u := &update{
 		localStorePath: "/tmp",
 		repositoryURL:  "not a url",
+		interval:       3600,
 		client:         nil,
 	}
 
@@ -32,6 +34,7 @@ func TestCreateTufClient(t *testing.T) {
 	u2 := &update{
 		localStorePath: "/tmp/aalllallalalallal",
 		repositoryURL:  "http://www.digitalocean.com",
+		interval:       3600,
 		client:         nil,
 	}
 
@@ -39,4 +42,31 @@ func TestCreateTufClient(t *testing.T) {
 	if err2 == nil {
 		t.Error("expected error, received nil")
 	}
+}
+
+func TestInterval(t *testing.T) {
+	u := &update{
+		localStorePath: "/tmp",
+		repositoryURL:  "not a url",
+		interval:       3600,
+		client:         nil,
+	}
+
+	interval1 := u.Interval()
+	if interval1 != time.Second*3600 {
+		t.Errorf("expected interval of 3600, received interval %s", interval1)
+	}
+
+	u2 := &update{
+		localStorePath: "/tmp",
+		repositoryURL:  "not a url",
+		interval:       0,
+		client:         nil,
+	}
+
+	interval2 := u2.Interval()
+	if interval2 != 0 {
+		t.Errorf("expected interval of 0, received %s", interval2)
+	}
+
 }

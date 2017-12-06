@@ -32,6 +32,7 @@ DO_AGENT_METRICS_URL | string | Override metrics URL
 DO_AGENT_DROPLET_ID | int64 | Override Droplet ID
 DO_AGENT_AUTHTOKEN | string | Override AuthToken
 DO_AGENT_UPDATE_URL | string | Override Update URL
+DO_AGENT_UPDATE_INTERVAL | uint | Override Update Interval
 DO_AGENT_REPO_PATH | string | Override Local repository path
 DO_AGENT_PLUGIN_PATH | string | Override plugin directory path
 DO_AGENT_PROCFS_ROOT | string | Override location of /proc

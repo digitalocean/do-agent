@@ -41,19 +41,20 @@ import (
 var (
 	defaultPluginPath = "/var/lib/do-agent/plugins"
 
-	forceUpdate        = flag.Bool("force_update", false, "Update the version of do-agent.")
-	logToSyslog        = flag.Bool("log_syslog", false, "Log to syslog.")
-	logLevel           = flag.String("log_level", "INFO", "Log level to log: ERROR, INFO, DEBUG")
-	debugAppKey        = envflag.String("DO_AGENT_APPKEY", "", "Override AppKey")
-	debugAuthToken     = envflag.String("DO_AGENT_AUTHTOKEN", "", "Override AuthToken")
-	debugAuthURL       = envflag.String("DO_AGENT_AUTHENTICATION_URL", monitoringclient.AuthURL, "Override authentication URL")
-	debugDropletID     = envflag.Int64("DO_AGENT_DROPLET_ID", 0, "Override Droplet ID")
-	debugLocalRepoPath = envflag.String("DO_AGENT_REPO_PATH", update.RepoLocalStore, "Override Local repository path")
-	debugMetadataURL   = envflag.String("DO_AGENT_METADATA_URL", monitoringclient.MetadataURL, "Override metadata URL")
-	debugMetricsURL    = envflag.String("DO_AGENT_METRICS_URL", "", "Override metrics URL")
-	debugUpdateURL     = envflag.String("DO_AGENT_UPDATE_URL", update.RepoURL, "Override Update URL")
-	pluginPath         = envflag.String("DO_AGENT_PLUGIN_PATH", defaultPluginPath, "Override plugin path")
-	procFSRoot         = envflag.String("DO_AGENT_PROCFS_ROOT", "/proc", "Override location of /proc")
+	forceUpdate         = flag.Bool("force_update", false, "Update the version of do-agent.")
+	logToSyslog         = flag.Bool("log_syslog", false, "Log to syslog.")
+	logLevel            = flag.String("log_level", "INFO", "Log level to log: ERROR, INFO, DEBUG")
+	debugAppKey         = envflag.String("DO_AGENT_APPKEY", "", "Override AppKey")
+	debugAuthToken      = envflag.String("DO_AGENT_AUTHTOKEN", "", "Override AuthToken")
+	debugAuthURL        = envflag.String("DO_AGENT_AUTHENTICATION_URL", monitoringclient.AuthURL, "Override authentication URL")
+	debugDropletID      = envflag.Int64("DO_AGENT_DROPLET_ID", 0, "Override Droplet ID")
+	debugLocalRepoPath  = envflag.String("DO_AGENT_REPO_PATH", update.RepoLocalStore, "Override Local repository path")
+	debugMetadataURL    = envflag.String("DO_AGENT_METADATA_URL", monitoringclient.MetadataURL, "Override metadata URL")
+	debugMetricsURL     = envflag.String("DO_AGENT_METRICS_URL", "", "Override metrics URL")
+	debugUpdateURL      = envflag.String("DO_AGENT_UPDATE_URL", update.RepoURL, "Override Update URL")
+	debugUpdateInterval = envflag.Uint("DO_AGENT_UPDATE_INTERVAL", update.Interval, "Override Update Interval")
+	pluginPath          = envflag.String("DO_AGENT_PLUGIN_PATH", defaultPluginPath, "Override plugin path")
+	procFSRoot          = envflag.String("DO_AGENT_PROCFS_ROOT", "/proc", "Override location of /proc")
 
 	// By default, only collect these metrics _and_ any plugins metrics. In a future version of
 	// the agent, the server will be requesting the metrics to gather.
@@ -120,6 +121,9 @@ func main() {
 	if *debugUpdateURL != update.RepoURL {
 		log.Info("Update URL Override: ", debugUpdateURL)
 	}
+	if *debugUpdateInterval != update.Interval {
+		log.Info("Update Interval Override: ", *debugUpdateInterval)
+	}
 	if *debugLocalRepoPath != update.RepoLocalStore {
 		log.Info("Local Repository Path Override: ", *debugLocalRepoPath)
 	}
@@ -129,7 +133,7 @@ func main() {
 	if *pluginPath != defaultPluginPath {
 		log.Info("Plugin path Override: ", *pluginPath)
 	}
-	updater := update.NewUpdate(*debugLocalRepoPath, *debugUpdateURL)
+	updater := update.NewUpdate(*debugLocalRepoPath, *debugUpdateURL, *debugUpdateInterval)
 
 	if *forceUpdate {
 		updateAgentWithExit(updater)
@@ -173,7 +177,9 @@ func main() {
 		log.Fatal("Error creating monitoring client: ", err)
 	}
 
-	updateAgentWithRestart(updater)
+	if updater.Interval() != 0 {
+		updateAgentWithRestart(updater)
+	}
 	lastUpdate := time.Now()
 	procfs.ProcPath = *procFSRoot
 
@@ -198,9 +204,11 @@ func main() {
 		log.Debug(fmt.Sprintf("sleeping for %d seconds", pushInterval))
 		time.Sleep(time.Duration(pushInterval) * time.Second)
 
-		if time.Now().After(lastUpdate.Add(1 * time.Hour)) {
-			lastUpdate = time.Now()
-			updateAgentWithRestart(updater)
+		if updater.Interval() != 0 {
+			if time.Now().After(lastUpdate.Add(updater.Interval())) {
+				lastUpdate = time.Now()
+				updateAgentWithRestart(updater)
+			}
 		}
 	}
 }
