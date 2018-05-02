@@ -30,7 +30,8 @@ RUN mkdir -p /agent/updates
 RUN mkdir -p /agent/proc
 
 RUN  apk update && \
-     apk add libc6-compat
+     apk add libc6-compat && \
+     apk add ca-certificates
 
 COPY --from=0 /go/src/github.com/digitalocean/do-agent/build/do-agent_linux_amd64 /agent
 RUN find /agent
