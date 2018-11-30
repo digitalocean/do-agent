@@ -1,11 +1,48 @@
 language: go
-go:
-  - 1.7
+
+sudo: required
+
+services:
+  - docker
+
+addons:
+  apt:
+    update: true
+
+matrix:
+  # fail fast
+  fast_finish: true
+  include:
+    - go: 1.x
+
 before_install:
-  - go get -u github.com/kardianos/govendor
-before_script:
-  - go get -d ./...
+  - bash scripts/licensecheck.sh
+  - sudo apt-get install -y shellcheck
+  - go get -u github.com/golang/dep/...
+  # coveralls.io deps
+  - go get golang.org/x/tools/cmd/cover github.com/mattn/goveralls
+  # install gometalinter
+  - curl -L https://git.io/vp6lP | sh
+  # gometalinter installs to ./bin
+  - export PATH="$GOPATH/bin:$PWD/bin:$PATH"
+  - dep ensure
+
+install:
+  - skip
+
 script:
-  - ./scripts/licensecheck.sh
-  - govendor sync
-  - make test build
+  - make ci
+  - goveralls -coverprofile=target/.coverprofile -service=travis-ci -repotoken $COVERALLS_API_TOKEN
+  - make release
+
+before_deploy:
+  - curl -V
+
+deploy:
+  - provider: script
+    skip_cleanup: true
+    script: bash scripts/deploy.sh all
+    on:
+      repo: digitalocean/do-agent
+      branch: beta
+      tags: true

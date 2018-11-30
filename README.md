@@ -1,49 +1,44 @@
-# Do-Agent
+# DigitalOcean Agent
 
-[![Build Status](https://travis-ci.org/digitalocean/do-agent.svg?branch=master)](https://travis-ci.org/digitalocean/do-agent)
-[![GoDoc](https://godoc.org/github.com/digitalocean/do-agent?status.svg)](https://godoc.org/github.com/digitalocean/do-agent)
+[![Build
+Status](https://travis-ci.org/digitalocean/do-agent.svg?branch=master)](https://travis-ci.org/digitalocean/do-agent)
+[![Go Report Card](https://goreportcard.com/badge/github.com/digitalocean/do-agent)](https://goreportcard.com/report/github.com/digitalocean/do-agent)
+[![Coverage Status](https://coveralls.io/repos/github/digitalocean/do-agent/badge.svg?branch=feat%2Fadd-coveralls-report)](https://coveralls.io/github/digitalocean/do-agent?branch=feat%2Fadd-coveralls-report)
 
-## General
+## Overview
+The do-agent is a drop in replacement and improvement for
+[do-agent](https://github.com/digitalocean/do-agent). The do-agent enables
+droplet metrics to be gathered and sent to DigitalOcean to provide resource
+usage graphs and alerting. Rather than use `procfs` to obtain resource usage
+data, we use [node_exporter](https://github.com/prometheus/node_exporter).
 
-The `do-agent` extracts system metrics from
-DigitalOcean Droplets and transmits them to the DigitalOcean
-monitoring service. When the agent is initiated on a Droplet it
-will automatically configure itself with the appropriate settings.
+DO Agent currently supports:
+- Ubuntu 14.04+
+- Debian 8+
+- Fedora 27+
+- CentOS 6+
+- Docker
 
-## Flags
+## Development
 
-Flag |Option |Description
------|-------|-----------
--log_syslog | bool | Log to syslog.
--log_level | string | Sets the log level. [ INFO, ERROR, DEBUG ] Default=INFO
--force_update | bool | force an agent update.
--v | bool | Prints DigitalOcean Agent version.
--h | bool | Prints `do-agent` usage information.
+### Requirements
 
-## Env Flags
+- [go](https://golang.org/dl/)
+- [golang/dep](https://github.com/golang/dep#installation)
+- [GNU Make](https://www.gnu.org/software/make/)
+- [Go Meta Linter](https://github.com/alecthomas/gometalinter#installing)
 
-Generally used during development and debugging.
+```
+git clone git@github.com:digitalocean/do-agent.git \
+        $GOPATH/src/github.com/digitalocean/do-agent
+cd !$
 
-Flag |Option |Description
------|-------|-----------
-DO_AGENT_AUTHENTICATION_URL | string | Override the authentication URL
-DO_AGENT_APPKEY | string | Override AppKey
-DO_AGENT_METRICS_URL | string | Override metrics URL
-DO_AGENT_DROPLET_ID | int64 | Override Droplet ID
-DO_AGENT_AUTHTOKEN | string | Override AuthToken
-DO_AGENT_UPDATE_URL | string | Override Update URL
-DO_AGENT_REPO_PATH | string | Override Local repository path
-DO_AGENT_PLUGIN_PATH | string | Override plugin directory path
-DO_AGENT_PROCFS_ROOT | string | Override location of /proc
+# build the project
+make
 
-## Building and running
-
-    make build
-    sudo -u nobody ./do-agent <flags>
-
-## Running Tests
-
-    make test
+# add dependencies
+dep ensure -v -add <import path>
+```
 
 ## Installing via package managers
 
@@ -72,191 +67,28 @@ rpm --import https://repos.sonar.digitalocean.com/sonar-agent.asc
 yum install do-agent
 ```
 
-## Update via package managers
+### Uninstall
 
-### Yum
+do-agent can be uninstalled with your distribution's package manager
 
-`yum update do-agent`
+`apt remove do-agent` for Debian based distros
 
-
-### Apt
-
-`apt-get update && apt-get install --only-upgrade do-agent`
+`yum remove do-agent` for RHEL based distros
 
 
-## Removal via package managers
+### Run as a Docker container
 
-### Yum
+You can optionally run do-agent as a docker container. In order to do so
+you need to mount the host directory `/proc` to `/host/proc`.
 
-`sudo yum remove do-agent`
+For example:
 
-
-### Apt
-
-`sudo apt-get purge do-agent`
-
-
-## Package installation
-
-### Deb
-
-`dpkg -i do-agent_<version>_<build>.deb`
-
-
-### Rpm
-
-`rpm -Uvh do-agent-<version>_<build>.rpm`
-
-
-## Package removal
-
-### Deb
-
-`dpkg --remove do-agent`
-
-
-### Rpm
-
-`rpm -e do-agent`
-
-
-## Docker
-
-You can optionally run the Agent in Docker. To do so:
-`make docker`
-
-In order for the agent to report accurate metrics, you need to bind mount in
-/proc inside the container:
-`docker run --rm \
-    -v /proc:/agent/proc:ro \
-    do-agent
-`
-
-
-## Plugins
-
-`do-agent` builds in a common set of metrics, and provides a plugin mechanism to
-add additional metric collectors.  Plugins are executable files that are placed
-in the agent's plugin directory (see `DO_AGENT_PLUGIN_PATH`).  When `do-agent`
-starts, it will find all executables in the plugin path and call them during
-metric collection.
-
-A collection agent must do two things:
-
-1. report metric configuration to stdout when a "config" argument is passed.
-1. report metric values to stdout when no argument is passed.
-
-See `plugins/test.sh` for a simple static plugin, in the form of a shell script.
-Plugins may be written in any language, and must only know how to produce
-serialized results in `json` format.
-
-
-### Definitions
-
-When test.sh is run with "config" as the argument, it produces the following:
-
-```json
-{
-  "definitions": {
-    "test": {
-      "type": 1,
-      "labels": {
-        "user": "foo"
-      },
-      "label_keys": ["timezone", "country"]
-    }
-  }
-}
+```
+docker run \
+        -v /proc:/host/proc:ro \
+        digitalocean/do-agent:1
 ```
 
-Definitions is a mapping of metric name to configuration.  `type` is an integer
-type, compatible with the Prometheus client definition.  The following types are
-supported:
-
-Type Value |Description
----|--------
-0  | Counter
-1  | Gauge
-
-Two types of labels are supported: fixed and dynamic.  Fixed labels are specified
-once in the metric definition and never specified in the metric value.  In the
-example above, there is a fixed label `user:foo`.  This label will be set on
-all values of the metric.
-
-The second type of label is a dynamic label.  Dynamic labels have a fixed key
-but the value is specified with every update of the metric.  The example above
-has two dynamic labels, with the keys `timezone` and `country`.  The values
-for these labels will be provided on each metric update.
-
-### Values
-
-When test.sh is run without any arguments, it produces the current value of
-the collected metrics.  For example:
-
-```json
-{
-  "metrics": {
-    "test": {
-      "value": 42.0,
-      "label_values": ["est", "usa"]
-    }
-  }
-}
-```
-
-The _(optional)_ label_values must correspond to the label_keys in the definition.
-If there were two label keys in the definition, then there must be exactly two
-label values in each metric update.
-
-## Contributing
-
-The `do-agent` project makes use of the [GitHub Flow](https://guides.github.com/introduction/flow/)
-for contributions.
-
-If you'd like to contribute to the project, please
-[open an issue](https://github.com/digitalocean/do-agent/issues/new) or find an
-[existing issue](https://github.com/digitalocean/do-agent/issues) that you'd like
-to take on.  This ensures that efforts are not duplicated, and that a new feature
-aligns with the focus of the rest of the repository.
-
-Once your suggestion has been submitted and discussed, please be sure that your
-code meets the following criteria:
-  - code is completely `gofmt`'d
-  - new features or codepaths have appropriate test coverage
-  - `go test ./...` passes
-  - `go vet ./...` passes
-  - `golint ./...` returns no warnings, including documentation comment warnings
-
-In addition, if this is your first time contributing to the `do-agent` project,
-add your name and email address to the
-[AUTHORS](https://github.com/digitalocean/do-agent/blob/master/AUTHORS) file
-under the "Contributors" section using the format:
-`First Last <email@example.com>`.
-
-First, to setup the project, ensure that `$GOPATH` variable is pointing to an
-existing directory, where all your Go code will be available.
-
-After forking the repo on Github, run:
-
-```sh
-go get github.com/digitalocean/do-agent
-cd $GOPATH/src/github.com/digitalocean/do-agent
-
-git remote add my-fork <the url for your fork>
-make test # ensure tests are passing
-```
-
-Push your changes to your fork:
-
-```sh
-git push -u master my-fork
-```
-
-Finally, submit a pull request for review!
-
-## Report a bug
-
-If you discover a software bug, please feel free to report it by:
-
-1. Search through the [existing issues](https://github.com/digitalocean/do-agent/issues) to ensure that the bug hasn't already been filed.
-2. [Open an issue](https://github.com/digitalocean/do-agent/issues/new) for a new bug.
+## Report an Issue
+Feel free to [open an issue](https://github.com/digitalocean/do-agent/issues/new)
+if one does not [already exist](https://github.com/digitalocean/do-agent/issues)

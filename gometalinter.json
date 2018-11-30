@@ -1,0 +1,19 @@
+{
+    "Enable": [
+        "megacheck",
+        "ineffassign",
+        "misspell",
+        "nakedret",
+        "gosec",
+        "golint",
+        "goconst",
+        "unused",
+        "deadcode",
+        "vet",
+        "gosimple"
+    ],
+    "Vendor": true,
+    "Deadline": "120s",
+    "Aggregate": true,
+    "Skip": ["pkg/clients/timeseries", "vendor"]
+}

@@ -1,39 +1,16 @@
-FROM golang:1.9-alpine
+FROM ubuntu:18.04
+MAINTAINER Insights Engineering <eng-insights@digitalocean.com>
 
-ENV CGO=0
-ENV GOOS=linux
+RUN set -x && \
+        apt-get -qq update && \
+        apt-get install -y ca-certificates && \
+        apt-get autoclean
 
-ARG CURRENT_BRANCH
-ARG CURRENT_HASH
-ARG LAST_RELEASE
+ADD target/do-agent_linux_amd64 /bin/do-agent
 
-RUN  apk update && \
-     apk add bash && \
-     apk add curl && \
-     apk add git && \
-     apk add make && \
-     apk add libc6-compat
+RUN mkdir -p /host
 
-COPY . /go/src/github.com/digitalocean/do-agent
+VOLUME /host/proc
+VOLUME /host/sys
 
-RUN cd /go/src/github.com/digitalocean/do-agent && \
-    set -x && \
-    make build RELEASE=${LAST_RELEASE} CURRENT_BRANCH=${CURRENT_BRANCH} CURRENT_HASH=${CURRENT_HASH}
-
-# Copy what is needed to
-FROM alpine
-ENV DO_AGENT_REPO_PATH   /agent/updates
-ENV DO_AGENT_PROCFS_ROOT /agent/proc
-
-RUN mkdir -p /agent
-RUN mkdir -p /agent/updates
-RUN mkdir -p /agent/proc
-
-RUN  apk update && \
-     apk add libc6-compat && \
-     apk add ca-certificates
-
-COPY --from=0 /go/src/github.com/digitalocean/do-agent/build/do-agent_linux_amd64 /agent
-RUN find /agent
-
-CMD /agent/do-agent_linux_amd64
+ENTRYPOINT ["/bin/do-agent", "--path.procfs", "/host/proc", "--path.sysfs", "/host/sys"]
