@@ -1,0 +1,14 @@
+# EditorConfig is awesome: https://EditorConfig.org
+
+# Unix-style newlines with a newline ending every file
+[*]
+end_of_line = lf
+insert_final_newline = true
+
+[{*.sh,Makefile}]
+indent_style = tab
+
+# Matches the exact files either package.json or .travis.yml
+[.travis.yml]
+indent_style = space
+indent_size = 2
