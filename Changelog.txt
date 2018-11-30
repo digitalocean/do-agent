@@ -1,5 +1,0 @@
-0.4.13:
- * No change release, to fix backend tuf repo issue.
-
-0.4.12:
- * Fix syslog target from kernel to daemon.

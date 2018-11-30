@@ -1,0 +1,76 @@
+---
+kind: Namespace
+apiVersion: v1
+metadata:
+  name: monitoring
+  labels:
+    name: monitoring
+
+
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: do-agent
+  namespace: monitoring
+
+
+---
+apiVersion: apps/v1beta2
+kind: DaemonSet
+metadata:
+  labels:
+    app: do-agent
+  name: do-agent
+  namespace: monitoring
+spec:
+  selector:
+    matchLabels:
+      app: do-agent
+  template:
+    metadata:
+      labels:
+        app: do-agent
+    spec:
+      containers:
+      - name: do-agent
+        image: docker.io/digitalocean/do-agent:1.0.5
+        resources:
+          limits:
+            cpu: 102m
+            memory: 100Mi
+          requests:
+            cpu: 102m
+            memory: 80Mi
+        volumeMounts:
+        - mountPath: /host/proc
+          name: proc
+          readOnly: true
+        - mountPath: /host/sys
+          name: sys
+          readOnly: true
+        - mountPath: /host/root
+          mountPropagation: HostToContainer
+          name: root
+          readOnly: true
+      hostNetwork: true
+      hostPID: true
+      nodeSelector:
+        beta.kubernetes.io/os: linux
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
+      serviceAccountName: do-agent
+      tolerations:
+      - effect: NoSchedule
+        key: node-role.kubernetes.io/master
+      volumes:
+      - hostPath:
+          path: /proc
+        name: proc
+      - hostPath:
+          path: /sys
+        name: sys
+      - hostPath:
+          path: /
+        name: root

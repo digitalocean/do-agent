@@ -1,101 +1,228 @@
-.PHONY: all test clean build dependencies
+GOOS   ?= linux
+GOARCH ?= amd64
 
-CONFIG_PATH=github.com/digitalocean/do-agent/config
-
-CURRENT_BRANCH=$(shell git rev-parse --abbrev-ref HEAD)
-CURRENT_HASH=$(shell git rev-parse --short HEAD)
-
-ifeq ("$(shell git name-rev --tags --name-only $(shell git rev-parse HEAD))", "undefined")
-	RELEASE=dev
+ifeq ($(GOARCH),386)
+PKG_ARCH = i386
 else
-	RELEASE=$(shell git name-rev --tags --name-only $(shell git rev-parse HEAD) | sed 's/\^.*$///')
+PKG_ARCH = amd64
 endif
 
-LAST_RELEASE=$(shell git describe --tags $(shell git rev-list --tags --max-count=1))
-GOFLAGS = -ldflags="-X $(CONFIG_PATH).build=$(CURRENT_BRANCH).$(CURRENT_HASH) -X $(CONFIG_PATH).version=$(RELEASE) -extldflags -static"
+############
+## macros ##
+############
 
-GOVENDOR=$(GOPATH)/bin/govendor
+mkdir        = @mkdir -p $(dir $@)
+cp           = @cp $< $@
+print        = @printf "\n:::::::::::::::: [$(shell date -u)] $@ ::::::::::::::::\n"
+touch        = @touch $@
+jq           = @docker run --rm -i colstrom/jq
+shellcheck   = @docker run --rm -i -v "$(CURDIR):$(CURDIR)" -w "$(CURDIR)" -u $(shell id -u) koalaman/shellcheck:v0.6.0
+gometalinter = @docker run --rm -i -v "$(CURDIR):/go/src/$(importpath)" -w "/go/src/$(importpath)" -u $(shell id -u) digitalocean/gometalinter:2.0.11
+fpm          = @docker run --rm -i -v "$(CURDIR):$(CURDIR)" -w "$(CURDIR)" -u $(shell id -u) digitalocean/fpm:latest
+now          = $(shell date -u)
+git_rev      = $(shell git rev-parse --short HEAD)
+git_tag      = $(subst v,,$(shell git describe --tags --abbrev=0))
+VERSION     ?= $(git_tag)
 
-all: build test
+go = docker run --rm -i \
+	-u "$(shell id -u)" \
+	-e "GOOS=$(GOOS)" \
+	-e "GOARCH=$(GOARCH)" \
+	-e "GOPATH=/gopath" \
+	-e "GOCACHE=/gopath/src/$(importpath)/target/.cache/go" \
+	-v "$(CURDIR):/gopath/src/$(importpath)" \
+	-w "/gopath/src/$(importpath)" \
+	golang:1.11.2 \
+	go
 
-build: dependencies
-	@echo ">> build version=$(RELEASE)"
-	@echo ">> Building system native"
-	@env CGO=0 go build $(GOFLAGS) -o do-agent cmd/do-agent/main.go
-	@echo ">> Creating build directory"
-	@mkdir -p build
-	@echo ">> Building linux 386"
-	@env CGO=0 GOOS=linux GOARCH=386 go build $(GOFLAGS) -o build/do-agent_linux_386 cmd/do-agent/main.go
-	@echo ">> Building linux amd64"
-	@env CGO=0 GOOS=linux GOARCH=amd64 go build $(GOFLAGS) -o build/do-agent_linux_amd64 cmd/do-agent/main.go
+ldflags = '\
+	-X "main.version=$(VERSION)" \
+	-X "main.revision=$(git_rev)" \
+	-X "main.buildDate=$(now)" \
+'
 
-build-latest-release: checkout-latest-release build
+###########
+## paths ##
+###########
 
-checkout-latest-release: master-branch-check
-	git fetch --tags
-	git checkout $(LAST_RELEASE)
+out             := target
+package_dir     := $(out)/pkg
+cache           := $(out)/.cache
+project         := $(notdir $(CURDIR))# project name
+pkg_project     := $(subst _,-,$(project))# package cannot have underscores in the name
+importpath      := github.com/digitalocean/$(project)# import path used in gocode
+gofiles         := $(shell find -type f -iname '*.go' ! -path './vendor/*')
+vendorgofiles   := $(shell find -type f -iname '*.go' -path './vendor/*')
+shellscripts    := $(shell find -type f -iname '*.sh' ! -path './repos/*' ! -path './vendor/*')
+# the name of the binary built with local resources
+binary          := $(out)/$(project)-$(GOOS)-$(GOARCH)
+cover_profile   := $(out)/.coverprofile
 
-install:
-	@go get $(GOFLAGS) ./...
+# output packages
+# deb files should end with _version_arch.deb
+# rpm files should end with -version-release.arch.rpm
+base_package := $(package_dir)/$(pkg_project).$(VERSION).$(PKG_ARCH).BASE.deb
+deb_package  := $(package_dir)/$(pkg_project)_$(VERSION)_$(PKG_ARCH).deb
+rpm_package  := $(package_dir)/$(pkg_project).$(VERSION).$(PKG_ARCH).rpm
+tar_package  := $(package_dir)/$(pkg_project).$(VERSION).tar.gz
 
-test: dependencies
-	@echo " ==Running go test=="
-	@go test -v $(shell go list ./... | grep -v /vendor/)
-	@echo " ==Running go vet=="
-	@go vet $(shell go list ./... | grep -v /vendor/)
-	@go get -u github.com/golang/lint/golint
-	@echo " ==Running golint=="
-	@golint ./... | grep -v '^vendor\/' | grep -v ".pb.*.go:" || true
-	@echo " ==Done testing=="
+# use the binary's mtime for epoch for consistency. This needs to be lazily
+# evaluated since the binary does not yet exist
+epoch = $(shell date '+%s' -r $(binary))
+
+#############
+## targets ##
+#############
+
+build: $(binary)
+$(binary): $(gofiles) $(vendorgofiles)
+	$(print)
+	$(mkdir)
+	$(go) build \
+	     -ldflags $(ldflags) \
+	     -o "$@" \
+	     ./cmd/$(project)
+
+package: release
+release: target/VERSION
+	$(print)
+	@GOOS=linux GOARCH=386 $(MAKE) build deb rpm tar
+	@GOOS=linux GOARCH=amd64 $(MAKE) build deb rpm tar
+
+lint: $(cache)/lint $(cache)/shellcheck
+$(cache)/lint: $(gofiles)
+	$(print)
+	$(mkdir)
+	@$(gometalinter) --config=gometalinter.json ./...
+	$(touch)
+
+shellcheck: $(cache)/shellcheck
+$(cache)/shellcheck: $(shellscripts)
+	$(print)
+	$(mkdir)
+	@$(shellcheck) --version
+	@$(shellcheck) $^
+	$(touch)
+
+test: $(cover_profile)
+$(cover_profile): $(gofiles)
+	$(print)
+	$(mkdir)
+	@$(go) test -coverprofile=$@ ./...
 
 clean:
-	rm do-agent
-	rm -fr build
+	$(print)
+	@rm -rf $(out)
+.PHONY: clean
 
-dependencies: $(GOVENDOR)
-	@echo ">> fetching dependencies"
-	@$(GOVENDOR) sync
+ci: clean lint shellcheck test package
+.PHONY: ci
 
-$(GOVENDOR):
-	@echo ">> fetching govendor"
-	@go get -u github.com/kardianos/govendor
+.PHONY: target/VERSION
+target/VERSION:
+	$(print)
+	$(mkdir)
+	@echo $(VERSION) > $@
 
-docker:
-	docker build . \
-		--build-arg CURRENT_HASH="$(CURRENT_HASH)" \
-		--build-arg CURRENT_BRANCH="$(CURRENT_BRANCH)" \
-		--build-arg LAST_RELEASE="$(LAST_RELEASE).$(CURRENT_HASH)-docker" \
-		-t do-agent \
-		-t do-agent:$(LAST_RELEASE)
+# used to create a base package with common functionality
+$(base_package): $(binary)
+	$(print)
+	$(mkdir)
+	@$(fpm) --output-type deb \
+		--verbose \
+		--input-type dir \
+		--force \
+		--architecture $(PKG_ARCH) \
+		--package $@ \
+		--no-depends \
+		--name $(pkg_project) \
+		--maintainer "DigitalOcean" \
+		--version $(VERSION) \
+		--description "DigitalOcean stats collector" \
+		--license apache-2.0 \
+		--vendor DigitalOcean \
+		--url https://github.com/digitalocean/do-agent \
+		--log info \
+		--after-install packaging/scripts/after_install.sh \
+		--after-remove packaging/scripts/after_remove.sh \
+		$<=/usr/local/bin/do-agent \
+		scripts/update.sh=/opt/digitalocean/do-agent/scripts/update.sh
+.INTERMEDIATE: $(base_package)
 
-list-latest-release:
-	@echo $(LAST_RELEASE)
-
-release-major-version: master-branch-check
-	@echo ">> release major version"
-	$(eval RELEASE_VERSION=$(shell echo $(LAST_RELEASE) | awk '{split($$0,a,"."); print a[1]+1"."0"."0}'))
-	@echo "Updating release version from=$(LAST_RELEASE) to=$(RELEASE_VERSION)"
-	git tag $(RELEASE_VERSION) -m"make release-major-version $(RELEASE_VERSION)"
-	git push origin --tags
-
-release-minor-version: master-branch-check
-	@echo "release minor version"
-	$(eval RELEASE_VERSION=$(shell echo $(LAST_RELEASE) | awk '{split($$0,a,"."); print a[1]"."a[2]+1"."0}'))
-	@echo "Updating release version from=$(LAST_RELEASE) to=$(RELEASE_VERSION)"
-	git tag $(RELEASE_VERSION) -m"make release-minor-version $(RELEASE_VERSION)"
-	git push origin --tags
-
-release-patch-version: master-branch-check
-	@echo "release patch version"
-	$(eval RELEASE_VERSION=$(shell echo $(LAST_RELEASE) | awk '{split($$0,a,"."); print a[1]"."a[2]"."a[3]+1}'))
-	@echo "Updating release version from=$(LAST_RELEASE) to=$(RELEASE_VERSION)"
-	git tag $(RELEASE_VERSION) -m"make release-patch-version $(RELEASE_VERSION)"
-	git push origin --tags
+deb: $(deb_package)
+$(deb_package): $(base_package)
+	$(print)
+	$(mkdir)
+	@$(fpm) --output-type deb \
+		--verbose \
+		--input-type deb \
+		--force \
+		--depends cron \
+		--conflicts do-agent \
+		--replaces do-agent \
+		--deb-group nobody \
+		--deb-user nogroup \
+		-p $@ \
+		$<
+	chown -R $(USER):$(USER) target
+# print information about the compiled deb package
+	@docker run --rm -i -v "$(CURDIR):$(CURDIR)" -w "$(CURDIR)" ubuntu:xenial /bin/bash -c 'dpkg --info $@ && dpkg -c $@'
 
 
-master-branch-check:
-ifeq ("$(shell git rev-parse --abbrev-ref HEAD)", "master")
-	@echo "Current branch is master"
-else
-	$(error Action requires the master branch)
-endif
+rpm: $(rpm_package)
+$(rpm_package): $(base_package)
+	$(print)
+	$(mkdir)
+	@$(fpm) \
+		--verbose \
+		--output-type rpm \
+		--epoch $(epoch) \
+		--input-type deb \
+		--depends cronie \
+		--conflicts do-agent \
+		--replaces do-agent \
+		--rpm-group nobody \
+		--rpm-user nobody \
+		--force \
+		-p $@ \
+		$<
+	chown -R $(USER):$(USER) target
+# print information about the compiled rpm package
+	@docker run --rm -i -v "$(CURDIR):$(CURDIR)" -w "$(CURDIR)" centos:7 rpm -qilp $@
+
+tar: $(tar_package)
+$(tar_package): $(base_package)
+	$(print)
+	$(mkdir)
+	@$(fpm) \
+		--verbose \
+		--output-type tar \
+		--input-type deb \
+		--force \
+		-p $@ \
+		$<
+	chown -R $(USER):$(USER) target
+# print all files within the archive
+	@docker run --rm -i -v "$(CURDIR):$(CURDIR)" -w "$(CURDIR)" ubuntu:xenial tar -ztvf $@
+
+
+.vault-token:
+	$(print)
+	@docker run -u $(shell id -u) --net=host --rm -i \
+		docker.internal.digitalocean.com/eng-insights/vault:0.11.5 \
+		write -field token auth/approle/login role_id=$(VAULT_ROLE_ID) secret_id=$(VAULT_SECRET_ID) \
+		| cp /dev/stdin $@
+.INTERMEDIATE: .vault-token
+
+sonar-agent.key: .vault-token
+	$(print)
+	@docker run -u $(shell id -u) --net=host --rm -i -e "VAULT_TOKEN=$(shell cat $^)" \
+		docker.internal.digitalocean.com/eng-insights/vault:0.11.5 \
+		read --field gpg secret/agent/packager/key \
+		| cp /dev/stdin $@
+
+deploy: release sonar-agent.key
+	./scripts/deploy.sh all
+
+promote: release sonar-agent.key
+	./scripts/deploy.sh promote
