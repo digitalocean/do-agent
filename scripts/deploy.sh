@@ -2,10 +2,10 @@
 set -ueo pipefail
 # set -x
 
-UBUNTU_VERSIONS="trusty utopic vivid wily xenial yakkety zesty artful bionic cosmic"
-DEBIAN_VERSIONS="wheezy jessie stretch buster"
-RHEL_VERSIONS="6 7"
-FEDORA_VERSIONS="27 28"
+# UBUNTU_VERSIONS="trusty utopic vivid wily xenial yakkety zesty artful bionic cosmic"
+# DEBIAN_VERSIONS="wheezy jessie stretch buster"
+# RHEL_VERSIONS="6 7"
+# FEDORA_VERSIONS="27 28"
 
 VERSION="${VERSION:-$(cat target/VERSION 2>/dev/null)}"
 
@@ -172,7 +172,7 @@ function check_deb_version() {
 
 	abort "Unable to check deb version because the new URL has not been set"
 
-	url=https://????????????????-beta/packages/ubuntu/zesty/do-agent_${v}_amd64.deb
+	url="https://????????????????-beta/packages/ubuntu/zesty/do-agent_${v}_amd64.deb"
 	echo "Checking for version $v"
 	curl --fail \
 		-SsLI \
