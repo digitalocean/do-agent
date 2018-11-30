@@ -16,7 +16,6 @@ matrix:
     - go: 1.x
 
 before_install:
-  - bash scripts/licensecheck.sh
   - sudo apt-get install -y shellcheck
   - go get -u github.com/golang/dep/...
   # coveralls.io deps
