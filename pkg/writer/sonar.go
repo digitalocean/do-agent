@@ -3,17 +3,20 @@ package writer
 import (
 	"github.com/digitalocean/do-agent/pkg/clients/tsclient"
 	dto "github.com/prometheus/client_model/go"
+	"github.com/prometheus/common/log"
 )
 
 // Sonar writes metrics to DigitalOcean sonar
 type Sonar struct {
-	client tsclient.Client
+	client         tsclient.Client
+	firstWriteSent bool
 }
 
 // NewSonar creates a new Sonar writer
 func NewSonar(client tsclient.Client) *Sonar {
 	return &Sonar{
-		client: client,
+		client:         client,
+		firstWriteSent: false,
 	}
 }
 
@@ -47,8 +50,14 @@ func (s *Sonar) Write(mets []*dto.MetricFamily) error {
 		}
 
 	}
-
-	return s.client.Flush()
+	err := s.client.Flush()
+	httpError, ok := err.(*tsclient.UnexpectedHTTPStatusError)
+	if !s.firstWriteSent && ok && httpError.StatusCode == 421 {
+		log.Errorf("This error can safely be ignored on startup: %s", err.Error())
+		err = nil
+	}
+	s.firstWriteSent = true
+	return err
 }
 
 // Name is the name of this writer
