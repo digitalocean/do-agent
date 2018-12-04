@@ -58,6 +58,9 @@ deb_package  := $(package_dir)/$(pkg_project)_$(version)_$(PKG_ARCH).deb
 rpm_package  := $(package_dir)/$(pkg_project)-$(version)-1.$(PKG_ARCH).rpm
 tar_package  := $(package_dir)/$(pkg_project)-$(version).tar.gz
 
+# use the binary's mtime for epoch for consistency
+epoch := $(shell date +%s -r $(binary))
+
 #############
 ## targets ##
 #############
@@ -124,6 +127,7 @@ $(base_package): $(binary)
 	$(mkdir)
 	@$(fpm) --output-type deb \
 		--input-type dir \
+		--epoch $(epoch) \
 		--force \
 		--architecture $(PKG_ARCH) \
 		--package $@ \
