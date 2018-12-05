@@ -58,8 +58,9 @@ deb_package  := $(package_dir)/$(pkg_project)_$(version)_$(PKG_ARCH).deb
 rpm_package  := $(package_dir)/$(pkg_project)-$(version)-1.$(PKG_ARCH).rpm
 tar_package  := $(package_dir)/$(pkg_project)-$(version).tar.gz
 
-# use the binary's mtime for epoch for consistency
-epoch := $(shell date +%s -r $(binary))
+# use the binary's mtime for epoch for consistency. This needs to be lazily
+# evaluated since the binary does not yet exist
+epoch = $(shell date '+%s' -r $(binary))
 
 #############
 ## targets ##
@@ -126,6 +127,7 @@ $(base_package): $(binary)
 	$(print)
 	$(mkdir)
 	@$(fpm) --output-type deb \
+		--verbose \
 		--input-type dir \
 		--epoch $(epoch) \
 		--force \
@@ -151,6 +153,7 @@ $(deb_package): $(base_package)
 	$(print)
 	$(mkdir)
 	@$(fpm) --output-type deb \
+		--verbose \
 		--input-type deb \
 		--force \
 		--depends cron \
@@ -170,6 +173,7 @@ $(rpm_package): $(base_package)
 	$(print)
 	$(mkdir)
 	@$(fpm) \
+		--verbose \
 		--output-type rpm \
 		--input-type deb \
 		--depends cronie \
@@ -189,6 +193,7 @@ $(tar_package): $(base_package)
 	$(print)
 	$(mkdir)
 	@$(fpm) \
+		--verbose \
 		--output-type tar \
 		--input-type deb \
 		--force \
