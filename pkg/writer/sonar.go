@@ -7,13 +7,15 @@ import (
 
 // Sonar writes metrics to DigitalOcean sonar
 type Sonar struct {
-	client tsclient.Client
+	client         tsclient.Client
+	firstWriteSent bool
 }
 
 // NewSonar creates a new Sonar writer
 func NewSonar(client tsclient.Client) *Sonar {
 	return &Sonar{
-		client: client,
+		client:         client,
+		firstWriteSent: false,
 	}
 }
 
@@ -47,8 +49,13 @@ func (s *Sonar) Write(mets []*dto.MetricFamily) error {
 		}
 
 	}
-
-	return s.client.Flush()
+	err := s.client.Flush()
+	httpError, ok := err.(*tsclient.UnexpectedHTTPStatusError)
+	if !s.firstWriteSent && ok && httpError.StatusCode == 429 {
+		err = nil
+	}
+	s.firstWriteSent = true
+	return err
 }
 
 // Name is the name of this writer
