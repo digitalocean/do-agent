@@ -4,7 +4,7 @@ GOARCH ?= amd64
 ifeq ($(GOARCH),386)
 PKG_ARCH = i386
 else
-PKG_ARCH = amd64
+PKG_ARCH = x86_64
 endif
 
 ############
@@ -22,11 +22,15 @@ fpm   = docker run --rm -it \
 	-u $(shell id -u) \
 	digitalocean/fpm:latest
 
-now          = $(shell date -u +"%F %T %Z")
-git_revision = $(shell git rev-parse HEAD)
-git_branch   = $(shell git rev-parse --abbrev-ref HEAD)
-git_tag      = $(shell git describe --tags --abbrev=0 2>/dev/null || echo 'v0.0.0')
-version      = $(subst v,,$(git_tag))
+now             = $(shell date -u +"%F %T %Z")
+git_revision    = $(shell git rev-parse --short HEAD)
+git_branch      = $(shell git rev-parse --abbrev-ref HEAD)
+git_tag         = $(shell git describe --tags --abbrev=0 2>/dev/null || echo 'v0.0.0')
+# git_tag produces v0.0.0-0-g<SHA>. Which is <tag>-<release>-g<SHA> where tag
+# is the most recent tag, release is the amount of commits since the latest
+# tag, and SHA is the SHA of the most recent commit prefixed with a 'g'. We
+# need the format to be 1.0.0-1 so we strip the -g<revision> and the v prefix
+pkg_version = $(subst -g$(git_revision),,$(subst v,,$(shell git describe --tags)))
 ldflags      = '\
 	-X "main.version=$(git_tag)" \
 	-X "main.revision=$(git_revision)" \
@@ -53,10 +57,10 @@ cover_profile      := $(out)/.coverprofile
 # output packages
 # deb files should end with _version_arch.deb
 # rpm files should end with -version-release.arch.rpm
-base_package := $(package_dir)/$(pkg_project)_$(version)_$(PKG_ARCH).BASE.deb
-deb_package  := $(package_dir)/$(pkg_project)_$(version)_$(PKG_ARCH).deb
-rpm_package  := $(package_dir)/$(pkg_project)-$(version)-1.$(PKG_ARCH).rpm
-tar_package  := $(package_dir)/$(pkg_project)-$(version).tar.gz
+base_package := $(package_dir)/$(pkg_project)_$(pkg_version)_$(PKG_ARCH).BASE.deb
+deb_package  := $(package_dir)/$(pkg_project)_$(pkg_version)_$(PKG_ARCH).deb
+rpm_package  := $(package_dir)/$(pkg_project)-$(pkg_version).$(PKG_ARCH).rpm
+tar_package  := $(package_dir)/$(pkg_project)-$(pkg_version).tar.gz
 
 # use the binary's mtime for epoch for consistency. This needs to be lazily
 # evaluated since the binary does not yet exist
@@ -136,7 +140,7 @@ $(base_package): $(binary)
 		--no-depends \
 		--name $(pkg_project) \
 		--maintainer "DigitalOcean" \
-		--version $(version) \
+		--version $(pkg_version) \
 		--description "DigitalOcean stats collector" \
 		--license apache-2.0 \
 		--vendor DigitalOcean \
