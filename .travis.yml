@@ -32,7 +32,7 @@ install:
 script:
   - make ci
   - goveralls -coverprofile=target/.coverprofile -service=travis-ci -repotoken $COVERALLS_API_TOKEN
-  - make release
+  - make package
 
 before_deploy:
   - curl -V
@@ -44,4 +44,3 @@ deploy:
     on:
       repo: digitalocean/do-agent
       branch: beta
-      tags: true
