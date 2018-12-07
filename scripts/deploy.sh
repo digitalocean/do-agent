@@ -65,7 +65,12 @@ function main() {
 			exit 0
 			;;
 		*)
-			usage
+			{
+				echo
+				echo "Unknown command '$cmd'"
+				echo
+				usage
+			} > /dev/stderr
 			exit 1
 			;;
 	esac
