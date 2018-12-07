@@ -58,9 +58,9 @@ cover_profile      := $(out)/.coverprofile
 # deb files should end with _version_arch.deb
 # rpm files should end with -version-release.arch.rpm
 base_package := $(package_dir)/$(pkg_project).$(git_tag).$(PKG_ARCH).BASE.deb
-deb_package  := $(package_dir)/$(pkg_project).$(git_tag).$(PKG_ARCH).deb
-rpm_package  := $(package_dir)/$(pkg_project).$(git_tag).$(PKG_ARCH).rpm
-tar_package  := $(package_dir)/$(pkg_project).$(git_tag).tar.gz
+deb_package  := $(package_dir)/$(pkg_project).$(subst v,,$(git_tag)).$(PKG_ARCH).deb
+rpm_package  := $(package_dir)/$(pkg_project).$(subst v,,$(git_tag)).$(PKG_ARCH).rpm
+tar_package  := $(package_dir)/$(pkg_project).$(subst v,,$(git_tag)).tar.gz
 
 # use the binary's mtime for epoch for consistency. This needs to be lazily
 # evaluated since the binary does not yet exist

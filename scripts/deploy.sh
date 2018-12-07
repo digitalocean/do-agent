@@ -58,7 +58,7 @@ function main() {
 		github)
 			check_version
 			deploy_github
-			notify_slack "true" "Deployed packages to Github!" "https://github.com/digitalocean/do-agent/releases/tags/$VERSION"
+			notify_slack "true" "Deployed packages to Github!" "https://github.com/digitalocean/do-agent/releases/tag/$VERSION"
 			;;
 		help)
 			usage
