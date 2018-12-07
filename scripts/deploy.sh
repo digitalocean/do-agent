@@ -22,15 +22,14 @@ function usage() {
 
 	DESCRIPTION:
 
-	    The purpose of this script is to publish build artifacts.
-	    Deployments push artifacts in Prerelease or BETA mode. After they
-	    are published and tested in the BETA/Prerelease phase they can then
-	    be promoted.
+	    The purpose of this script is to publish build artifacts
+	    to Github. They are then packaged and deployed to
+	    apt/yum/docker with DigitalOcean's internal build system.
 
 	ENVIRONMENT:
 		
 	    VERSION (required)
-	         The version to publish or promote
+	        The version to publish
 
 	    GITHUB_AUTH_USER
 	         Github user to use for publishing to Github
@@ -39,14 +38,6 @@ function usage() {
 	    GITHUB_AUTH_TOKEN
 	         Github access token to use for publishing to Github
 	         Required for github deploy
-
-	    DOCKER_USER
-	         User used to login to docker.io
-	         Required for docker deploy
-
-	    DOCKER_PASSWORD
-	         Password used to login to docker.io
-	         Required for docker deploy
 
 	    SLACK_WEBHOOK_URL
 	         Webhook URL to send notifications
@@ -57,16 +48,6 @@ function usage() {
 	    github
 	         push target/ assets to github
 
-	    dockerhub
-	         build and push docker containers to public docker hub
-
-	    all
-	         push to github and dockerhub
-
-	    promote
-	         promote VERSION from beta to upstream and remove
-	         the prerelease flag from the Github release
-
 	EOF
 }
 
@@ -74,23 +55,10 @@ function main() {
 	cmd=${1:-}
 
 	case "$cmd" in
-		all)
-			check_version
-			deploy_github
-			deploy_dockerhub
-			wait
-			;;
 		github)
 			check_version
 			deploy_github
-			;;
-		promote)
-			check_version
-			promote_github
-			;;
-		dockerhub)
-			check_version
-			deploy_dockerhub
+			notify_slack "true" "Deployed packages to Github!" "https://github.com/digitalocean/do-agent/releases/tags/$VERSION"
 			;;
 		help)
 			usage
@@ -109,28 +77,24 @@ function check_version() {
 		abort "VERSION env var should be semver format (e.g. v0.0.1)"
 }
 
-# build and push docker images
-function deploy_dockerhub() {
-	echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USER" --password-stdin
-
-	version=${VERSION/v}
-	IFS=. read -r major minor _ <<<"$version"
-
-	image="docker.io/digitalocean/do-agent"
-	docker build . -t "$image:$version"
-	tags="latest $major $major.$minor"
-
-	for tag in $tags; do
-		docker tag "$image:$version" "$image:$tag"
-	done
-
-	for tag in $tags $version; do
-		docker push "$image:$tag"
-	done
-}
-
 # deploy the compiled binaries and packages to github releases
 function deploy_github() {
+	# if a release with this tag is already published without the prerelease
+	# flag set to true then we cannot deploy or we risk overriding binaries
+	# that have already been considered stable. At this point a new tag with
+	# an incremented patch version is required
+	stable_release=$(github_curl \
+		"https://api.github.com/repos/digitalocean/do-agent/releases" \
+		| jq -r ".[] | select(.tag_name == \"$VERSION\") | select(.prerelease == false) | .id")
+	if [ -n "$stable_release" ]; then
+		{
+			echo "Github release '$VERSION' is not flagged as prerelease. Refusing to deploy."
+			echo "To deploy a fix to a stable release you must increment the fix version with a new tag."
+		} > /dev/stderr
+		exit 0
+	fi
+
+
 	if ! create_github_release ; then
 		echo "Aborting github deploy"
 		exit 1
@@ -151,67 +115,56 @@ function deploy_github() {
 	wait
 }
 
-# remove the prerelease flag from the github release for VERSION
-function promote_github() {
-	if ! url=$(github_release_url); then
-		abort "Github release for $VERSION does not exist"
-	fi
-
-	echo "Removing github prerelease tag for $VERSION"
-	github_curl \
-		-o /dev/null \
-		-X PATCH \
-		-H 'Content-Type: application/json' \
-		-d '{ "prerelease": false }' \
-		"$url"
-}
-
-# verify the deb version exists in the beta repository before attempting to promote
-function check_deb_version() {
-	v=${VERSION/v}
-
-	abort "Unable to check deb version because the new URL has not been set"
-
-	url="https://????????????????-beta/packages/ubuntu/zesty/do-agent_${v}_amd64.deb"
-	echo "Checking for version $v"
-	curl --fail \
-		-SsLI \
-		"${url}" \
-		| grep 'HTTP/1'
-}
-
 # get the asset upload URL for VERSION
 function github_asset_upload_url() {
-	github_curl \
-		"https://api.github.com/repos/digitalocean/do-agent/releases/tags/$VERSION" \
-		| jq -r '. | "https://uploads.github.com/repos/digitalocean/do-agent/releases/\(.id)/assets"'
+	if base=$(github_release_url); then
+		echo "${base/api/uploads}/assets"
+	else
+		return 1
+	fi
 }
 
 # get the base release url for VERSION
 function github_release_url() {
 	github_curl \
 		"https://api.github.com/repos/digitalocean/do-agent/releases/tags/$VERSION" \
-		| jq -r '. | "https://api.github.com/repos/digitalocean/do-agent/releases/\(.id)"'
+		| jq -r '. | select(.prerelease == true) | "https://api.github.com/repos/digitalocean/do-agent/releases/\(.id)"'
 }
 
 
+function rm_old_assets() {
+	assets=$(github_curl \
+		"https://api.github.com/repos/digitalocean/do-agent/releases/tags/$VERSION" \
+		| jq -r '.assets[].url')
+	
+	for asset in $assets; do
+		echo "Removing old asset $asset"
+		github_curl \
+			-X DELETE \
+			"$asset" &
+		wait
+	done
+}
+
 # create a github release for VERSION
 function create_github_release() {
-	if github_asset_upload_url; then
+	if [ -n "$(github_release_url)" ]; then
 		echo "Github release exists $VERSION"
-		return 0
+		# we cannot upload the same asset twice so we have to delete
+		# the old assets before we can commense with uploads
+		rm_old_assets
+	else
+		echo "Creating Github release $VERSION"
+		data="{ \"tag_name\": \"$VERSION\", \"prerelease\": true }"
+		echo "$data"
+
+		github_curl \
+			-o /dev/null \
+			-X POST \
+			-H 'Content-Type: application/json' \
+			-d "$data" \
+			https://api.github.com/repos/digitalocean/do-agent/releases
 	fi
-
-	echo "Creating Github release $VERSION"
-	data="{ \"tag_name\": \"$VERSION\", \"prerelease\": true }"
-	echo "$data"
-
-	github_curl \
-		-o /dev/null \
-		-X POST \
-		-H 'Content-Type: application/json' \
-		-d "$data" \
-		https://api.github.com/repos/digitalocean/do-agent/releases
 }
 
 # list the artifacts within the target/ directory
@@ -232,23 +185,6 @@ function github_curl() {
 		--fail \
 		-u "${GITHUB_AUTH_USER}:${GITHUB_AUTH_TOKEN}" \
 		"$@"
-}
-
-# ask the user for input
-function ask() {
-	question=${1:-}
-	[ -z "$question" ] && abort "Usage: ${FUNCNAME[0]} <question>"
-	read -p "$question " -r
-	echo -n "$REPLY"
-}
-
-# ask the user for a yes or no answer. Returns 0 for yes or 1 for no.
-function confirm() {
-	question="$1 (y/n)"
-	yn=$(ask "$question")
-	echo
-	[[ $yn =~ ^[Yy]$ ]] && return 0
-	return 1
 }
 
 # abort with an error message
