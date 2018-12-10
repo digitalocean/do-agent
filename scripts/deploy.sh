@@ -7,6 +7,7 @@ set -ueo pipefail
 # RHEL_VERSIONS="6 7"
 # FEDORA_VERSIONS="27 28"
 
+PROJECT_ROOT="$(git rev-parse --show-toplevel)"
 VERSION="${VERSION:-$(cat target/VERSION 2>/dev/null)}"
 
 # display usage for this script
@@ -23,30 +24,50 @@ function usage() {
 	DESCRIPTION:
 
 	    The purpose of this script is to publish build artifacts
-	    to Github. They are then packaged and deployed to
-	    apt/yum/docker with DigitalOcean's internal build system.
+	    to Github and docker.io. RPM and DEB files are packaged
+	    and deployed to apt/yum with DigitalOcean's internal
+	    build system after they are considered stable.
 
 	ENVIRONMENT:
 		
 	    VERSION (required)
 	        The version to publish
 
-	    GITHUB_AUTH_USER
-	         Github user to use for publishing to Github
-	         Required for github deploy
+	    GITHUB_AUTH_USER (required)
+	        Github user to use for publishing to Github
 
-	    GITHUB_AUTH_TOKEN
-	         Github access token to use for publishing to Github
-	         Required for github deploy
+	    GITHUB_AUTH_TOKEN (required)
+	        Github access token to use for publishing to Github
 
-	    SLACK_WEBHOOK_URL
-	         Webhook URL to send notifications
-	         Optional: enables Slack notifications
+	    DOCKER_USER (required)
+	        hub.docker.io username to use for pushing builds
+
+	    DOCKER_PASSWORD (required)
+	        hub.docker.io password to use for pushing builds
+
+	    SPACES_ACCESS_KEY_ID (required)
+	        Spaces key ID to use for DO Spaces deployment
+
+	    SPACES_SECRET_ACCESS_KEY (required)
+	        Spaces secret access key ID to use for DO Spaces deployment
+
+	    SLACK_WEBHOOK_URL (optional)
+	        Webhook URL to send notifications. Enables Slack
+		notifications
 
 	COMMANDS:
 	
 	    github
-	         push target/ assets to github
+	        push target/ assets to github
+
+	    docker
+	        push docker builds to hub.docker.io
+
+	    spaces
+	        publish artifacts to DigitalOcean Spaces
+
+	    all
+	        deploy all builds
 
 	EOF
 }
@@ -57,8 +78,39 @@ function main() {
 	case "$cmd" in
 		github)
 			check_version
-			deploy_github
-			notify_slack "true" "Deployed packages to Github!" "https://github.com/digitalocean/do-agent/releases/tag/$VERSION"
+			if deploy_github ; then
+				notify_slack "true" "Deployed packages to Github!" "https://github.com/digitalocean/do-agent/releases/tag/$VERSION"
+			else
+				notify_slack "false" "Failed to deploy packages to Github!" "${TRAVIS_BUILD_WEB_URL:-}"
+			fi
+			;;
+		spaces)
+			check_version
+			if deploy_spaces; then
+				notify_slack "true" "Deployed artifacts to Spaces"
+			else
+				notify_slack "false" "Failed to deploy artifacts to Spaces" "${TRAVIS_BUILD_WEB_URL:-}"
+			fi
+			;;
+		docker)
+			check_version
+			if deploy_dockerhub ; then
+				notify_slack "true" "Deployed images to docker" "https://hub.docker.com/r/digitalocean/do-agent"
+			else
+				notify_slack "false" "failed to deploy images to docker" "${TRAVIS_BUILD_WEB_URL:-}"
+			fi
+			;;
+		promote)
+			check_version
+			promote_packages
+			promote_github
+			promote_docker
+			;;
+		all)
+			check_version
+			main "github"
+			main "spaces"
+			main "docker"
 			;;
 		help)
 			usage
@@ -81,6 +133,80 @@ function check_version() {
 	[[ "${VERSION}" =~ v[0-9]+\.[0-9]+\.[0-9]+ ]] || \
 		abort "VERSION env var should be semver format (e.g. v0.0.1)"
 }
+
+function deploy_spaces() {
+	# this file is required to sign the packages
+	GPG_PRIVATE_KEY="$PROJECT_ROOT/sonar-agent.key"
+	stat "$GPG_PRIVATE_KEY"
+
+	anounce "Pulling remote packages"
+	aws s3 \
+		--endpoint-url https://nyc3.digitaloceanspaces.com \
+		sync \
+		s3://insights/ \
+		./repos/ \
+		--acl public-read
+
+	anounce "Moving built packages to repos/apt"
+	files=$(target_files | grep -P '.deb$')
+	for file in $files; do
+		cp -Huv "$file" repos/apt/pool/beta/main/d/do-agent/
+	done
+
+	anounce "Moving build packages to repos/yum-beta"
+	files=$(target_files | grep -P '.rpm$' | grep amd64)
+	for file in $files; do
+		cp -Huv "$file" repos/yum-beta/x86_64/
+	done
+	files=$(target_files | grep -P '.rpm$' | grep i386)
+	for file in $files; do
+		cp -Huv "$file" repos/yum-beta/i386/
+	done
+
+	anounce "Rebuilding apt package indexes"
+	docker run \
+		--rm \
+		--net=host \
+		-v "${PROJECT_ROOT}/repos/apt:/work/apt" \
+		-v "${PROJECT_ROOT}/sonar-agent.key:/work/sonar-agent.key:ro" \
+		-w /work \
+		-ti \
+		"docker.io/digitalocean/agent-packager-apt"
+
+	anounce "Rebuilding yum package indexes"
+	docker run \
+		--rm \
+		--net=host \
+		-v "${PROJECT_ROOT}/repos/yum:/work/yum" \
+		-v "${PROJECT_ROOT}/repos/yum-beta:/work/yum-beta" \
+		-v "${PROJECT_ROOT}/sonar-agent.key:/work/sonar-agent.key:ro" \
+		-w /work \
+		-ti \
+		"docker.io/digitalocean/agent-packager-yum"
+
+	anounce "Pushing package changes"
+	aws s3 \
+		--endpoint-url https://nyc3.digitaloceanspaces.com \
+		sync \
+		./repos/ \
+		s3://insights/ \
+		--acl public-read
+}
+
+# interact with the awscli via docker
+function aws() {
+	docker run \
+		--rm -t "$(tty &>/dev/null && echo '-i')" \
+		-e "AWS_ACCESS_KEY_ID=${SPACES_ACCESS_KEY_ID}" \
+		-e "AWS_SECRET_ACCESS_KEY=${SPACES_SECRET_ACCESS_KEY}" \
+		-e "AWS_DEFAULT_REGION=nyc3" \
+		-v "$(pwd):/project" \
+		-w /project \
+		-u "$(id -u)" \
+		mesosphere/aws-cli \
+		"$@"
+}
+
 
 # deploy the compiled binaries and packages to github releases
 function deploy_github() {
@@ -112,12 +238,24 @@ function deploy_github() {
 		echo "Uploading $name to github"
 		github_curl \
 			-X "POST" \
-			-H 'Content-Type: application/octet-stream' \
-			-d "@${file}" \
+			-H "Content-Type: $(content_type_for "$file")" \
+			--data-binary "@${file}" \
 			"$upload_url?name=$name" \
 			| jq -r '. | "Success: \(.name)"' &
 	done
 	wait
+}
+
+# print the content type header for the provided file
+function content_type_for() {
+	file=${1:-}
+	[ -z "$file" ] && abort "Usage: ${FUNCNAME[0]} <file>"
+	case $file in
+		*.deb) echo "application/vnd.debian.binary-package" ;;
+		*.rpm) echo "application/x-rpm" ;;
+		*.tar.gz) echo "application/gzip" ;;
+		*) echo "application/octet-stream"
+	esac
 }
 
 # get the asset upload URL for VERSION
@@ -172,6 +310,24 @@ function create_github_release() {
 	fi
 }
 
+# build and push the RC docker hub image. This image is considered unstable
+# and should only be used for testing purposes
+function deploy_dockerhub() {
+	docker login -u "$DOCKER_USER" --password-stdin <<<"$DOCKER_PASSWORD"  
+
+	image="docker.io/digitalocean/do-agent"
+	docker build . -t "$image:unstable"
+	tags="${VERSION/v}-rc"
+
+	for tag in $tags; do
+		docker tag "$image:unstable" "$image:$tag"
+	done
+
+	for tag in $tags unstable; do
+		docker push "$image:$tag"
+	done
+}
+
 # list the artifacts within the target/ directory
 function target_files() {
 	v=${VERSION/v}
@@ -199,6 +355,21 @@ function abort() {
 	exit 1
 }
 
+# print something to STDOUT with formatting
+# Usage: anounce "Some message"
+#
+# Examples:
+#    anounce "Begin execution of something"
+#    anounce "All is well"
+#
+function anounce() {
+	msg=${1:-}
+	[ -z "$msg" ] && abort "Usage: ${FUNCNAME[0]} <msg>"
+	echo ":::::::::::::::::::::::::::::::::::::::::::::::::: $msg ::::::::::::::::::::::::::::::::::::::::::::::::::" > /dev/stderr
+}
+
+
+
 # send a slack notification
 # Usage: notify_slack <success> <msg> [link]
 #
@@ -208,13 +379,13 @@ function abort() {
 #
 function notify_slack() {
 	if [ -z "${SLACK_WEBHOOK_URL:-}" ]; then
-		echo "env var SLACK_WEBHOOK_URL is unset. Not sending notification" > /dev/stderr
+		echo "SLACK_WEBHOOK_URL is unset. Not sending notification" > /dev/stderr
 		return 0
 	fi
 
 	success=${1:-}
-	msg=${3:-}
-	link=${2:-}
+	msg=${2:-}
+	link=${3:-}
 
 	color="green"
 	[[ "$success" =~ ^(false|0|no)$ ]] && color="red"
@@ -227,7 +398,18 @@ function notify_slack() {
 	      "color": "${color}",
 	      "title": "${msg}",
 	      "title_link": "${link}",
+	      "text": "${msg}",
 	      "fields": [
+		{
+		  "title": "App",
+		  "value": "do-agent",
+		  "short": true
+		},
+		{
+		  "title": "Version",
+		  "value": "${VERSION}",
+		  "short": true
+		},
 		{
 		  "title": "User",
 		  "value": "${USER}",

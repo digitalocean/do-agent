@@ -4,7 +4,7 @@ GOARCH ?= amd64
 ifeq ($(GOARCH),386)
 PKG_ARCH = i386
 else
-PKG_ARCH = x86_64
+PKG_ARCH = amd64
 endif
 
 ############
@@ -57,10 +57,10 @@ cover_profile      := $(out)/.coverprofile
 # output packages
 # deb files should end with _version_arch.deb
 # rpm files should end with -version-release.arch.rpm
-base_package := $(package_dir)/$(pkg_project).$(git_tag).$(PKG_ARCH).BASE.deb
-deb_package  := $(package_dir)/$(pkg_project).$(subst v,,$(git_tag)).$(PKG_ARCH).deb
-rpm_package  := $(package_dir)/$(pkg_project).$(subst v,,$(git_tag)).$(PKG_ARCH).rpm
-tar_package  := $(package_dir)/$(pkg_project).$(subst v,,$(git_tag)).tar.gz
+base_package := $(package_dir)/$(pkg_project).$(pkg_version).$(PKG_ARCH).BASE.deb
+deb_package  := $(package_dir)/$(pkg_project)_$(pkg_version)_$(PKG_ARCH).deb
+rpm_package  := $(package_dir)/$(pkg_project).$(pkg_version).$(PKG_ARCH).rpm
+tar_package  := $(package_dir)/$(pkg_project).$(pkg_version).tar.gz
 
 # use the binary's mtime for epoch for consistency. This needs to be lazily
 # evaluated since the binary does not yet exist
