@@ -6,39 +6,18 @@ Status](https://travis-ci.org/digitalocean/do-agent.svg?branch=master)](https://
 [![Coverage Status](https://coveralls.io/repos/github/digitalocean/do-agent/badge.svg?branch=feat%2Fadd-coveralls-report)](https://coveralls.io/github/digitalocean/do-agent?branch=feat%2Fadd-coveralls-report)
 
 ## Overview
-The do-agent is a drop in replacement and improvement for
-[do-agent](https://github.com/digitalocean/do-agent). The do-agent enables
-droplet metrics to be gathered and sent to DigitalOcean to provide resource
-usage graphs and alerting. Rather than use `procfs` to obtain resource usage
-data, we use [node_exporter](https://github.com/prometheus/node_exporter).
+do-agent enables droplet metrics to be gathered and sent to DigitalOcean to provide resource usage graphs and alerting. 
 
 DO Agent currently supports:
 - Ubuntu 14.04+
 - Debian 8+
 - Fedora 27+
 - CentOS 6+
-- Docker
+- Docker (see below)
 
-## Development
+## Installation
 
-### Requirements
-
-- [go](https://golang.org/dl/)
-- [golang/dep](https://github.com/golang/dep#installation)
-- [GNU Make](https://www.gnu.org/software/make/)
-- [Go Meta Linter](https://github.com/alecthomas/gometalinter#installing)
-
-```
-git clone git@github.com:digitalocean/do-agent.git \
-        $GOPATH/src/github.com/digitalocean/do-agent
-cd !$
-
-# build the project
-make
-
-# add dependencies
-dep ensure -v -add <import path>
-```
+To install the do-agent on new Droplets simply select the Monitoring checkbox on the Droplet create screen to get the latest stable version of do-agent. Use your OS package manager (yum/dnf/apt-get) to update and manage do-agent.
 
 ## Installing via package managers
 
@@ -67,6 +46,27 @@ rpm --import https://repos.sonar.digitalocean.com/sonar-agent.asc
 yum install do-agent
 ```
 
+## Development
+
+### Requirements
+
+- [go](https://golang.org/dl/)
+- [golang/dep](https://github.com/golang/dep#installation)
+- [GNU Make](https://www.gnu.org/software/make/)
+- [gometalinter](https://github.com/alecthomas/gometalinter#installing)
+
+```
+git clone git@github.com:digitalocean/do-agent.git \
+        $GOPATH/src/github.com/digitalocean/do-agent
+cd !$
+
+# build the project
+make
+
+# add dependencies
+dep ensure -v -add <import path>
+```
+
 ### Uninstall
 
 do-agent can be uninstalled with your distribution's package manager
@@ -86,6 +86,7 @@ For example:
 ```
 docker run \
         -v /proc:/host/proc:ro \
+        -v /sys:/host/sys:ro \
         digitalocean/do-agent:1
 ```
 
