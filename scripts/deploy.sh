@@ -1,59 +1,50 @@
 #!/usr/bin/env bash
 set -ueo pipefail
-# set -x
 
-# UBUNTU_VERSIONS="trusty utopic vivid wily xenial yakkety zesty artful bionic cosmic"
-# DEBIAN_VERSIONS="wheezy jessie stretch buster"
-# RHEL_VERSIONS="6 7"
-# FEDORA_VERSIONS="27 28"
-
+ME=$(basename "$0")
 PROJECT_ROOT="$(git rev-parse --show-toplevel)"
 VERSION="${VERSION:-$(cat target/VERSION 2>/dev/null)}"
+GPG_PRIVATE_KEY="$PROJECT_ROOT/sonar-agent.key"
+DOCKER_IMAGE="docker.io/digitalocean/do-agent"
+
+CI_LOG_URL=""
+if [ -n "${GO_SERVER_URL:-}" ]; then
+	CI_LOG_URL=${GO_SERVER_URL}/tab/${GO_STAGE_NAME}/detail/${GO_PIPELINE_NAME}/${GO_PIPELINE_COUNTER}/${GO_STAGE_NAME}/${GO_STAGE_COUNTER}/${GO_JOB_NAME}
+fi
 
 # display usage for this script
 function usage() {
 	cat <<-EOF
 	NAME:
 	
-	  $(basename "$0")
+	  $ME
 	
 	SYNOPSIS:
 
-	  $0 <cmd>
+	  $ME <cmd>
 
 	DESCRIPTION:
 
 	    The purpose of this script is to publish build artifacts
-	    to Github and docker.io. RPM and DEB files are packaged
-	    and deployed to apt/yum with DigitalOcean's internal
-	    build system after they are considered stable.
+	    to Github, docker.io, and apt/yum repositories.
 
 	ENVIRONMENT:
 		
 	    VERSION (required)
 	        The version to publish
 
-	    GITHUB_AUTH_USER (required)
-	        Github user to use for publishing to Github
+	    GITHUB_AUTH_USER, GITHUB_AUTH_TOKEN (required)
+	        Github access credentials
 
-	    GITHUB_AUTH_TOKEN (required)
-	        Github access token to use for publishing to Github
+	    DOCKER_USER, DOCKER_PASSWORD  (required)
+	        Docker hub access credentials
 
-	    DOCKER_USER (required)
-	        hub.docker.io username to use for pushing builds
-
-	    DOCKER_PASSWORD (required)
-	        hub.docker.io password to use for pushing builds
-
-	    SPACES_ACCESS_KEY_ID (required)
-	        Spaces key ID to use for DO Spaces deployment
-
-	    SPACES_SECRET_ACCESS_KEY (required)
-	        Spaces secret access key ID to use for DO Spaces deployment
+	    SPACES_ACCESS_KEY_ID, SPACES_SECRET_ACCESS_KEY (required)
+	        DigitalOcean Spaces access credentials
 
 	    SLACK_WEBHOOK_URL (optional)
 	        Webhook URL to send notifications. Enables Slack
-		notifications
+	        notifications
 
 	COMMANDS:
 	
@@ -78,39 +69,32 @@ function main() {
 	case "$cmd" in
 		github)
 			check_version
-			if deploy_github ; then
-				notify_slack "true" "Deployed packages to Github!" "https://github.com/digitalocean/do-agent/releases/tag/$VERSION"
-			else
-				notify_slack "false" "Failed to deploy packages to Github!" "${TRAVIS_BUILD_WEB_URL:-}"
-			fi
+			check_stable
+			deploy_github
 			;;
 		spaces)
 			check_version
-			if deploy_spaces; then
-				notify_slack "true" "Deployed artifacts to Spaces"
-			else
-				notify_slack "false" "Failed to deploy artifacts to Spaces" "${TRAVIS_BUILD_WEB_URL:-}"
-			fi
+			check_stable
+			deploy_spaces
 			;;
 		docker)
 			check_version
-			if deploy_dockerhub ; then
-				notify_slack "true" "Deployed images to docker" "https://hub.docker.com/r/digitalocean/do-agent"
-			else
-				notify_slack "false" "failed to deploy images to docker" "${TRAVIS_BUILD_WEB_URL:-}"
-			fi
+			check_stable
+			deploy_docker
 			;;
 		promote)
 			check_version
-			promote_packages
+			check_stable
 			promote_github
+			promote_spaces
 			promote_docker
 			;;
 		all)
 			check_version
-			main "github"
-			main "spaces"
-			main "docker"
+			check_stable
+			deploy_github
+			deploy_spaces
+			deploy_docker
 			;;
 		help)
 			usage
@@ -134,35 +118,57 @@ function check_version() {
 		abort "VERSION env var should be semver format (e.g. v0.0.1)"
 }
 
+# if a release with the VERSION tag is already published without the prerelease
+# flag set to true then we cannot deploy or we risk overriding binaries that
+# have already been considered stable. At this point a new tag with an
+# incremented patch version is required. 
+#
+# This is not considered an error. It just means there is no additional deploy
+# necessary
+function check_stable() {
+	stable_release=$(github_curl \
+		"https://api.github.com/repos/digitalocean/do-agent/releases" \
+		| jq -r ".[] | select(.tag_name == \"$VERSION\") | select(.prerelease == false) | .id")
+	if [ -n "$stable_release" ]; then
+		{
+			echo
+			echo "Github release '$VERSION' has already been released to main. So it this tag can no longer be deployed."
+			echo "To deploy again you must add a new tag."
+			echo
+		} > /dev/stderr
+		exit 0
+	fi
+}
+
+function verify_gpg_key() {
+	stat "$GPG_PRIVATE_KEY" > /dev/null || abort "$GPG_PRIVATE_KEY is required"
+}
+
 function deploy_spaces() {
-	# this file is required to sign the packages
-	GPG_PRIVATE_KEY="$PROJECT_ROOT/sonar-agent.key"
-	stat "$GPG_PRIVATE_KEY"
+	pull_spaces
 
-	anounce "Pulling remote packages"
-	aws s3 \
-		--endpoint-url https://nyc3.digitaloceanspaces.com \
-		sync \
-		s3://insights/ \
-		./repos/ \
-		--acl public-read
-
-	anounce "Moving built packages to repos/apt"
+	anounce "Moving built deb packages"
 	files=$(target_files | grep -P '.deb$')
 	for file in $files; do
-		cp -Huv "$file" repos/apt/pool/beta/main/d/do-agent/ || exit 1
+		cp "$file" repos/apt/pool/beta/main/d/do-agent/
 	done
 
-	anounce "Moving build packages to repos/yum-beta"
-	files=$(target_files | grep -P '.rpm$' | grep amd64)
-	for file in $files; do
-		cp -Huv "$file" repos/yum-beta/x86_64/ || exit 1
-	done
-	files=$(target_files | grep -P '.rpm$' | grep i386)
-	for file in $files; do
-		cp -Huv "$file" repos/yum-beta/i386/ || exit 1
+	anounce "Moving yum packages"
+	for file in $(target_files | grep -P '.rpm$'); do
+		dest=repos/yum-beta/x86_64/
+		[[ "$file" =~ "i386" ]] && \
+			dest=repos/yum-beta/i386/
+		cp "$file" "$dest"
 	done
 
+	rebuild_apt_packages
+
+	rebuild_yum_packages
+
+}
+
+function rebuild_apt_packages() {
+	verify_gpg_key
 	anounce "Rebuilding apt package indexes"
 	docker run \
 		--rm \
@@ -172,7 +178,10 @@ function deploy_spaces() {
 		-w /work \
 		-ti \
 		"docker.io/digitalocean/agent-packager-apt" || exit 1
+}
 
+function rebuild_yum_packages() {
+	verify_gpg_key
 	anounce "Rebuilding yum package indexes"
 	docker run \
 		--rm \
@@ -183,7 +192,19 @@ function deploy_spaces() {
 		-w /work \
 		-ti \
 		"docker.io/digitalocean/agent-packager-yum" || exit 1
+}
 
+function pull_spaces() {
+	anounce "Pulling remote packages"
+	aws s3 \
+		--endpoint-url https://nyc3.digitaloceanspaces.com \
+		sync \
+		s3://insights/ \
+		./repos/ \
+		--acl public-read
+}
+
+function push_spaces() {
 	anounce "Pushing package changes"
 	aws s3 \
 		--endpoint-url https://nyc3.digitaloceanspaces.com \
@@ -210,22 +231,6 @@ function aws() {
 
 # deploy the compiled binaries and packages to github releases
 function deploy_github() {
-	# if a release with this tag is already published without the prerelease
-	# flag set to true then we cannot deploy or we risk overriding binaries
-	# that have already been considered stable. At this point a new tag with
-	# an incremented patch version is required
-	stable_release=$(github_curl \
-		"https://api.github.com/repos/digitalocean/do-agent/releases" \
-		| jq -r ".[] | select(.tag_name == \"$VERSION\") | select(.prerelease == false) | .id")
-	if [ -n "$stable_release" ]; then
-		{
-			echo "Github release '$VERSION' is not flagged as prerelease. Refusing to deploy."
-			echo "To deploy a fix to a stable release you must increment the fix version with a new tag."
-		} > /dev/stderr
-		exit 0
-	fi
-
-
 	if ! create_github_release ; then
 		echo "Aborting github deploy"
 		exit 1
@@ -244,6 +249,45 @@ function deploy_github() {
 			| jq -r '. | "Success: \(.name)"' &
 	done
 	wait
+}
+
+function promote_spaces() {
+	pull_spaces
+
+	anounce "Copying deb packages to main channel"
+	cp "$PROJECT_ROOT/repos/apt/pool/beta/main/d/do-agent/do-agent_${VERSION/v}_.deb" "$PROJECT_ROOT/repos/apt/pool/main/main/d/do-agent/"
+
+	anounce "Copying yum packages to main channel"
+	cp "$PROJECT_ROOT/repos/yum-beta/i386/do-agent.${VERSION/v}.i386.rpm" "$PROJECT_ROOT/repos/yum/i386/"
+	cp "$PROJECT_ROOT/repos/yum-beta/x86_64/do-agent.${VERSION/v}.amd64.rpm" "$PROJECT_ROOT/repos/yum/x86_64/"
+
+	rebuild_apt_packages
+	rebuild_yum_packages
+
+	push_spaces
+}
+
+function promote_github() {
+	github_curl \
+		-D /dev/stderr \
+		-X PATCH \
+		--data-binary '{"prerelease":false}' \
+		"$(github_release_url)"
+}
+
+function promote_docker() {
+	docker_login
+	local version=${VERSION/v}
+	local rc="$DOCKER_IMAGE:$version-rc"
+	IFS=. read -r major minor _ <<<"$version"
+
+	docker pull "$rc"
+
+	tags="latest $major $major.$minor $version"
+	for tag in $tags; do
+		docker tag "$rc" "$DOCKER_IMAGE:$tag"
+		docker push "$DOCKER_IMAGE:$tag"
+	done
 }
 
 # print the content type header for the provided file
@@ -310,21 +354,24 @@ function create_github_release() {
 	fi
 }
 
+function docker_login() {
+	docker login -u "$DOCKER_USER" --password-stdin <<<"$DOCKER_PASSWORD"  
+}
+
 # build and push the RC docker hub image. This image is considered unstable
 # and should only be used for testing purposes
-function deploy_dockerhub() {
-	docker login -u "$DOCKER_USER" --password-stdin <<<"$DOCKER_PASSWORD"  
+function deploy_docker() {
+	docker_login
 
-	image="docker.io/digitalocean/do-agent"
-	docker build . -t "$image:unstable"
+	docker build . -t "$DOCKER_IMAGE:unstable"
 	tags="${VERSION/v}-rc"
 
 	for tag in $tags; do
-		docker tag "$image:unstable" "$image:$tag"
+		docker tag "$DOCKER_IMAGE:unstable" "$DOCKER_IMAGE:$tag"
 	done
 
 	for tag in $tags unstable; do
-		docker push "$image:$tag"
+		docker push "$DOCKER_IMAGE:$tag"
 	done
 }
 
@@ -369,6 +416,11 @@ function anounce() {
 }
 
 
+function cp() {
+	src=${1:-}
+	dest=${2:-}
+	cp -Luv "$src" "$dest" || exit 1
+}
 
 # send a slack notification
 # Usage: notify_slack <success> <msg> [link]
@@ -429,12 +481,15 @@ function notify_slack() {
 
 	curl -sS -X POST \
 		--fail \
-		--data "$payload" \
+		--data-binary "$payload" \
 		"${SLACK_WEBHOOK_URL}" > /dev/null
 
 	# always pass to prevent pipefailures
 	return 0
 }
 
+
+function notify_error() { notify_slack "false" "Deploy '$*' failed" "${CI_LOG_URL}"; }
+trap notify_error ERR
 
 main "$@"

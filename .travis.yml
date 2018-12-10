@@ -32,10 +32,8 @@ install:
 script:
   - make ci
   - goveralls -coverprofile=target/.coverprofile -service=travis-ci -repotoken $COVERALLS_API_TOKEN
-  - make package
 
 before_deploy:
-  - openssl aes-256-cbc -K $encrypted_12c8071d2874_key -iv $encrypted_12c8071d2874_iv -in sonar-agent.key.enc -out sonar-agent.key -d
   - curl -V
 
 deploy:

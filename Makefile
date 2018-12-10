@@ -112,7 +112,7 @@ clean:
 	@rm -rf $(out)
 .PHONY: clean
 
-ci: clean lint shellcheck test
+ci: clean lint shellcheck test package
 .PHONY: ci
 
 $(out)/scripts/do-agent-install.sh: ./scripts/install.sh
@@ -206,3 +206,19 @@ $(tar_package): $(base_package)
 	chown -R $(USER):$(USER) target
 # print all files within the archive
 	@docker run --rm -it -v ${PWD}:/tmp -w /tmp ubuntu:xenial tar -ztvf $@
+
+
+.vault-token:
+	$(print)
+	@docker run -u $(shell id -u) --net=host --rm -i \
+		docker.internal.digitalocean.com/eng-insights/vault:0.11.5 \
+		write -field token auth/approle/login role_id=$(VAULT_ROLE_ID) secret_id=$(VAULT_SECRET_ID) \
+		| cp /dev/stdin $@
+.INTERMEDIATE: .vault-token
+
+sonar-agent.key: .vault-token
+	$(print)
+	@docker run -u $(shell id -u) --net=host --rm -i -e "VAULT_TOKEN=$(shell cat $^)" \
+		docker.internal.digitalocean.com/eng-insights/vault:0.11.5 \
+		read --field gpg secret/agent/packager/key \
+		| cp /dev/stdin $@
