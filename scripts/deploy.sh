@@ -150,17 +150,17 @@ function deploy_spaces() {
 	anounce "Moving built packages to repos/apt"
 	files=$(target_files | grep -P '.deb$')
 	for file in $files; do
-		cp -Huv "$file" repos/apt/pool/beta/main/d/do-agent/
+		cp -Huv "$file" repos/apt/pool/beta/main/d/do-agent/ || exit 1
 	done
 
 	anounce "Moving build packages to repos/yum-beta"
 	files=$(target_files | grep -P '.rpm$' | grep amd64)
 	for file in $files; do
-		cp -Huv "$file" repos/yum-beta/x86_64/
+		cp -Huv "$file" repos/yum-beta/x86_64/ || exit 1
 	done
 	files=$(target_files | grep -P '.rpm$' | grep i386)
 	for file in $files; do
-		cp -Huv "$file" repos/yum-beta/i386/
+		cp -Huv "$file" repos/yum-beta/i386/ || exit 1
 	done
 
 	anounce "Rebuilding apt package indexes"
@@ -171,7 +171,7 @@ function deploy_spaces() {
 		-v "${PROJECT_ROOT}/sonar-agent.key:/work/sonar-agent.key:ro" \
 		-w /work \
 		-ti \
-		"docker.io/digitalocean/agent-packager-apt"
+		"docker.io/digitalocean/agent-packager-apt" || exit 1
 
 	anounce "Rebuilding yum package indexes"
 	docker run \
@@ -182,7 +182,7 @@ function deploy_spaces() {
 		-v "${PROJECT_ROOT}/sonar-agent.key:/work/sonar-agent.key:ro" \
 		-w /work \
 		-ti \
-		"docker.io/digitalocean/agent-packager-yum"
+		"docker.io/digitalocean/agent-packager-yum" || exit 1
 
 	anounce "Pushing package changes"
 	aws s3 \
