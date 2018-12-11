@@ -108,8 +108,8 @@ shellcheck: $(cache)/shellcheck
 $(cache)/shellcheck: $(shellscripts)
 	$(print)
 	$(mkdir)
-	@shellcheck --version
-	@shellcheck $^
+	@$(shellcheck) --version
+	@$(shellcheck) $^
 	$(touch)
 
 test: $(cover_profile)
