@@ -17,14 +17,10 @@ cp           = @cp $< $@
 print        = @printf "\n:::::::::::::::: [$(shell date -u)] $@ ::::::::::::::::\n"
 touch        = @touch $@
 jq           = @docker run --rm -i colstrom/jq
-shellcheck   = @docker run --rm -i -v "$(CURDIR):$(CURDIR)" -w "$(CURDIR)" koalaman/shellcheck:v0.6.0
-gometalinter = @docker run --rm -i -v "$(CURDIR):$(CURDIR)" -w "$(CURDIR)" imega/gometalinter:2.0.3
+shellcheck   = @docker run --rm -i -v "$(CURDIR):$(CURDIR)" -w "$(CURDIR)" -u $(shell id -u) koalaman/shellcheck:v0.6.0
+gometalinter = @docker run --rm -i -v "$(CURDIR):$(CURDIR)" -w "$(CURDIR)" -u $(shell id -u) imega/gometalinter:2.0.3
+fpm          = @docker run --rm -i -v "$(CURDIR):$(CURDIR)" -w "$(CURDIR)" -u $(shell id -u) digitalocean/fpm:latest
 
-fpm   = @docker run --rm -i \
-	-v "$(CURDIR):$(CURDIR)" \
-	-w "$(CURDIR)" \
-	-u $(shell id -u) \
-	digitalocean/fpm:latest
 go    = docker run --rm -i \
 	-u "$(shell id -u)" \
 	-e "GOOS=$(GOOS)" \
@@ -105,7 +101,7 @@ lint: $(cache)/lint $(cache)/shellcheck
 $(cache)/lint: $(gofiles)
 	$(print)
 	$(mkdir)
-	@gometalinter --config=gometalinter.json ./...
+	@(gometalinter) --config=gometalinter.json ./...
 	$(touch)
 
 shellcheck: $(cache)/shellcheck
