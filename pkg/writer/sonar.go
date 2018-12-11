@@ -1,6 +1,7 @@
 package writer
 
 import (
+	"github.com/digitalocean/do-agent/internal/log"
 	"github.com/digitalocean/do-agent/pkg/clients/tsclient"
 	dto "github.com/prometheus/client_model/go"
 )
@@ -42,9 +43,12 @@ func (s *Sonar) Write(mets []*dto.MetricFamily) error {
 				labels[*label.Name] = *label.Value
 			}
 
-			s.client.AddMetric(
+			err := s.client.AddMetric(
 				tsclient.NewDefinition(*mf.Name, tsclient.WithCommonLabels(labels)),
 				value)
+			if err != nil {
+				log.Error("Failed to add metric %q: %+v", mf.GetName(), err)
+			}
 
 		}
 

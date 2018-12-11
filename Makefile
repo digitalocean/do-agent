@@ -18,7 +18,7 @@ print        = @printf "\n:::::::::::::::: [$(shell date -u)] $@ :::::::::::::::
 touch        = @touch $@
 jq           = @docker run --rm -i colstrom/jq
 shellcheck   = @docker run --rm -i -v "$(CURDIR):$(CURDIR)" -w "$(CURDIR)" -u $(shell id -u) koalaman/shellcheck:v0.6.0
-gometalinter = @docker run --rm -i -v "$(CURDIR):$(CURDIR)" -w "$(CURDIR)" -u $(shell id -u) imega/gometalinter:2.0.3
+gometalinter = @docker run --rm -i -v "$(CURDIR):/go/src/$(importpath)" -w "/go/src/$(importpath)" -u $(shell id -u) digitalocean/gometalinter:2.0.11
 fpm          = @docker run --rm -i -v "$(CURDIR):$(CURDIR)" -w "$(CURDIR)" -u $(shell id -u) digitalocean/fpm:latest
 
 go    = docker run --rm -i \

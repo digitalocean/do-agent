@@ -10,9 +10,10 @@
         "unused",
         "deadcode",
         "vet",
-        "gosimple"
+        "gosimple",
+        "gofmt"
     ],
-    "Vendor": true,
+    "Vendor": false,
     "Deadline": "120s",
     "Aggregate": true,
     "Skip": ["pkg/clients/timeseries", "vendor"]

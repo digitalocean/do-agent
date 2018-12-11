@@ -7,6 +7,8 @@ import (
 	"text/template"
 	"time"
 
+	"github.com/digitalocean/do-agent/internal/log"
+
 	"github.com/prometheus/client_golang/prometheus"
 	kingpin "gopkg.in/alecthomas/kingpin.v2"
 )
@@ -48,7 +50,7 @@ func init() {
 	kingpin.VersionFlag = kingpin.Flag("version", "Show the application version information").
 		Short('v').
 		PreAction(func(c *kingpin.ParseContext) error {
-			versionTmpl.Execute(os.Stdout, map[string]string{
+			err := versionTmpl.Execute(os.Stdout, map[string]string{
 				"name":      "do-agent",
 				"version":   version,
 				"revision":  revision,
@@ -56,6 +58,9 @@ func init() {
 				"goVersion": goVersion,
 				"year":      fmt.Sprintf("%d", time.Now().UTC().Year()),
 			})
+			if err != nil {
+				log.Fatal("failed to execute version template: %+v", err)
+			}
 			os.Exit(0)
 			return nil
 		})
