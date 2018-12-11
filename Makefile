@@ -11,17 +11,18 @@ endif
 ## macros ##
 ############
 
-find       = $(shell find . -name \*.$1 -type f ! -path '*/vendor/*' ! -path '*/target/*')
-mkdir      = @mkdir -p $(dir $@)
-cp         = @cp $< $@
-print      = @printf "\n:::::::::::::::: [$(shell date -u)] $@ ::::::::::::::::\n"
-touch      = @touch $@
-jq         = @docker run --rm -i colstrom/jq
-shellcheck = @docker run --rm -i -v "$PWD:/mnt" koalaman/shellcheck:v0.6.0
+find         = $(shell find . -name \*.$1 -type f ! -path '*/vendor/*' ! -path '*/target/*')
+mkdir        = @mkdir -p $(dir $@)
+cp           = @cp $< $@
+print        = @printf "\n:::::::::::::::: [$(shell date -u)] $@ ::::::::::::::::\n"
+touch        = @touch $@
+jq           = @docker run --rm -i colstrom/jq
+shellcheck   = @docker run --rm -i -v "$(CURDIR):$(CURDIR)" -w "$(CURDIR)" koalaman/shellcheck:v0.6.0
+gometalinter = @docker run --rm -i -v "$(CURDIR):$(CURDIR)" -w "$(CURDIR)" imega/gometalinter:2.0.3
 
 fpm   = @docker run --rm -i \
-	-v ${PWD}:/tmp \
-	-w /tmp \
+	-v "$(CURDIR):$(CURDIR)" \
+	-w "$(CURDIR)" \
 	-u $(shell id -u) \
 	digitalocean/fpm:latest
 go    = docker run --rm -i \
@@ -55,13 +56,15 @@ ldflags     = '\
 ## paths ##
 ###########
 
-out         := target
-package_dir := $(out)/pkg
-cache       := $(out)/.cache
-project     := $(notdir $(CURDIR))# project name
-pkg_project := $(subst _,-,$(project))# package cannot have underscores in the name
-importpath  := github.com/digitalocean/$(project)# import path used in gocode
-gofiles     := $(call find,go)
+out             := target
+package_dir     := $(out)/pkg
+cache           := $(out)/.cache
+project         := $(notdir $(CURDIR))# project name
+pkg_project     := $(subst _,-,$(project))# package cannot have underscores in the name
+importpath      := github.com/digitalocean/$(project)# import path used in gocode
+gofiles         := $(shell find -type f -iname '*.go' ! -path './vendor/*')
+vendorgofiles   := $(shell find -type f -iname '*.go' -path './vendor/*')
+shellscripts    := $(shell find -type f -iname '*.sh' ! -path './repos/*' ! -path './vendor/*')
 
 # the name of the binary built with local resources
 binary             := $(out)/$(project)_$(GOOS)_$(GOARCH)
@@ -84,7 +87,7 @@ epoch = $(shell date '+%s' -r $(binary))
 #############
 
 build: $(binary)
-$(binary): $(gofiles)
+$(binary): $(gofiles) $(vendorgofiles)
 	$(print)
 	$(mkdir)
 	$(go) build \
@@ -93,7 +96,7 @@ $(binary): $(gofiles)
 	     ./cmd/$(project)
 
 package: release
-release: target/VERSION $(out)/scripts/do-agent-install.sh
+release: target/VERSION
 	$(print)
 	@GOOS=linux GOARCH=386 $(MAKE) build deb rpm tar
 	@GOOS=linux GOARCH=amd64 $(MAKE) build deb rpm tar
@@ -106,7 +109,7 @@ $(cache)/lint: $(gofiles)
 	$(touch)
 
 shellcheck: $(cache)/shellcheck
-$(cache)/shellcheck: $(call find,sh)
+$(cache)/shellcheck: $(shellscripts)
 	$(print)
 	$(mkdir)
 	@shellcheck --version
@@ -126,11 +129,6 @@ clean:
 
 ci: clean lint shellcheck test package
 .PHONY: ci
-
-$(out)/scripts/do-agent-install.sh: ./scripts/install.sh
-	$(print)
-	$(mkdir)
-	$(cp)
 
 .PHONY: target/VERSION
 target/VERSION:
@@ -181,7 +179,7 @@ $(deb_package): $(base_package)
 		$<
 	chown -R $(USER):$(USER) target
 # print information about the compiled deb package
-	@docker run --rm -i -v ${PWD}:/tmp -w /tmp ubuntu:xenial /bin/bash -c 'dpkg --info $@ && dpkg -c $@'
+	@docker run --rm -i -v "$(CURDIR):$(CURDIR)" -w "$(CURDIR)" ubuntu:xenial /bin/bash -c 'dpkg --info $@ && dpkg -c $@'
 
 
 rpm: $(rpm_package)
@@ -202,7 +200,7 @@ $(rpm_package): $(base_package)
 		$<
 	chown -R $(USER):$(USER) target
 # print information about the compiled rpm package
-	@docker run --rm -i -v ${PWD}:/tmp -w /tmp centos:7 rpm -qilp $@
+	@docker run --rm -i -v "$(CURDIR):$(CURDIR)" -w "$(CURDIR)" centos:7 rpm -qilp $@
 
 tar: $(tar_package)
 $(tar_package): $(base_package)
@@ -217,7 +215,7 @@ $(tar_package): $(base_package)
 		$<
 	chown -R $(USER):$(USER) target
 # print all files within the archive
-	@docker run --rm -i -v ${PWD}:/tmp -w /tmp ubuntu:xenial tar -ztvf $@
+	@docker run --rm -i -v "$(CURDIR):$(CURDIR)" -w "$(CURDIR)" ubuntu:xenial tar -ztvf $@
 
 
 .vault-token:

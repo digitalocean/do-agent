@@ -328,7 +328,6 @@ function rm_old_assets() {
 	assets=$(github_curl \
 		"https://api.github.com/repos/digitalocean/do-agent/releases/tags/$VERSION" \
 		| jq -r '.assets[].url')
-	
 	for asset in $assets; do
 		echo "Removing old asset $asset"
 		github_curl \
