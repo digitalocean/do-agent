@@ -498,7 +498,4 @@ function notify() {
 }
 
 
-function notify_error() { notify_slack "false" "Deploy '$*' failed" "${CI_LOG_URL}"; }
-trap notify_error ERR
-
 main "$@"

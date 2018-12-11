@@ -238,3 +238,7 @@ sonar-agent.key: .vault-token
 .PHONY: deploy
 deploy:
 	./scripts/deploy.sh all
+
+.PHONY: promote
+promote:
+	./scripts/deploy.sh promote
