@@ -14,24 +14,35 @@ endif
 find  = $(shell find . -name \*.$1 -type f ! -path '*/vendor/*' ! -path '*/target/*')
 mkdir = @mkdir -p $(dir $@)
 cp    = @cp $< $@
-print = @echo "\n:::::::::::::::: [$(shell date -u)] $@ ::::::::::::::::"
+print = @printf "\n:::::::::::::::: [$(shell date -u)] $@ ::::::::::::::::\n"
 touch = @touch $@
-fpm   = docker run --rm -it \
+jq    = @docker run --rm -i colstrom/jq
+fpm   = @docker run --rm -it \
 	-v ${PWD}:/tmp \
 	-w /tmp \
 	-u $(shell id -u) \
 	digitalocean/fpm:latest
+go    = docker run --rm -it \
+	-u "$(shell id -u)" \
+	-e "GOOS=$(GOOS)" \
+	-e "GOARCH=$(GOARCH)" \
+	-e "GOPATH=/gopath" \
+	-e "GOCACHE=/gopath/src/$(importpath)/target/.cache/go" \
+	-v "$(CURDIR):/gopath/src/$(importpath)" \
+	-w "/gopath/src/$(importpath)" \
+	golang:1.11.2 \
+	go
 
-now             = $(shell date -u +"%F %T %Z")
-git_revision    = $(shell git rev-parse --short HEAD)
-git_branch      = $(shell git rev-parse --abbrev-ref HEAD)
-git_tag         = $(shell git describe --tags --abbrev=0 2>/dev/null || echo 'v0.0.0')
+now          = $(shell date -u +"%F %T %Z")
+git_revision = $(shell git rev-parse --short HEAD)
+git_branch   = $(shell git rev-parse --abbrev-ref HEAD)
+git_tag      = $(shell git describe --tags --abbrev=0 2>/dev/null || echo 'v0.0.0')
 # git_tag produces v0.0.0-0-g<SHA>. Which is <tag>-<release>-g<SHA> where tag
 # is the most recent tag, release is the amount of commits since the latest
 # tag, and SHA is the SHA of the most recent commit prefixed with a 'g'. We
 # need the format to be 1.0.0-1 so we strip the -g<revision> and the v prefix
 pkg_version = $(subst -g$(git_revision),,$(subst v,,$(shell git describe --tags)))
-ldflags      = '\
+ldflags     = '\
 	-X "main.version=$(git_tag)" \
 	-X "main.revision=$(git_revision)" \
 	-X "main.branch=$(git_branch)" \
@@ -74,8 +85,7 @@ build: $(binary)
 $(binary): $(gofiles)
 	$(print)
 	$(mkdir)
-	GOOS=$(GOOS) GOARCH=$(GOARCH) \
-	     go build \
+	$(go) build \
 	     -ldflags $(ldflags) \
 	     -o "$@" \
 	     ./cmd/$(project)
@@ -105,7 +115,7 @@ test: $(cover_profile)
 $(cover_profile): $(gofiles)
 	$(print)
 	$(mkdir)
-	@go test -coverprofile=$@ ./...
+	@$(go) test -coverprofile=$@ ./...
 
 clean:
 	$(print)
