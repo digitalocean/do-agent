@@ -17,12 +17,12 @@ cp    = @cp $< $@
 print = @printf "\n:::::::::::::::: [$(shell date -u)] $@ ::::::::::::::::\n"
 touch = @touch $@
 jq    = @docker run --rm -i colstrom/jq
-fpm   = @docker run --rm -it \
+fpm   = @docker run --rm -i \
 	-v ${PWD}:/tmp \
 	-w /tmp \
 	-u $(shell id -u) \
 	digitalocean/fpm:latest
-go    = docker run --rm -it \
+go    = docker run --rm -i \
 	-u "$(shell id -u)" \
 	-e "GOOS=$(GOOS)" \
 	-e "GOARCH=$(GOARCH)" \
@@ -179,7 +179,7 @@ $(deb_package): $(base_package)
 		$<
 	chown -R $(USER):$(USER) target
 # print information about the compiled deb package
-	@docker run --rm -it -v ${PWD}:/tmp -w /tmp ubuntu:xenial /bin/bash -c 'dpkg --info $@ && dpkg -c $@'
+	@docker run --rm -i -v ${PWD}:/tmp -w /tmp ubuntu:xenial /bin/bash -c 'dpkg --info $@ && dpkg -c $@'
 
 
 rpm: $(rpm_package)
@@ -200,7 +200,7 @@ $(rpm_package): $(base_package)
 		$<
 	chown -R $(USER):$(USER) target
 # print information about the compiled rpm package
-	@docker run --rm -it -v ${PWD}:/tmp -w /tmp centos:7 rpm -qilp $@
+	@docker run --rm -i -v ${PWD}:/tmp -w /tmp centos:7 rpm -qilp $@
 
 tar: $(tar_package)
 $(tar_package): $(base_package)
@@ -215,7 +215,7 @@ $(tar_package): $(base_package)
 		$<
 	chown -R $(USER):$(USER) target
 # print all files within the archive
-	@docker run --rm -it -v ${PWD}:/tmp -w /tmp ubuntu:xenial tar -ztvf $@
+	@docker run --rm -i -v ${PWD}:/tmp -w /tmp ubuntu:xenial tar -ztvf $@
 
 
 .vault-token:
