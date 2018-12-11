@@ -101,7 +101,7 @@ lint: $(cache)/lint $(cache)/shellcheck
 $(cache)/lint: $(gofiles)
 	$(print)
 	$(mkdir)
-	@(gometalinter) --config=gometalinter.json ./...
+	@$(gometalinter) --config=gometalinter.json ./...
 	$(touch)
 
 shellcheck: $(cache)/shellcheck
