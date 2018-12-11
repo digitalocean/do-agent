@@ -182,7 +182,7 @@ function rebuild_apt_packages() {
 		-v "${PROJECT_ROOT}/sonar-agent.key:/work/sonar-agent.key:ro" \
 		-w /work \
 		-ti \
-		"docker.io/digitalocean/agent-packager-apt" || exit 1
+		"docker.internal.digitalocean.com/eng-insights/agent-packager-apt" || exit 1
 }
 
 function rebuild_yum_packages() {
@@ -196,7 +196,7 @@ function rebuild_yum_packages() {
 		-v "${PROJECT_ROOT}/sonar-agent.key:/work/sonar-agent.key:ro" \
 		-w /work \
 		-ti \
-		"docker.io/digitalocean/agent-packager-yum" || exit 1
+		"docker.internal.digitalocean.com/eng-insights/agent-packager-yum" || exit 1
 }
 
 function pull_spaces() {
