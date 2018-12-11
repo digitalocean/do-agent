@@ -11,12 +11,14 @@ endif
 ## macros ##
 ############
 
-find  = $(shell find . -name \*.$1 -type f ! -path '*/vendor/*' ! -path '*/target/*')
-mkdir = @mkdir -p $(dir $@)
-cp    = @cp $< $@
-print = @printf "\n:::::::::::::::: [$(shell date -u)] $@ ::::::::::::::::\n"
-touch = @touch $@
-jq    = @docker run --rm -i colstrom/jq
+find       = $(shell find . -name \*.$1 -type f ! -path '*/vendor/*' ! -path '*/target/*')
+mkdir      = @mkdir -p $(dir $@)
+cp         = @cp $< $@
+print      = @printf "\n:::::::::::::::: [$(shell date -u)] $@ ::::::::::::::::\n"
+touch      = @touch $@
+jq         = @docker run --rm -i colstrom/jq
+shellcheck = @docker run --rm -i -v "$PWD:/mnt" koalaman/shellcheck:v0.6.0
+
 fpm   = @docker run --rm -i \
 	-v ${PWD}:/tmp \
 	-w /tmp \
@@ -232,3 +234,7 @@ sonar-agent.key: .vault-token
 		docker.internal.digitalocean.com/eng-insights/vault:0.11.5 \
 		read --field gpg secret/agent/packager/key \
 		| cp /dev/stdin $@
+
+.PHONY: deploy
+deploy:
+	./scripts/deploy.sh all

@@ -1,9 +1,11 @@
 #!/usr/bin/env bash
 set -ueo pipefail
+#set -x
 
 ME=$(basename "$0")
 PROJECT_ROOT="$(git rev-parse --show-toplevel)"
 VERSION="${VERSION:-$(cat target/VERSION 2>/dev/null)}"
+PKG_VERSION="$(git describe --tags | grep -oP '[0-9]+\.[0-9]+\.[0-9]+(-[0-9]+)?')"
 GPG_PRIVATE_KEY="$PROJECT_ROOT/sonar-agent.key"
 DOCKER_IMAGE="docker.io/digitalocean/do-agent"
 
@@ -69,16 +71,19 @@ function main() {
 	case "$cmd" in
 		github)
 			check_version
+			check_target_files
 			check_stable
 			deploy_github
 			;;
 		spaces)
 			check_version
+			check_target_files
 			check_stable
 			deploy_spaces
 			;;
 		docker)
 			check_version
+			check_target_files
 			check_stable
 			deploy_docker
 			;;
@@ -91,6 +96,7 @@ function main() {
 			;;
 		all)
 			check_version
+			check_target_files
 			check_stable
 			deploy_github
 			deploy_spaces
@@ -148,13 +154,12 @@ function deploy_spaces() {
 	pull_spaces
 
 	anounce "Moving built deb packages"
-	files=$(target_files | grep -P '.deb$')
-	for file in $files; do
+	for file in $(target_files | grep -P '\.deb$'); do
 		cp "$file" repos/apt/pool/beta/main/d/do-agent/
 	done
 
 	anounce "Moving yum packages"
-	for file in $(target_files | grep -P '.rpm$'); do
+	for file in $(target_files | grep -P '\.rpm$'); do
 		dest=repos/yum-beta/x86_64/
 		[[ "$file" =~ "i386" ]] && \
 			dest=repos/yum-beta/i386/
@@ -255,11 +260,11 @@ function promote_spaces() {
 	pull_spaces
 
 	anounce "Copying deb packages to main channel"
-	cp "$PROJECT_ROOT/repos/apt/pool/beta/main/d/do-agent/do-agent_${VERSION/v}_.deb" "$PROJECT_ROOT/repos/apt/pool/main/main/d/do-agent/"
+	cp "$PROJECT_ROOT/repos/apt/pool/beta/main/d/do-agent/do-agent_${PKG_VERSION}_.deb" "$PROJECT_ROOT/repos/apt/pool/main/main/d/do-agent/"
 
 	anounce "Copying yum packages to main channel"
-	cp "$PROJECT_ROOT/repos/yum-beta/i386/do-agent.${VERSION/v}.i386.rpm" "$PROJECT_ROOT/repos/yum/i386/"
-	cp "$PROJECT_ROOT/repos/yum-beta/x86_64/do-agent.${VERSION/v}.amd64.rpm" "$PROJECT_ROOT/repos/yum/x86_64/"
+	cp "$PROJECT_ROOT/repos/yum-beta/i386/do-agent.${PKG_VERSION}.i386.rpm" "$PROJECT_ROOT/repos/yum/i386/"
+	cp "$PROJECT_ROOT/repos/yum-beta/x86_64/do-agent.${PKG_VERSION}.amd64.rpm" "$PROJECT_ROOT/repos/yum/x86_64/"
 
 	rebuild_apt_packages
 	rebuild_yum_packages
@@ -377,13 +382,12 @@ function deploy_docker() {
 
 # list the artifacts within the target/ directory
 function target_files() {
-	v=${VERSION/v}
-	if ! packages=$(find target/pkg -type f -iname "*$v*"); then
-		abort "No packages for $VERSION were found in target/.  Did you forget to run make?"
-	fi
+	find target/pkg -type f -iname "*${PKG_VERSION}*" || \
+		abort "No packages for $PKG_VERSION were found in target/.  Did you forget to run make?"
+}
 
-	ls target/do-agent_linux_*
-	echo "$packages"
+function check_target_files() {
+	target_files
 }
 
 # call CURL with github authentication
@@ -422,22 +426,27 @@ function cp() {
 	cp -Luv "$src" "$dest" || exit 1
 }
 
-# send a slack notification
+# send a slack notification or fallback to STDERR
 # Usage: notify_slack <success> <msg> [link]
 #
 # Examples:
-#    notify_slack 0 "Deployed to Github failed!"
-#    notify_slack "true" "Success!" "https://github.com/"
+#    notify 0 "Deployed to Github failed!"
+#    notify "true" "Success!" "https://github.com/"
 #
-function notify_slack() {
-	if [ -z "${SLACK_WEBHOOK_URL:-}" ]; then
-		echo "SLACK_WEBHOOK_URL is unset. Not sending notification" > /dev/stderr
-		return 0
-	fi
-
+function notify() {
 	success=${1:-}
 	msg=${2:-}
 	link=${3:-}
+
+	if [ -z "${SLACK_WEBHOOK_URL:-}" ]; then
+		{
+			echo
+			echo "SLACK_WEBHOOK_URL is unset. Falling back to stderr"
+			echo "(success:$success) $msg $link"
+			echo
+		} > /dev/stderr
+		return 0
+	fi
 
 	color="green"
 	[[ "$success" =~ ^(false|0|no)$ ]] && color="red"
@@ -459,7 +468,7 @@ function notify_slack() {
 		},
 		{
 		  "title": "Version",
-		  "value": "${VERSION}",
+		  "value": "${PKG_VERSION}",
 		  "short": true
 		},
 		{
