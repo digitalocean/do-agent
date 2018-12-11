@@ -9,10 +9,10 @@ PKG_VERSION="$(git describe --tags | grep -oP '[0-9]+\.[0-9]+\.[0-9]+(-[0-9]+)?'
 GPG_PRIVATE_KEY="$PROJECT_ROOT/sonar-agent.key"
 DOCKER_IMAGE="docker.io/digitalocean/do-agent"
 
-CI_LOG_URL=""
-if [ -n "${GO_SERVER_URL:-}" ]; then
-	CI_LOG_URL=${GO_SERVER_URL}/tab/${GO_STAGE_NAME}/detail/${GO_PIPELINE_NAME}/${GO_PIPELINE_COUNTER}/${GO_STAGE_NAME}/${GO_STAGE_COUNTER}/${GO_JOB_NAME}
-fi
+# CI_LOG_URL=""
+# if [ -n "${GO_SERVER_URL:-}" ]; then
+# 	CI_LOG_URL=${GO_SERVER_URL}/tab/${GO_STAGE_NAME}/detail/${GO_PIPELINE_NAME}/${GO_PIPELINE_COUNTER}/${GO_STAGE_NAME}/${GO_STAGE_COUNTER}/${GO_JOB_NAME}
+# fi
 
 # display usage for this script
 function usage() {
