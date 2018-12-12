@@ -155,7 +155,7 @@ function deploy_spaces() {
 
 	anounce "Moving built deb packages"
 	for file in $(target_files | grep -P '\.deb$'); do
-		cp "$file" repos/apt/pool/beta/main/d/do-agent/
+		cp -Luv "$file" repos/apt/pool/beta/main/d/do-agent/
 	done
 
 	anounce "Moving yum packages"
@@ -163,13 +163,13 @@ function deploy_spaces() {
 		dest=repos/yum-beta/x86_64/
 		[[ "$file" =~ "i386" ]] && \
 			dest=repos/yum-beta/i386/
-		cp "$file" "$dest"
+		cp -Luv "$file" "$dest"
 	done
 
 	rebuild_apt_packages
-
 	rebuild_yum_packages
 
+	push_spaces
 }
 
 function rebuild_apt_packages() {
@@ -260,11 +260,11 @@ function promote_spaces() {
 	pull_spaces
 
 	anounce "Copying deb packages to main channel"
-	cp "$PROJECT_ROOT/repos/apt/pool/beta/main/d/do-agent/do-agent_${PKG_VERSION}_.deb" "$PROJECT_ROOT/repos/apt/pool/main/main/d/do-agent/"
+	cp -Luv "$PROJECT_ROOT/repos/apt/pool/beta/main/d/do-agent/do-agent_${PKG_VERSION}_.deb" "$PROJECT_ROOT/repos/apt/pool/main/main/d/do-agent/"
 
 	anounce "Copying yum packages to main channel"
-	cp "$PROJECT_ROOT/repos/yum-beta/i386/do-agent.${PKG_VERSION}.i386.rpm" "$PROJECT_ROOT/repos/yum/i386/"
-	cp "$PROJECT_ROOT/repos/yum-beta/x86_64/do-agent.${PKG_VERSION}.amd64.rpm" "$PROJECT_ROOT/repos/yum/x86_64/"
+	cp -Luv "$PROJECT_ROOT/repos/yum-beta/i386/do-agent.${PKG_VERSION}.i386.rpm" "$PROJECT_ROOT/repos/yum/i386/"
+	cp -Luv "$PROJECT_ROOT/repos/yum-beta/x86_64/do-agent.${PKG_VERSION}.amd64.rpm" "$PROJECT_ROOT/repos/yum/x86_64/"
 
 	rebuild_apt_packages
 	rebuild_yum_packages
@@ -381,12 +381,11 @@ function deploy_docker() {
 
 # list the artifacts within the target/ directory
 function target_files() {
-	find target/pkg -type f -iname "*${PKG_VERSION}*" || \
-		abort "No packages for $PKG_VERSION were found in target/.  Did you forget to run make?"
+	find target/pkg -type f -iname "*${PKG_VERSION}*" | grep .
 }
 
 function check_target_files() {
-	target_files
+	target_files || abort "No packages for $PKG_VERSION were found in target/.  Did you forget to run make?"
 }
 
 # call CURL with github authentication
@@ -418,12 +417,6 @@ function anounce() {
 	echo ":::::::::::::::::::::::::::::::::::::::::::::::::: $msg ::::::::::::::::::::::::::::::::::::::::::::::::::" > /dev/stderr
 }
 
-
-function cp() {
-	src=${1:-}
-	dest=${2:-}
-	cp -Luv "$src" "$dest" || exit 1
-}
 
 # send a slack notification or fallback to STDERR
 # Usage: notify_slack <success> <msg> [link]
