@@ -222,11 +222,11 @@ function push_spaces() {
 # interact with the awscli via docker
 function aws() {
 	docker run \
-		--rm -t "$(tty &>/dev/null && echo '-i')" \
+		--rm -i \
 		-e "AWS_ACCESS_KEY_ID=${SPACES_ACCESS_KEY_ID}" \
 		-e "AWS_SECRET_ACCESS_KEY=${SPACES_SECRET_ACCESS_KEY}" \
 		-e "AWS_DEFAULT_REGION=nyc3" \
-		-v "$(pwd):/project" \
+		-v "$PROJECT_DIR:/project" \
 		-w /project \
 		-u "$(id -u)" \
 		mesosphere/aws-cli \
