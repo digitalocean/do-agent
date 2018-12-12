@@ -176,12 +176,11 @@ function rebuild_apt_packages() {
 	verify_gpg_key
 	anounce "Rebuilding apt package indexes"
 	docker run \
-		--rm \
+		--rm -i \
 		--net=host \
 		-v "${PROJECT_ROOT}/repos/apt:/work/apt" \
 		-v "${PROJECT_ROOT}/sonar-agent.key:/work/sonar-agent.key:ro" \
 		-w /work \
-		-ti \
 		"docker.internal.digitalocean.com/eng-insights/agent-packager-apt" || exit 1
 }
 
@@ -189,13 +188,12 @@ function rebuild_yum_packages() {
 	verify_gpg_key
 	anounce "Rebuilding yum package indexes"
 	docker run \
-		--rm \
+		--rm -i \
 		--net=host \
 		-v "${PROJECT_ROOT}/repos/yum:/work/yum" \
 		-v "${PROJECT_ROOT}/repos/yum-beta:/work/yum-beta" \
 		-v "${PROJECT_ROOT}/sonar-agent.key:/work/sonar-agent.key:ro" \
 		-w /work \
-		-ti \
 		"docker.internal.digitalocean.com/eng-insights/agent-packager-yum" || exit 1
 }
 
