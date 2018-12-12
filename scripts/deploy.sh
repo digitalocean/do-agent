@@ -226,7 +226,7 @@ function aws() {
 		-e "AWS_ACCESS_KEY_ID=${SPACES_ACCESS_KEY_ID}" \
 		-e "AWS_SECRET_ACCESS_KEY=${SPACES_SECRET_ACCESS_KEY}" \
 		-e "AWS_DEFAULT_REGION=nyc3" \
-		-v "$PROJECT_DIR:/project" \
+		-v "$PROJECT_ROOT:/project" \
 		-w /project \
 		-u "$(id -u)" \
 		mesosphere/aws-cli \
