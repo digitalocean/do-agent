@@ -153,6 +153,8 @@ function verify_gpg_key() {
 function deploy_spaces() {
 	pull_spaces
 
+	purge_stale_packages
+
 	anounce "Moving built deb packages"
 	for file in $(target_files | grep -P '\.deb$'); do
 		cp -Luv "$file" repos/apt/pool/beta/main/d/do-agent/
@@ -170,6 +172,15 @@ function deploy_spaces() {
 	rebuild_yum_packages
 
 	push_spaces
+}
+
+# remove packages of the same version with a previous release
+# find any files in the beta channels that are VERSION but be
+# careful not to delete 1.0.11 when searching for 1.0.1
+function purge_stale_packages() {
+	anounce "purging stale packages"
+	find repos/apt/pool/beta/ -type f -iname "do-agent_${VERSION/v}[^\d]*.deb" -exec rm -rfv {} \;
+	find repos/yum-beta/ -type f -iname "do-agent.${VERSION/v}[^\d]*.rpm" -exec rm -rfv {} \;
 }
 
 function rebuild_apt_packages() {
@@ -357,7 +368,8 @@ function create_github_release() {
 }
 
 function docker_login() {
-	docker login -u "$DOCKER_USER" --password-stdin <<<"$DOCKER_PASSWORD"  
+	# gocd has an old version of docker that does not have --pasword-stdin
+	docker login -u "$DOCKER_USER" -p "$DOCKER_PASSWORD"
 }
 
 # build and push the RC docker hub image. This image is considered unstable
