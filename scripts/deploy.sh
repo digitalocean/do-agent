@@ -215,6 +215,7 @@ function pull_spaces() {
 		sync \
 		s3://insights/ \
 		./repos/ \
+		--delete \
 		--acl public-read
 }
 
@@ -225,6 +226,7 @@ function push_spaces() {
 		sync \
 		./repos/ \
 		s3://insights/ \
+		--delete \
 		--acl public-read
 }
 
