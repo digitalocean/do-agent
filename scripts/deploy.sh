@@ -4,10 +4,9 @@ set -ueo pipefail
 
 ME=$(basename "$0")
 PROJECT_ROOT="$(git rev-parse --show-toplevel)"
-VERSION="${VERSION:-$(cat target/VERSION 2>/dev/null)}"
-PKG_VERSION="$(git describe --tags | grep -oP '[0-9]+\.[0-9]+\.[0-9]+(-[0-9]+)?')"
 GPG_PRIVATE_KEY="$PROJECT_ROOT/sonar-agent.key"
 DOCKER_IMAGE="docker.io/digitalocean/do-agent"
+VERSION=${VERSION:-$(cat target/VERSION || true)}
 
 # CI_LOG_URL=""
 # if [ -n "${GO_SERVER_URL:-}" ]; then
@@ -72,24 +71,24 @@ function main() {
 		github)
 			check_version
 			check_target_files
-			check_stable
+			check_released
 			deploy_github
 			;;
 		spaces)
 			check_version
 			check_target_files
-			check_stable
+			check_released
 			deploy_spaces
 			;;
 		docker)
 			check_version
 			check_target_files
-			check_stable
+			check_released
 			deploy_docker
 			;;
 		promote)
 			check_version
-			check_stable
+			check_released
 			promote_github
 			promote_spaces
 			promote_docker
@@ -97,9 +96,9 @@ function main() {
 		all)
 			check_version
 			check_target_files
-			check_stable
-			deploy_github
+			check_released
 			deploy_spaces
+			deploy_github
 			deploy_docker
 			;;
 		help)
@@ -107,43 +106,40 @@ function main() {
 			exit 0
 			;;
 		*)
-			{
-				echo
-				echo "Unknown command '$cmd'"
-				echo
-				usage
-			} > /dev/stderr
-			exit 1
+			abort "Unknown command '$cmd'. See $ME --help for help"
 			;;
 	esac
 }
 
 # verify the VERSION env var
 function check_version() {
-	[[ "${VERSION}" =~ v[0-9]+\.[0-9]+\.[0-9]+ ]] || \
-		abort "VERSION env var should be semver format (e.g. v0.0.1)"
+	[[ "${VERSION:-}" =~ [0-9]+\.[0-9]+\.[0-9]+ ]] || \
+		abort "VERSION is required and should be semver format (e.g. 1.2.34)"
 }
 
-# if a release with the VERSION tag is already published without the prerelease
-# flag set to true then we cannot deploy or we risk overriding binaries that
-# have already been considered stable. At this point a new tag with an
-# incremented patch version is required. 
-#
-# This is not considered an error. It just means there is no additional deploy
-# necessary
-function check_stable() {
-	stable_release=$(github_curl \
-		"https://api.github.com/repos/digitalocean/do-agent/releases" \
-		| jq -r ".[] | select(.tag_name == \"$VERSION\") | select(.prerelease == false) | .id")
-	if [ -n "$stable_release" ]; then
-		{
-			echo
-			echo "Github release '$VERSION' has already been released to main. So it this tag can no longer be deployed."
-			echo "To deploy again you must add a new tag."
-			echo
-		} > /dev/stderr
-		exit 0
+# if a release with the VERSION tag is already published then we cannot deploy
+# this version over the previous release.
+function check_released() {
+	if [[ "${FORCE_RELEASE:-}" =~ ^(y|yes|1|true)$ ]]; then
+		echo
+		echo "WARNING! forcing a release of $VERSION"
+		echo
+		return 0
 	fi
+
+	status=$(curl -LI -SsL "https://insights.nyc3.digitaloceanspaces.com/yum-beta/x86_64/do-agent.${VERSION}.amd64.rpm" | grep 'HTTP/1.1')
+
+	case "$status" in
+		*'HTTP/1.1 404 Not Found'*)
+			return 0
+			;;
+		*'HTTP/1.1 200 OK'*)
+			abort "'$VERSION' has already been released. So it this tag can no longer be deployed. To deploy again you must add a new tag or use pass FORCE_RELEASE=1."
+			;;
+		*)
+			abort "Failed to check if a stable version already exists. Try again? got -> $status"
+			;;
+	esac
 }
 
 function verify_gpg_key() {
@@ -153,15 +149,13 @@ function verify_gpg_key() {
 function deploy_spaces() {
 	pull_spaces
 
-	purge_stale_packages
+	anounce "Copying apt and yum packages"
 
-	anounce "Moving built deb packages"
-	for file in $(target_files | grep -P '\.deb$'); do
+	target_files | grep -P '\.deb$' | while IFS= read -r file; do
 		cp -Luv "$file" repos/apt/pool/beta/main/d/do-agent/
 	done
 
-	anounce "Moving yum packages"
-	for file in $(target_files | grep -P '\.rpm$'); do
+	target_files | grep -P '\.rpm$' | while IFS= read -r file; do
 		dest=repos/yum-beta/x86_64/
 		[[ "$file" =~ "i386" ]] && \
 			dest=repos/yum-beta/i386/
@@ -174,15 +168,6 @@ function deploy_spaces() {
 	push_spaces
 }
 
-# remove packages of the same version with a previous release
-# find any files in the beta channels that are VERSION but be
-# careful not to delete 1.0.11 when searching for 1.0.1
-function purge_stale_packages() {
-	anounce "purging stale packages"
-	find repos/apt/pool/beta/ -type f -iname "do-agent_${VERSION/v}[^\d]*.deb" -exec rm -rfv {} \;
-	find repos/yum-beta/ -type f -iname "do-agent.${VERSION/v}[^\d]*.rpm" -exec rm -rfv {} \;
-}
-
 function rebuild_apt_packages() {
 	verify_gpg_key
 	anounce "Rebuilding apt package indexes"
@@ -192,7 +177,8 @@ function rebuild_apt_packages() {
 		-v "${PROJECT_ROOT}/repos/apt:/work/apt" \
 		-v "${PROJECT_ROOT}/sonar-agent.key:/work/sonar-agent.key:ro" \
 		-w /work \
-		"docker.internal.digitalocean.com/eng-insights/agent-packager-apt" || exit 1
+		"docker.internal.digitalocean.com/eng-insights/agent-packager-apt" \
+		|| abort "Failed to rebuild apt package indexes"
 }
 
 function rebuild_yum_packages() {
@@ -205,7 +191,8 @@ function rebuild_yum_packages() {
 		-v "${PROJECT_ROOT}/repos/yum-beta:/work/yum-beta" \
 		-v "${PROJECT_ROOT}/sonar-agent.key:/work/sonar-agent.key:ro" \
 		-w /work \
-		"docker.internal.digitalocean.com/eng-insights/agent-packager-yum" || exit 1
+		"docker.internal.digitalocean.com/eng-insights/agent-packager-yum" \
+		|| abort "Failed to rebuild yum package indexes"
 }
 
 function pull_spaces() {
@@ -215,6 +202,7 @@ function pull_spaces() {
 		sync \
 		s3://insights/ \
 		./repos/ \
+		--quiet \
 		--delete \
 		--acl public-read
 }
@@ -226,7 +214,6 @@ function push_spaces() {
 		sync \
 		./repos/ \
 		s3://insights/ \
-		--delete \
 		--acl public-read
 }
 
@@ -248,9 +235,9 @@ function aws() {
 # deploy the compiled binaries and packages to github releases
 function deploy_github() {
 	if ! create_github_release ; then
-		echo "Aborting github deploy"
-		exit 1
+		abort "Github deploy failed"
 	fi
+
 	upload_url=$(github_asset_upload_url)
 
 	for file in $(target_files); do
@@ -270,12 +257,10 @@ function deploy_github() {
 function promote_spaces() {
 	pull_spaces
 
-	anounce "Copying deb packages to main channel"
-	cp -Luv "$PROJECT_ROOT/repos/apt/pool/beta/main/d/do-agent/do-agent_${PKG_VERSION}_.deb" "$PROJECT_ROOT/repos/apt/pool/main/main/d/do-agent/"
-
-	anounce "Copying yum packages to main channel"
-	cp -Luv "$PROJECT_ROOT/repos/yum-beta/i386/do-agent.${PKG_VERSION}.i386.rpm" "$PROJECT_ROOT/repos/yum/i386/"
-	cp -Luv "$PROJECT_ROOT/repos/yum-beta/x86_64/do-agent.${PKG_VERSION}.amd64.rpm" "$PROJECT_ROOT/repos/yum/x86_64/"
+	anounce "Copying deb and rpm packages to main channels"
+	cp -Luv "$PROJECT_ROOT/repos/apt/pool/beta/main/d/do-agent/do-agent_${VERSION}_.deb" "$PROJECT_ROOT/repos/apt/pool/main/main/d/do-agent/"
+	cp -Luv "$PROJECT_ROOT/repos/yum-beta/i386/do-agent.${VERSION}.i386.rpm" "$PROJECT_ROOT/repos/yum/i386/"
+	cp -Luv "$PROJECT_ROOT/repos/yum-beta/x86_64/do-agent.${VERSION}.amd64.rpm" "$PROJECT_ROOT/repos/yum/x86_64/"
 
 	rebuild_apt_packages
 	rebuild_yum_packages
@@ -284,6 +269,8 @@ function promote_spaces() {
 }
 
 function promote_github() {
+	anounce "Removing prerelease flag from github release"
+
 	github_curl \
 		-D /dev/stderr \
 		-X PATCH \
@@ -292,14 +279,15 @@ function promote_github() {
 }
 
 function promote_docker() {
+	anounce "Tagging docker $VERSION-rc as $VERSION"
+
 	docker_login
-	local version=${VERSION/v}
-	local rc="$DOCKER_IMAGE:$version-rc"
-	IFS=. read -r major minor _ <<<"$version"
+	local rc="$DOCKER_IMAGE:$VERSION-rc"
+	IFS=. read -r major minor _ <<<"$VERSION"
 
 	docker pull "$rc"
 
-	tags="latest $major $major.$minor $version"
+	tags="latest $major $major.$minor $VERSION"
 	for tag in $tags; do
 		docker tag "$rc" "$DOCKER_IMAGE:$tag"
 		docker push "$DOCKER_IMAGE:$tag"
@@ -331,7 +319,8 @@ function github_asset_upload_url() {
 function github_release_url() {
 	github_curl \
 		"https://api.github.com/repos/digitalocean/do-agent/releases/tags/$VERSION" \
-		| jq -r '. | select(.prerelease == true) | "https://api.github.com/repos/digitalocean/do-agent/releases/\(.id)"'
+		| jq -r '. | "https://api.github.com/repos/digitalocean/do-agent/releases/\(.id)"' \
+		| grep .
 }
 
 
@@ -350,23 +339,27 @@ function rm_old_assets() {
 
 # create a github release for VERSION
 function create_github_release() {
-	if [ -n "$(github_release_url)" ]; then
+	if github_release_url; then
 		echo "Github release exists $VERSION"
 		# we cannot upload the same asset twice so we have to delete
 		# the old assets before we can commense with uploads
-		rm_old_assets
-	else
-		echo "Creating Github release $VERSION"
-		data="{ \"tag_name\": \"$VERSION\", \"prerelease\": true }"
-		echo "$data"
-
-		github_curl \
-			-o /dev/null \
-			-X POST \
-			-H 'Content-Type: application/json' \
-			-d "$data" \
-			https://api.github.com/repos/digitalocean/do-agent/releases
+		rm_old_assets || abort "failed to purge Github release assets"
+		return 0
 	fi
+
+	echo "Creating Github release $VERSION"
+
+	data=$(cat <<-EOF
+	{ "tag_name": "$VERSION", "prerelease": true, "target_commitish": "beta" }
+	EOF
+	)
+	echo "$data"
+	github_curl \
+		-o /dev/null \
+		-X POST \
+		-H 'Content-Type: application/json' \
+		-d "$data" \
+		https://api.github.com/repos/digitalocean/do-agent/releases
 }
 
 function docker_login() {
@@ -377,10 +370,11 @@ function docker_login() {
 # build and push the RC docker hub image. This image is considered unstable
 # and should only be used for testing purposes
 function deploy_docker() {
+	anounce "Pushing docker images"
 	docker_login
 
 	docker build . -t "$DOCKER_IMAGE:unstable"
-	tags="${VERSION/v}-rc"
+	tags="${VERSION}-rc"
 
 	for tag in $tags; do
 		docker tag "$DOCKER_IMAGE:unstable" "$DOCKER_IMAGE:$tag"
@@ -393,11 +387,11 @@ function deploy_docker() {
 
 # list the artifacts within the target/ directory
 function target_files() {
-	find target/pkg -type f -iname "*${PKG_VERSION}*" | grep .
+	find target/pkg -type f -iname "do-agent[._]${VERSION}[._]*" | grep .
 }
 
 function check_target_files() {
-	target_files || abort "No packages for $PKG_VERSION were found in target/.  Did you forget to run make?"
+	target_files || abort "No packages for $VERSION were found in target/.  Did you forget to run make?"
 }
 
 # call CURL with github authentication
@@ -472,7 +466,7 @@ function notify() {
 		},
 		{
 		  "title": "Version",
-		  "value": "${PKG_VERSION}",
+		  "value": "${VERSION}",
 		  "short": true
 		},
 		{

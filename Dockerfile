@@ -6,7 +6,7 @@ RUN set -x && \
         apt-get install -y ca-certificates && \
         apt-get autoclean
 
-ADD target/do-agent_linux_amd64 /bin/do-agent
+ADD target/do-agent-linux-amd64 /bin/do-agent
 
 RUN mkdir -p /host
 

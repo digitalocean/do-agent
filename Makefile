@@ -11,7 +11,6 @@ endif
 ## macros ##
 ############
 
-find         = $(shell find . -name \*.$1 -type f ! -path '*/vendor/*' ! -path '*/target/*')
 mkdir        = @mkdir -p $(dir $@)
 cp           = @cp $< $@
 print        = @printf "\n:::::::::::::::: [$(shell date -u)] $@ ::::::::::::::::\n"
@@ -20,8 +19,12 @@ jq           = @docker run --rm -i colstrom/jq
 shellcheck   = @docker run --rm -i -v "$(CURDIR):$(CURDIR)" -w "$(CURDIR)" -u $(shell id -u) koalaman/shellcheck:v0.6.0
 gometalinter = @docker run --rm -i -v "$(CURDIR):/go/src/$(importpath)" -w "/go/src/$(importpath)" -u $(shell id -u) digitalocean/gometalinter:2.0.11
 fpm          = @docker run --rm -i -v "$(CURDIR):$(CURDIR)" -w "$(CURDIR)" -u $(shell id -u) digitalocean/fpm:latest
+now          = $(shell date -u)
+git_rev      = $(shell git rev-parse --short HEAD)
+git_tag      = $(subst v,,$(shell git describe --tags --abbrev=0))
+pkg_version  = $(git_tag)
 
-go    = docker run --rm -i \
+go = docker run --rm -i \
 	-u "$(shell id -u)" \
 	-e "GOOS=$(GOOS)" \
 	-e "GOARCH=$(GOARCH)" \
@@ -32,19 +35,9 @@ go    = docker run --rm -i \
 	golang:1.11.2 \
 	go
 
-now          = $(shell date -u +"%F %T %Z")
-git_revision = $(shell git rev-parse --short HEAD)
-git_branch   = $(shell git rev-parse --abbrev-ref HEAD)
-git_tag      = $(shell git describe --tags --abbrev=0 2>/dev/null || echo 'v0.0.0')
-# git_tag produces v0.0.0-0-g<SHA>. Which is <tag>-<release>-g<SHA> where tag
-# is the most recent tag, release is the amount of commits since the latest
-# tag, and SHA is the SHA of the most recent commit prefixed with a 'g'. We
-# need the format to be 1.0.0-1 so we strip the -g<revision> and the v prefix
-pkg_version = $(subst -g$(git_revision),,$(subst v,,$(shell git describe --tags)))
-ldflags     = '\
-	-X "main.version=$(git_tag)" \
-	-X "main.revision=$(git_revision)" \
-	-X "main.branch=$(git_branch)" \
+ldflags = '\
+	-X "main.version=$(pkg_version)" \
+	-X "main.revision=$(git_rev)" \
 	-X "main.buildDate=$(now)" \
 '
 
@@ -61,10 +54,9 @@ importpath      := github.com/digitalocean/$(project)# import path used in gocod
 gofiles         := $(shell find -type f -iname '*.go' ! -path './vendor/*')
 vendorgofiles   := $(shell find -type f -iname '*.go' -path './vendor/*')
 shellscripts    := $(shell find -type f -iname '*.sh' ! -path './repos/*' ! -path './vendor/*')
-
 # the name of the binary built with local resources
-binary             := $(out)/$(project)_$(GOOS)_$(GOARCH)
-cover_profile      := $(out)/.coverprofile
+binary          := $(out)/$(project)-$(GOOS)-$(GOARCH)
+cover_profile   := $(out)/.coverprofile
 
 # output packages
 # deb files should end with _version_arch.deb
@@ -139,7 +131,6 @@ $(base_package): $(binary)
 	@$(fpm) --output-type deb \
 		--verbose \
 		--input-type dir \
-		--epoch $(epoch) \
 		--force \
 		--architecture $(PKG_ARCH) \
 		--package $@ \
@@ -185,6 +176,7 @@ $(rpm_package): $(base_package)
 	@$(fpm) \
 		--verbose \
 		--output-type rpm \
+		--epoch $(epoch) \
 		--input-type deb \
 		--depends cronie \
 		--conflicts do-agent \
@@ -230,9 +222,9 @@ sonar-agent.key: .vault-token
 		| cp /dev/stdin $@
 
 .PHONY: deploy
-deploy:
+deploy: $(package) $(sonar-agent.key)
 	./scripts/deploy.sh all
 
 .PHONY: promote
-promote:
+promote: $(package) $(sonar-agent.key)
 	./scripts/deploy.sh promote
