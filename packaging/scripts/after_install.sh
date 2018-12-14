@@ -75,7 +75,7 @@ init_systemd() {
 	[Service]
 	User=${NOBODY_USER}
 	Group=${NOBODY_GROUP}
-	ExecStart=/usr/local/bin/do-agent
+	ExecStart=/opt/digitalocean/bin/do-agent
 	Restart=always
 
 	OOMScoreAdjust=-900
@@ -111,23 +111,13 @@ init_upstart() {
 	respawn
 
 	script
-	  exec su -s /bin/sh -c 'exec "\$0" "\$@"' ${NOBODY_USER} -- /usr/local/bin/do-agent --syslog
+	  exec su -s /bin/sh -c 'exec "\$0" "\$@"' ${NOBODY_USER} -- /opt/digitalocean/bin/do-agent --syslog
 	end script
 	EOF
 	initctl reload-configuration
 	initctl stop ${SVC_NAME} || true
 	initctl start ${SVC_NAME}
 }
-
-
-dist() {
-	if [  -f /etc/os-release  ]; then
-		awk -F= '$1 == "ID" {gsub("\"", ""); print$2}' /etc/os-release
-	elif [ -f /etc/redhat-release ]; then
-		awk '{print tolower($1)}' /etc/redhat-release
-	fi
-}
-
 
 # never put anything below this line. This is to prevent any partial execution
 # if curl ever interrupts the download prematurely. In that case, this script
