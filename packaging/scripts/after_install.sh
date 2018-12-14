@@ -14,6 +14,8 @@ SVC_NAME=do-agent
 NOBODY_USER=nobody
 NOBODY_GROUP=nogroup
 CRON=/etc/cron.daily/do-agent
+INIT_SVC_FILE="/etc/init/${SVC_NAME}.conf"
+SYSTEMD_SVC_FILE="/etc/systemd/system/${SVC_NAME}.service"
 
 # fedora uses nobody instead of nogroup
 getent group nobody 2> /dev/null \
@@ -50,7 +52,7 @@ update_selinux() {
 
 patch_updates() {
 	# make sure we have the latest
-	[ -f "${CRON}" ] && rm -rf "${CRON}"
+	[ -f "${CRON}" ] && rm -fv "${CRON}"
 	script="${INSTALL_DIR}/scripts/update.sh"
 
 	cat <<-EOF > "${CRON}"
@@ -64,9 +66,10 @@ patch_updates() {
 }
 
 init_systemd() {
+	systemctl stop ${SVC_NAME} || true
+	rm -fv ${SYSTEMD_SVC_FILE}
 	# cannot use symlink because of an old bug https://bugzilla.redhat.com/show_bug.cgi?id=955379
-	SVC=/etc/systemd/system/${SVC_NAME}.service
-	cat <<-EOF > "$SVC"
+	cat <<-EOF > "${SYSTEMD_SVC_FILE}"
 	[Unit]
 	Description=DigitalOcean do-agent agent
 	After=network-online.target
@@ -90,13 +93,14 @@ init_systemd() {
 	EOF
 
 	# enable --now is unsupported on older versions of debian/systemd
-	systemctl enable ${SVC}
-	systemctl stop ${SVC_NAME} || true
+	systemctl enable ${SYSTEMD_SVC_FILE}
 	systemctl start ${SVC_NAME}
 }
 
 init_upstart() {
-	cat <<-EOF > /etc/init/${SVC_NAME}.conf
+	initctl stop ${SVC_NAME} || true
+	rm -fv ${INIT_SVC_FILE}
+	cat <<-EOF > ${INIT_SVC_FILE}
 	# do-agent - An agent that collects system metrics.
 	#
 	# An agent that collects system metrics and transmits them to DigitalOcean.
@@ -115,7 +119,6 @@ init_upstart() {
 	end script
 	EOF
 	initctl reload-configuration
-	initctl stop ${SVC_NAME} || true
 	initctl start ${SVC_NAME}
 }
 
