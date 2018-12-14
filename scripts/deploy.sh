@@ -428,7 +428,7 @@ function create_github_release() {
 	anounce "Creating Github release $VERSION"
 
 	data=$(cat <<-EOF
-	{ "tag_name": "$VERSION", "prerelease": true, "target_commitish": "beta" }
+	{ "tag_name": "$VERSION", "prerelease": true, "target_commitish": "master" }
 	EOF
 	)
 	echo "POST: $data"
