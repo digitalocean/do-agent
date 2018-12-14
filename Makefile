@@ -143,7 +143,7 @@ $(base_package): $(binary)
 		--log info \
 		--after-install packaging/scripts/after_install.sh \
 		--after-remove packaging/scripts/after_remove.sh \
-		$<=/usr/local/bin/do-agent \
+		$<=/opt/digitalocean/bin/do-agent \
 		scripts/update.sh=/opt/digitalocean/do-agent/scripts/update.sh
 .INTERMEDIATE: $(base_package)
 
