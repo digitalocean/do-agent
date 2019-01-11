@@ -8,15 +8,18 @@ import (
 	"strings"
 	"time"
 
+	"github.com/pkg/errors"
+	"github.com/prometheus/client_golang/prometheus"
+	"gopkg.in/alecthomas/kingpin.v2"
+
+	"github.com/digitalocean/do-agent/internal/flags"
 	"github.com/digitalocean/do-agent/internal/log"
+	"github.com/digitalocean/do-agent/internal/process"
 	"github.com/digitalocean/do-agent/pkg/clients/tsclient"
 	"github.com/digitalocean/do-agent/pkg/collector"
 	"github.com/digitalocean/do-agent/pkg/decorate"
 	"github.com/digitalocean/do-agent/pkg/decorate/compat"
 	"github.com/digitalocean/do-agent/pkg/writer"
-	"github.com/pkg/errors"
-	"github.com/prometheus/client_golang/prometheus"
-	"gopkg.in/alecthomas/kingpin.v2"
 )
 
 var (
@@ -135,7 +138,13 @@ func newTimeseriesClient(ctx context.Context) (*WrappedTSClient, error) {
 // includes node_exporter and buildInfo for each remote target
 func initCollectors() []prometheus.Collector {
 	// buildInfo provides build information for tracking metrics internally
-	cols := []prometheus.Collector{buildInfo}
+	cols := []prometheus.Collector{
+		buildInfo,
+	}
+
+	if !flags.NoProcessCollector {
+		cols = append(cols, process.NewProcessCollector())
+	}
 
 	// create the default DO agent to collect metrics about
 	// this device
