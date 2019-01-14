@@ -31,12 +31,12 @@ SNYDER_SSH_FINGERPRINT="47:31:9b:8b:87:a7:2d:26:79:17:87:83:53:65:d4:b4"
 # shellcheck disable=SC1117
 USER_DATA_DEB="#!/usr/bin/env bash \n\
 [ -z \`command -v curl\` ] && apt-get -qq update && apt-get install -q -y curl \n\
-curl -sL https://insights.nyc3.cdn.digitaloceanspaces.com/do-agent-install.sh | sudo bash"
+curl -sL https://insights.nyc3.cdn.digitaloceanspaces.com/install.sh | sudo bash"
 
 # shellcheck disable=SC1117
 USER_DATA_RPM="#!/usr/bin/env bash \n\
 [ -z \`command -v curl\` ] && yum -y install curl \n\
-curl -sL https://insights.nyc3.cdn.digitaloceanspaces.com/do-agent-install.sh | sudo bash"
+curl -sL https://insights.nyc3.cdn.digitaloceanspaces.com/install.sh | sudo bash"
 
 
 function main() {
@@ -142,7 +142,9 @@ function command_status() {
 # ssh to all droplets and run yum/apt update to upgrade to the latest published
 # version of do-agent
 function command_update() {
-	command_exec "/bin/bash /opt/digitalocean/do-agent/scripts/update.sh"
+	exec_rpm "yum -q -y update do-agent"
+	exec_deb "apt-get -qq update"
+	exec_deb "apt-get -qq install --only-upgrade do-agent"
 }
 
 # ssh to all droplets and execute a command

@@ -61,13 +61,12 @@ patch_updates() {
 	EOF
 
 	chmod a+x "${CRON}"
-
-	echo "cron installed"
 }
 
 init_systemd() {
-	systemctl stop ${SVC_NAME} || true
-	rm -fv ${SYSTEMD_SVC_FILE}
+	systemctl stop "${SYSTEMD_SVC_FILE}" || true
+	# --now is unsupported on older versions of debian/systemd
+	systemctl disable "${SYSTEMD_SVC_FILE}" || true
 	# cannot use symlink because of an old bug https://bugzilla.redhat.com/show_bug.cgi?id=955379
 	cat <<-EOF > "${SYSTEMD_SVC_FILE}"
 	[Unit]
@@ -92,7 +91,7 @@ init_systemd() {
 	WantedBy=multi-user.target
 	EOF
 
-	# enable --now is unsupported on older versions of debian/systemd
+	# --now is unsupported on older versions of debian/systemd
 	systemctl enable ${SYSTEMD_SVC_FILE}
 	systemctl start ${SVC_NAME}
 }
