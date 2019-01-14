@@ -8,6 +8,10 @@
 
 set -ue
 
+# optional parameters
+# disable installation of the agent
+NO_INSTALL=${NO_INSTALL:-0}
+
 # team context in the URL of the browser
 CONTEXT=14661f
 OS=$(uname | tr '[:upper:]' '[:lower:]')
@@ -223,11 +227,10 @@ function command_scp() {
 
 	for ip in $(list_ips); do
 		# shellcheck disable=SC2029
-		scp "$src" root@"${ip}":"$dest" &
+		scp -o "UserKnownHostsFile=/dev/null" -o "StrictHostKeyChecking=no" "$src" root@"${ip}":"$dest" &
 	done
 	wait
 }
-
 
 # ssh to all debian-based droplets (ubuntu/debian) and execute a command
 function exec_deb() {
@@ -289,8 +292,12 @@ function create_image() {
 		echo "Creating image $image..."
 	fi
 
-	user_data=${USER_DATA_RPM}
-	[[ "$image" =~ debian|ubuntu ]] && user_data=${USER_DATA_DEB}
+	user_data=""
+
+	if [ "${NO_INSTALL}" == "0" ]; then
+		user_data=${USER_DATA_RPM}
+		[[ "$image" =~ debian|ubuntu ]] && user_data=${USER_DATA_DEB}
+	fi
 
 	body=$(mktemp)
 	cat <<EOF > "$body"
