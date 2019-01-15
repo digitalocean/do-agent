@@ -29,12 +29,12 @@ SNYDER_SSH_FINGERPRINT="47:31:9b:8b:87:a7:2d:26:79:17:87:83:53:65:d4:b4"
 # behavior because it will be added to the JSON request body and
 # executed/expanded on the server
 # shellcheck disable=SC1117
-USER_DATA_DEB="#!/usr/bin/env bash \n\
+USER_DATA_DEB="#!/bin/bash \n\
 [ -z \`command -v curl\` ] && apt-get -qq update && apt-get install -q -y curl \n\
 curl -sL https://insights.nyc3.cdn.digitaloceanspaces.com/install.sh | sudo bash"
 
 # shellcheck disable=SC1117
-USER_DATA_RPM="#!/usr/bin/env bash \n\
+USER_DATA_RPM="#!/bin/bash \n\
 [ -z \`command -v curl\` ] && yum -y install curl \n\
 curl -sL https://insights.nyc3.cdn.digitaloceanspaces.com/install.sh | sudo bash"
 
@@ -189,6 +189,7 @@ function exec_ips() {
 		echo "$(echo
 			echo -n "$(tput setaf 2)>>>> $ip: $(tput sgr 0)"
 			ssh -o "StrictHostKeyChecking no" \
+				-o "UserKnownHostsFile=/dev/null" \
 				-o "LogLevel=ERROR" \
 				"root@${ip}" "${script}" 2>/dev/stdout || true
 		)" &
@@ -229,7 +230,7 @@ function command_scp() {
 
 	for ip in $(list_ips); do
 		# shellcheck disable=SC2029
-		scp -o "UserKnownHostsFile=/dev/null" -o "StrictHostKeyChecking=no" "$src" root@"${ip}":"$dest" &
+		scp -o "UserKnownHostsFile=/dev/null" -o "StrictHostKeyChecking=no" -o "LogLevel=ERROR" "$src" root@"${ip}":"$dest" &
 	done
 	wait
 }
