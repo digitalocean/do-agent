@@ -34,7 +34,7 @@ spec:
     spec:
       containers:
       - name: do-agent
-        image: docker.io/digitalocean/do-agent:1.0.5
+        image: docker.io/digitalocean/do-agent:unstable
         resources:
           limits:
             cpu: 102m
