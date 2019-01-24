@@ -33,7 +33,7 @@ go = docker run --rm -i \
 	-e "GOCACHE=/gopath/src/$(importpath)/target/.cache/go" \
 	-v "$(CURDIR):/gopath/src/$(importpath)" \
 	-w "/gopath/src/$(importpath)" \
-	golang:1.11.2 \
+	golang:1.11.5 \
 	go
 
 ldflags = '\
