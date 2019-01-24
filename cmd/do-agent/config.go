@@ -12,7 +12,6 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"gopkg.in/alecthomas/kingpin.v2"
 
-	"github.com/digitalocean/do-agent/internal/flags"
 	"github.com/digitalocean/do-agent/internal/log"
 	"github.com/digitalocean/do-agent/internal/process"
 	"github.com/digitalocean/do-agent/pkg/clients/tsclient"
@@ -32,6 +31,7 @@ var (
 		debug         bool
 		syslog        bool
 		kubernetes    bool
+		noProcesses   bool
 	}
 
 	// additionalParams is a list of extra command line flags to append
@@ -75,6 +75,9 @@ func init() {
 
 	kingpin.Flag("k8s", "enable DO Kubernetes metrics collection (this must be a DOK8s node)").
 		BoolVar(&config.kubernetes)
+
+	kingpin.Flag("no-collector.processes", "disable processes cpu/memory collection").Default("false").
+		BoolVar(&config.noProcesses)
 }
 
 func checkConfig() error {
@@ -148,7 +151,7 @@ func initCollectors() []prometheus.Collector {
 		buildInfo,
 	}
 
-	if !flags.NoProcessCollector {
+	if !config.noProcesses {
 		cols = append(cols, process.NewProcessCollector())
 	}
 
