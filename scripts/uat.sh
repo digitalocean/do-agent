@@ -183,7 +183,9 @@ function exec_ips() {
 	ips=$1
 	shift
 	script="hostname -s; { $*; }"
-	echo "Dispatching..."
+	echo "================================================"
+	echo "> $*"
+	echo "================================================"
 	for ip in $ips; do
 		# shellcheck disable=SC2029
 		echo "$(echo

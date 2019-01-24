@@ -15,8 +15,6 @@ var (
 	SysfsPath = "/sys"
 	// RootfsPath is the configured path to the rootfs mountpoint
 	RootfsPath = "/"
-	// NoProcessCollector disables the Top Processes collector
-	NoProcessCollector = false
 )
 
 // Init initializes and reads system paths from command line flags
@@ -27,8 +25,6 @@ func Init(args []string) {
 	sysfsPath := app.Flag("path.sysfs", "sysfs mountpoint.").Default("/sys").String()
 	rootfsPath := app.Flag("path.rootfs", "rootfs mountpoint.").Default("/").String()
 
-	noProcesses := app.Flag("disable.processes", "disable top processes collection").Default("false").Bool()
-
 	_, err := app.Parse(args)
 	// this will always error for unknown flags passed in that aren't defined in
 	// this file since we only capture the flags we're interested in. this
@@ -38,5 +34,4 @@ func Init(args []string) {
 	ProcfsPath = *procfsPath
 	SysfsPath = *sysfsPath
 	RootfsPath = *rootfsPath
-	NoProcessCollector = *noProcesses
 }
