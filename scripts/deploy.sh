@@ -136,7 +136,7 @@ function force_release_enabled() {
 
 function cleanup() {
 	if is_enabled "${SKIP_CLEANUP}" ; then
-		anounce "SKIP_CLEANUP is set to ${SKIP_CLEANUP}, skipping this step"
+		announce "SKIP_CLEANUP is set to ${SKIP_CLEANUP}, skipping this step"
 		return
 	fi
 	rm -rf "${PROJECT_ROOT}/repos"
@@ -146,7 +146,7 @@ function cleanup() {
 # this version over the previous release.
 function check_can_deploy_spaces() {
 	force_release_enabled && return 0
-	anounce "Checking if we can deploy spaces"
+	announce "Checking if we can deploy spaces"
 
 	status_code=$(http_status_for "https://insights.nyc3.digitaloceanspaces.com/apt-beta/pool/main/main/d/do-agent/do-agent_${VERSION}_amd64.deb")
 	case $status_code in
@@ -167,7 +167,7 @@ function deploy_spaces() {
 	pull_spaces /
 	backup_spaces
 
-	anounce "Deploying packages to spaces"
+	announce "Deploying packages to spaces"
 	target_files | grep -P '\.deb$' | while IFS= read -r file; do
 		cp -Luv "$file" repos/apt-beta/pool/main/main/d/do-agent/
 	done
@@ -190,12 +190,12 @@ function deploy_spaces() {
 	push_spaces "/apt-beta/dists/main/"
 	push_spaces "/yum-beta/"
 
-	anounce "Deploy spaces completed"
+	announce "Deploy spaces completed"
 }
 
 function rebuild_apt_main_packages() {
 	verify_gpg_key
-	anounce "Rebuilding apt package indexes"
+	announce "Rebuilding apt package indexes"
 	docker run \
 		--rm -i \
 		--net=host \
@@ -208,7 +208,7 @@ function rebuild_apt_main_packages() {
 
 function rebuild_apt_beta_packages() {
 	verify_gpg_key
-	anounce "Rebuilding apt package indexes"
+	announce "Rebuilding apt package indexes"
 	docker run \
 		--rm -i \
 		--net=host \
@@ -221,7 +221,7 @@ function rebuild_apt_beta_packages() {
 
 function rebuild_yum_main_packages() {
 	verify_gpg_key
-	anounce "Rebuilding yum package indexes"
+	announce "Rebuilding yum package indexes"
 	docker run \
 		--rm -i \
 		--net=host \
@@ -234,7 +234,7 @@ function rebuild_yum_main_packages() {
 
 function rebuild_yum_beta_packages() {
 	verify_gpg_key
-	anounce "Rebuilding yum package indexes"
+	announce "Rebuilding yum package indexes"
 	docker run \
 		--rm -i \
 		--net=host \
@@ -259,7 +259,7 @@ function push_spaces() {
 	[ -z "$path" ] && abort "Usage: ${FUNCNAME[0]} <path> [optional aws cli args]"
 	[[ ! "$path" =~ ^/ ]] && abort "<path> must begin with a slash"
 
-	anounce "Syncing Spaces changes to to ${path}"
+	announce "Syncing Spaces changes to to ${path}"
 	aws s3 \
 		--endpoint-url https://nyc3.digitaloceanspaces.com \
 		sync \
@@ -284,7 +284,7 @@ function pull_spaces() {
 	[ -z "$path" ] && abort "Usage: ${FUNCNAME[0]} <path> [optional aws cli args]"
 	[[ ! "$path" =~ ^/ ]] && abort "<path> must begin with a slash"
 
-	anounce "Syncing Spaces to local cache"
+	announce "Syncing Spaces to local cache"
 	aws s3 \
 		--endpoint-url https://nyc3.digitaloceanspaces.com \
 		sync \
@@ -298,9 +298,9 @@ function pull_spaces() {
 # back up the local ./repos/ directory to ams3 Space "insights2"
 # used to keep backups before deploying
 function backup_spaces() {
-	anounce "Backing up Spaces"
+	announce "Backing up Spaces"
 	if is_enabled "${SKIP_BACKUP}" ; then
-		anounce "SKIP_BACKUP is set to ${SKIP_BACKUP}, skipping..."
+		announce "SKIP_BACKUP is set to ${SKIP_BACKUP}, skipping..."
 		return
 	fi
 	pull_spaces /
@@ -349,7 +349,7 @@ function check_can_deploy_github() {
 # deploy the compiled binaries and packages to github releases
 function deploy_github() {
 	check_can_deploy_github
-	anounce "Deploying to Github"
+	announce "Deploying to Github"
 
 	create_github_release || abort "Github deploy failed"
 
@@ -371,7 +371,7 @@ function deploy_github() {
 
 function check_can_promote_spaces() {
 	force_release_enabled && return 0
-	anounce "Checking if we can promote spaces"
+	announce "Checking if we can promote spaces"
 
 	status_code=$(http_status_for "https://insights.nyc3.digitaloceanspaces.com/apt/pool/main/main/d/do-agent/do-agent_${VERSION}_amd64.deb")
 	case $status_code in
@@ -391,7 +391,7 @@ function promote_spaces() {
 	check_can_promote_spaces
 	pull_spaces /
 
-	anounce "Promoting packages"
+	announce "Promoting packages"
 	cp -Luv "$PROJECT_ROOT/repos/apt-beta/pool/main/main/d/do-agent/do-agent_${VERSION}_amd64.deb" "$PROJECT_ROOT/repos/apt/pool/main/main/d/do-agent/"
 	cp -Luv "$PROJECT_ROOT/repos/apt-beta/pool/main/main/d/do-agent/do-agent_${VERSION}_i386.deb" "$PROJECT_ROOT/repos/apt/pool/main/main/d/do-agent/"
 	cp -Luv "$PROJECT_ROOT/repos/yum-beta/i386/do-agent.${VERSION}.i386.rpm" "$PROJECT_ROOT/repos/yum/i386/"
@@ -411,7 +411,7 @@ function promote_spaces() {
 
 function check_can_promote_github() {
 	force_release_enabled && return 0
-	anounce "Checking the state of Github release $VERSION"
+	announce "Checking the state of Github release $VERSION"
 	github_curl \
 		--fail \
 		-D /dev/stderr \
@@ -424,7 +424,7 @@ function check_can_promote_github() {
 function promote_github() {
 	check_can_promote_github
 
-	anounce "Removing prerelease flag from '$VERSION' on Github"
+	announce "Removing prerelease flag from '$VERSION' on Github"
 	github_curl \
 		--fail \
 		-i \
@@ -452,7 +452,7 @@ function check_can_promote_docker() {
 
 function promote_docker() {
 	check_can_promote_docker
-	anounce "Tagging docker $VERSION-rc as $VERSION"
+	announce "Tagging docker $VERSION-rc as $VERSION"
 
 	docker_login
 	local rc="$DOCKER_IMAGE:$VERSION-rc"
@@ -519,7 +519,7 @@ function rm_old_assets() {
 
 # create a github release for VERSION
 function create_github_release() {
-	anounce "Checking for existing Github release"
+	announce "Checking for existing Github release"
 	if github_release_url >/dev/null; then
 		echo "Github release exists $VERSION"
 		# we cannot upload the same asset twice so we have to delete
@@ -528,7 +528,7 @@ function create_github_release() {
 		return 0
 	fi
 
-	anounce "Creating Github release $VERSION"
+	announce "Creating Github release $VERSION"
 
 	data=$(cat <<-EOF
 	{ "tag_name": "$VERSION", "name": "$VERSION", "prerelease": true, "target_commitish": "master" }
@@ -568,7 +568,7 @@ function check_can_deploy_docker() {
 # and should only be used for testing purposes
 function deploy_docker() {
 	check_can_deploy_docker
-	anounce "Pushing docker images"
+	announce "Pushing docker images"
 	docker_login
 
 	docker build . -t "$DOCKER_IMAGE:unstable"
@@ -610,13 +610,13 @@ function abort() {
 }
 
 # print something to STDOUT with formatting
-# Usage: anounce "Some message"
+# Usage: announce "Some message"
 #
 # Examples:
-#    anounce "Begin execution of something"
-#    anounce "All is well"
+#    announce "Begin execution of something"
+#    announce "All is well"
 #
-function anounce() {
+function announce() {
 	msg=${1:-}
 	[ -z "$msg" ] && abort "Usage: ${FUNCNAME[0]} <msg>"
 	echo ":::::::::::::::::::::::::::::::::::::::::::::::::: $msg ::::::::::::::::::::::::::::::::::::::::::::::::::" > /dev/stderr
