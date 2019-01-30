@@ -12,6 +12,7 @@ VERSION_REGEX="[^\\d]${VERSION}[^\\d]"
 FORCE_RELEASE=${FORCE_RELEASE:-0}
 SKIP_BACKUP=${SKIP_BACKUP:-0}
 SKIP_CLEANUP=${SKIP_CLEANUP:-0}
+PACKAGER_VERSION=7307b5c
 
 CI_LOG_URL=""
 [ -n "${CI_BASE_URL:-}" ] && CI_LOG_URL="${CI_BASE_URL}/tab/build/detail/${GO_PIPELINE_NAME}/${GO_PIPELINE_COUNTER}/${GO_STAGE_NAME}/${GO_STAGE_COUNTER}/${GO_JOB_NAME}"
@@ -202,7 +203,7 @@ function rebuild_apt_main_packages() {
 		-v "${PROJECT_ROOT}/repos/apt:/work/apt" \
 		-v "${PROJECT_ROOT}/sonar-agent.key:/work/sonar-agent.key:ro" \
 		-w /work \
-		"docker.internal.digitalocean.com/eng-insights/agent-packager-apt:5b0c797" \
+		"docker.internal.digitalocean.com/eng-insights/agent-packager-apt:${PACKAGER_VERSION}" \
 		|| abort "Failed to rebuild apt package indexes"
 }
 
@@ -215,7 +216,7 @@ function rebuild_apt_beta_packages() {
 		-v "${PROJECT_ROOT}/repos/apt-beta:/work/apt" \
 		-v "${PROJECT_ROOT}/sonar-agent.key:/work/sonar-agent.key:ro" \
 		-w /work \
-		"docker.internal.digitalocean.com/eng-insights/agent-packager-apt:5b0c797" \
+		"docker.internal.digitalocean.com/eng-insights/agent-packager-apt:${PACKAGER_VERSION}" \
 		|| abort "Failed to rebuild apt package indexes"
 }
 
@@ -228,7 +229,7 @@ function rebuild_yum_main_packages() {
 		-v "${PROJECT_ROOT}/repos/yum:/work/yum" \
 		-v "${PROJECT_ROOT}/sonar-agent.key:/work/sonar-agent.key:ro" \
 		-w /work \
-		"docker.internal.digitalocean.com/eng-insights/agent-packager-yum:5b0c797" \
+		"docker.internal.digitalocean.com/eng-insights/agent-packager-yum:${PACKAGER_VERSION}" \
 		|| abort "Failed to rebuild yum package indexes"
 }
 
@@ -241,7 +242,7 @@ function rebuild_yum_beta_packages() {
 		-v "${PROJECT_ROOT}/repos/yum-beta:/work/yum" \
 		-v "${PROJECT_ROOT}/sonar-agent.key:/work/sonar-agent.key:ro" \
 		-w /work \
-		"docker.internal.digitalocean.com/eng-insights/agent-packager-yum:5b0c797" \
+		"docker.internal.digitalocean.com/eng-insights/agent-packager-yum:${PACKAGER_VERSION}" \
 		|| abort "Failed to rebuild yum package indexes"
 }
 
@@ -290,6 +291,7 @@ function pull_spaces() {
 		sync \
 		"s3://insights${path}" \
 		"./repos${path}" \
+		--quiet \
 		--delete \
 		--acl public-read \
 		"${@:2}"
