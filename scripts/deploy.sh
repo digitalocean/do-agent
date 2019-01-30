@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 set -ueo pipefail
-#set -x
+# set -x
 
 ME=$(basename "$0")
 PROJECT_ROOT="$(git rev-parse --show-toplevel)"
@@ -8,6 +8,10 @@ GPG_PRIVATE_KEY="$PROJECT_ROOT/sonar-agent.key"
 DOCKER_IMAGE="docker.io/digitalocean/do-agent"
 VERSION=${VERSION:-$(cat target/VERSION || true)}
 VERSION_REGEX="[^\\d]${VERSION}[^\\d]"
+
+FORCE_RELEASE=${FORCE_RELEASE:-0}
+SKIP_BACKUP=${SKIP_BACKUP:-0}
+SKIP_CLEANUP=${SKIP_CLEANUP:-0}
 
 CI_LOG_URL=""
 [ -n "${CI_BASE_URL:-}" ] && CI_LOG_URL="${CI_BASE_URL}/tab/build/detail/${GO_PIPELINE_NAME}/${GO_PIPELINE_COUNTER}/${GO_STAGE_NAME}/${GO_STAGE_COUNTER}/${GO_JOB_NAME}"
@@ -70,20 +74,24 @@ function main() {
 		github)
 			check_version
 			check_target_files
+			cleanup
 			deploy_github
 			;;
 		spaces)
 			check_version
 			check_target_files
+			cleanup
 			deploy_spaces
 			;;
 		docker)
 			check_version
 			check_target_files
+			cleanup
 			deploy_docker
 			;;
 		promote)
 			check_version
+			cleanup
 			promote_spaces
 			promote_github
 			promote_docker
@@ -91,6 +99,7 @@ function main() {
 		all)
 			check_version
 			check_target_files
+			cleanup
 			deploy_spaces
 			deploy_github
 			deploy_docker
@@ -116,7 +125,7 @@ function verify_gpg_key() {
 }
 
 function force_release_enabled() {
-	if [[ "${FORCE_RELEASE:-}" =~ ^(y|yes|1|true)$ ]]; then
+	if is_enabled "${FORCE_RELEASE}" ; then
 		echo
 		echo "WARNING! forcing a release of $VERSION"
 		echo
@@ -125,13 +134,21 @@ function force_release_enabled() {
 	return 1
 }
 
+function cleanup() {
+	if is_enabled "${SKIP_CLEANUP}" ; then
+		anounce "SKIP_CLEANUP is set to ${SKIP_CLEANUP}, skipping this step"
+		return
+	fi
+	rm -rf ${PROJECT_ROOT}/repos
+}
+
 # if a release with the VERSION tag is already published then we cannot deploy
 # this version over the previous release.
 function check_can_deploy_spaces() {
 	force_release_enabled && return 0
 	anounce "Checking if we can deploy spaces"
 
-	status_code=$(http_status_for "https://insights.nyc3.digitaloceanspaces.com/apt/pool/beta/main/d/do-agent/do-agent_${VERSION}_amd64.deb")
+	status_code=$(http_status_for "https://insights.nyc3.digitaloceanspaces.com/apt-beta/pool/main/main/d/do-agent/do-agent_${VERSION}_amd64.deb")
 	case $status_code in
 		404)
 			return 0
@@ -147,11 +164,12 @@ function check_can_deploy_spaces() {
 
 function deploy_spaces() {
 	check_can_deploy_spaces
-	pull_spaces
+	pull_spaces /
+	backup_spaces
 
 	anounce "Deploying packages to spaces"
 	target_files | grep -P '\.deb$' | while IFS= read -r file; do
-		cp -Luv "$file" repos/apt/pool/beta/main/d/do-agent/
+		cp -Luv "$file" repos/apt-beta/pool/main/main/d/do-agent/
 	done
 
 	target_files | grep -P '\.rpm$' | while IFS= read -r file; do
@@ -161,13 +179,21 @@ function deploy_spaces() {
 		cp -Luv "$file" "$dest"
 	done
 
-	rebuild_apt_packages
-	rebuild_yum_packages
+	rebuild_apt_beta_packages
+	rebuild_yum_beta_packages
 
-	push_spaces
+	# sync the packages first to prevent race conditions
+	push_spaces "/apt-beta/pool/main/" --exclude "*" --include "**/*.deb"
+	push_spaces "/yum-beta/" --exclude "*" --include "*/*.rpm"
+
+	# then sync the metadata and everything else
+	push_spaces "/apt-beta/dists/main/"
+	push_spaces "/yum-beta/"
+
+	anounce "Deploy spaces completed"
 }
 
-function rebuild_apt_packages() {
+function rebuild_apt_main_packages() {
 	verify_gpg_key
 	anounce "Rebuilding apt package indexes"
 	docker run \
@@ -176,44 +202,115 @@ function rebuild_apt_packages() {
 		-v "${PROJECT_ROOT}/repos/apt:/work/apt" \
 		-v "${PROJECT_ROOT}/sonar-agent.key:/work/sonar-agent.key:ro" \
 		-w /work \
-		"docker.internal.digitalocean.com/eng-insights/agent-packager-apt" \
+		"docker.internal.digitalocean.com/eng-insights/agent-packager-apt:5b0c797" \
 		|| abort "Failed to rebuild apt package indexes"
 }
 
-function rebuild_yum_packages() {
+function rebuild_apt_beta_packages() {
+	verify_gpg_key
+	anounce "Rebuilding apt package indexes"
+	docker run \
+		--rm -i \
+		--net=host \
+		-v "${PROJECT_ROOT}/repos/apt-beta:/work/apt" \
+		-v "${PROJECT_ROOT}/sonar-agent.key:/work/sonar-agent.key:ro" \
+		-w /work \
+		"docker.internal.digitalocean.com/eng-insights/agent-packager-apt:5b0c797" \
+		|| abort "Failed to rebuild apt package indexes"
+}
+
+function rebuild_yum_main_packages() {
 	verify_gpg_key
 	anounce "Rebuilding yum package indexes"
 	docker run \
 		--rm -i \
 		--net=host \
 		-v "${PROJECT_ROOT}/repos/yum:/work/yum" \
-		-v "${PROJECT_ROOT}/repos/yum-beta:/work/yum-beta" \
 		-v "${PROJECT_ROOT}/sonar-agent.key:/work/sonar-agent.key:ro" \
 		-w /work \
-		"docker.internal.digitalocean.com/eng-insights/agent-packager-yum" \
+		"docker.internal.digitalocean.com/eng-insights/agent-packager-yum:5b0c797" \
 		|| abort "Failed to rebuild yum package indexes"
 }
 
-function pull_spaces() {
-	anounce "Pulling remote packages"
-	aws s3 \
-		--endpoint-url https://nyc3.digitaloceanspaces.com \
-		sync \
-		s3://insights/ \
-		./repos/ \
-		--no-progress \
-		--delete \
-		--acl public-read
+function rebuild_yum_beta_packages() {
+	verify_gpg_key
+	anounce "Rebuilding yum package indexes"
+	docker run \
+		--rm -i \
+		--net=host \
+		-v "${PROJECT_ROOT}/repos/yum-beta:/work/yum" \
+		-v "${PROJECT_ROOT}/sonar-agent.key:/work/sonar-agent.key:ro" \
+		-w /work \
+		"docker.internal.digitalocean.com/eng-insights/agent-packager-yum:5b0c797" \
+		|| abort "Failed to rebuild yum package indexes"
 }
 
+# sync local cache to Spaces
+#
+# Usage: push_spaces <path> [optional aws cli args]
+#
+# Examples:
+#    # push everything
+#    push_spaces /
+#    push_spaces /apt-beta/pool/main --include "*" --exclude "*.txt"
+#    push_spaces / --include "*" --exclude "*.txt"
 function push_spaces() {
-	anounce "Pushing package changes"
+	path=${1:-}
+	[ -z "$path" ] && abort "Usage: ${FUNCNAME[0]} <path> [optional aws cli args]"
+	[[ ! "$path" =~ ^/ ]] && abort "<path> must begin with a slash"
+
+	anounce "Syncing Spaces changes to to ${path}"
 	aws s3 \
 		--endpoint-url https://nyc3.digitaloceanspaces.com \
 		sync \
+		"./repos${path}" \
+		"s3://insights${path}" \
+		--delete \
+		--acl public-read \
+		"${@:2}"
+}
+
+# sync Spaces directory to local cache
+#
+# Usage: pull_spaces <path> [optional aws cli args]
+#
+# Examples:
+#    # pull everything
+#    pull_spaces /
+#    pull_spaces /apt-beta/pool/main --include "*" --exclude "*.txt"
+#    pull_spaces / --include "*" --exclude "*.txt"
+function pull_spaces() {
+	path=${1:-}
+	[ -z "$path" ] && abort "Usage: ${FUNCNAME[0]} <path> [optional aws cli args]"
+	[[ ! "$path" =~ ^/ ]] && abort "<path> must begin with a slash"
+
+	anounce "Syncing Spaces to local cache"
+	aws s3 \
+		--endpoint-url https://nyc3.digitaloceanspaces.com \
+		sync \
+		"s3://insights${path}" \
+		"./repos${path}" \
+		--delete \
+		--acl public-read \
+		"${@:2}"
+}
+
+# back up the local ./repos/ directory to ams3 Space "insights2"
+# used to keep backups before deploying
+function backup_spaces() {
+	anounce "Backing up Spaces"
+	if is_enabled "${SKIP_BACKUP}" ; then
+		anounce "SKIP_BACKUP is set to ${SKIP_BACKUP}, skipping..."
+		return
+	fi
+	pull_spaces /
+
+	aws s3 \
+		--endpoint-url https://ams3.digitaloceanspaces.com \
+		sync \
 		./repos/ \
-		s3://insights/ \
-		--no-progress \
+		s3://insights2/ \
+		--delete \
 		--acl public-read
 }
 
@@ -292,18 +389,24 @@ function check_can_promote_spaces() {
 
 function promote_spaces() {
 	check_can_promote_spaces
-	pull_spaces
+	pull_spaces /
 
 	anounce "Promoting packages"
-	cp -Luv "$PROJECT_ROOT/repos/apt/pool/beta/main/d/do-agent/do-agent_${VERSION}_amd64.deb" "$PROJECT_ROOT/repos/apt/pool/main/main/d/do-agent/"
-	cp -Luv "$PROJECT_ROOT/repos/apt/pool/beta/main/d/do-agent/do-agent_${VERSION}_i386.deb" "$PROJECT_ROOT/repos/apt/pool/main/main/d/do-agent/"
+	cp -Luv "$PROJECT_ROOT/repos/apt-beta/pool/main/main/d/do-agent/do-agent_${VERSION}_amd64.deb" "$PROJECT_ROOT/repos/apt/pool/main/main/d/do-agent/"
+	cp -Luv "$PROJECT_ROOT/repos/apt-beta/pool/main/main/d/do-agent/do-agent_${VERSION}_i386.deb" "$PROJECT_ROOT/repos/apt/pool/main/main/d/do-agent/"
 	cp -Luv "$PROJECT_ROOT/repos/yum-beta/i386/do-agent.${VERSION}.i386.rpm" "$PROJECT_ROOT/repos/yum/i386/"
 	cp -Luv "$PROJECT_ROOT/repos/yum-beta/x86_64/do-agent.${VERSION}.amd64.rpm" "$PROJECT_ROOT/repos/yum/x86_64/"
 
-	rebuild_apt_packages
-	rebuild_yum_packages
+	rebuild_apt_main_packages
+	rebuild_yum_main_packages
 
-	push_spaces
+	# sync the packages first to prevent race conditions
+	push_spaces "/apt/pool/main/" --exclude "*" --include "**/*.deb"
+	push_spaces "/yum/" --exclude "*" --include "*/*.rpm"
+
+	# then sync the metadata and everything else
+	push_spaces "/apt/dists/main/"
+	push_spaces "/yum/"
 }
 
 function check_can_promote_github() {
@@ -428,7 +531,7 @@ function create_github_release() {
 	anounce "Creating Github release $VERSION"
 
 	data=$(cat <<-EOF
-	{ "tag_name": "$VERSION", "prerelease": true, "target_commitish": "master" }
+	{ "tag_name": "$VERSION", "name": "$VERSION", "prerelease": true, "target_commitish": "master" }
 	EOF
 	)
 	echo "POST: $data"
@@ -517,6 +620,15 @@ function anounce() {
 	msg=${1:-}
 	[ -z "$msg" ] && abort "Usage: ${FUNCNAME[0]} <msg>"
 	echo ":::::::::::::::::::::::::::::::::::::::::::::::::: $msg ::::::::::::::::::::::::::::::::::::::::::::::::::" > /dev/stderr
+}
+
+function is_enabled() {
+	v=$(echo ${1:-} | tr '[:upper:]' '[:lower:]')
+	if [[ "${v}" =~ ^y(es)?|t(rue)?|1$ ]]; then
+		return 0
+	else
+		return 1
+	fi
 }
 
 
