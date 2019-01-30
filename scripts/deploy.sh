@@ -139,7 +139,7 @@ function cleanup() {
 		anounce "SKIP_CLEANUP is set to ${SKIP_CLEANUP}, skipping this step"
 		return
 	fi
-	rm -rf ${PROJECT_ROOT}/repos
+	rm -rf "${PROJECT_ROOT}/repos"
 }
 
 # if a release with the VERSION tag is already published then we cannot deploy
@@ -623,7 +623,7 @@ function anounce() {
 }
 
 function is_enabled() {
-	v=$(echo ${1:-} | tr '[:upper:]' '[:lower:]')
+	v=$(echo "${1:-}" | tr '[:upper:]' '[:lower:]')
 	if [[ "${v}" =~ ^y(es)?|t(rue)?|1$ ]]; then
 		return 0
 	else
