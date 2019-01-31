@@ -15,7 +15,9 @@ Paste the entire output
 `/opt/digitalocean/bin/do-agent --version`:
 
 _Ubuntu, Debian_
+
 `apt-cache policy do-agent`:
 
 _Fedora, CentOS_
+
 `yum --cacheonly list do-agent`:
