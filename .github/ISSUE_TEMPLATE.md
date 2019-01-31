@@ -7,10 +7,17 @@ Before opening an issue, make sure there is not a similar issue [already open](h
 ## Expected behavior
 
 ## System Information
-Distribution:
+Distribution and version:
 
-Version:
+### do-agent information:
+Paste the entire output
 
-Metrics-Agent Version:
+`/opt/digitalocean/bin/do-agent --version`:
 
-(paste the output of `do-agent --version`)
+_Ubuntu, Debian_
+
+`apt-cache policy do-agent`:
+
+_Fedora, CentOS_
+
+`yum --cacheonly list do-agent`:
