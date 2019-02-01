@@ -4,15 +4,15 @@ set -ueo pipefail
 
 ME=$(basename "$0")
 PROJECT_ROOT="$(git rev-parse --show-toplevel)"
-GPG_PRIVATE_KEY="$PROJECT_ROOT/sonar-agent.key"
 DOCKER_IMAGE="docker.io/digitalocean/do-agent"
 VERSION=${VERSION:-$(cat target/VERSION || true)}
 VERSION_REGEX="[^\\d]${VERSION}[^\\d]"
+PACKAGECLOUD_DOCKER_IMAGE="docker.io/digitalocean/packagecloud:0.3.05"
 
 FORCE_RELEASE=${FORCE_RELEASE:-0}
-SKIP_BACKUP=${SKIP_BACKUP:-0}
-SKIP_CLEANUP=${SKIP_CLEANUP:-0}
-PACKAGER_VERSION=7307b5c
+SUPPORTED_DEB_DISTROS="ubuntu/trusty ubuntu/utopic ubuntu/vivid ubuntu/wily ubuntu/xenial ubuntu/yakkety ubuntu/zesty ubuntu/artful ubuntu/bionic ubuntu/cosmic debian/jessie debian/stretch debian/buster"
+SUPPORTED_RPM_DISTROS="fedora/27 fedora/28 fedora/29 el/6 el/7"
+REMOTES=${REMOTES:-docker,packagecloud,github}
 
 CI_LOG_URL=""
 [ -n "${CI_BASE_URL:-}" ] && CI_LOG_URL="${CI_BASE_URL}/tab/build/detail/${GO_PIPELINE_NAME}/${GO_PIPELINE_COUNTER}/${GO_STAGE_NAME}/${GO_STAGE_COUNTER}/${GO_JOB_NAME}"
@@ -37,6 +37,7 @@ function usage() {
 		
 	    VERSION (required)
 	        The version to publish
+	        Example: 1.0.9
 
 	    GITHUB_AUTH_USER, GITHUB_AUTH_TOKEN (required)
 	        Github access credentials
@@ -44,26 +45,38 @@ function usage() {
 	    DOCKER_USER, DOCKER_PASSWORD  (required)
 	        Docker hub access credentials
 
-	    SPACES_ACCESS_KEY_ID, SPACES_SECRET_ACCESS_KEY (required)
-	        DigitalOcean Spaces access credentials
+	    PACKAGECLOUD_TOKEN (required)
+	        https://packagecloud.io access token
 
 	    SLACK_WEBHOOK_URL (optional)
 	        Webhook URL to send notifications. Enables Slack
 	        notifications
 
+	    REMOTES (optional)
+	        Optionally only distribute to the provided
+	        remotes. By default deployments will deploy
+	        to the remotes supported by each deployment.
+	        
+	        For example: 
+	          unstable deploys to docker,packagecloud
+	          beta deploys to docker,packagecloud,github
+	          stable deploys to docker,packagecloud,github
+
 	COMMANDS:
-	
-	    github
-	        push target/ assets to github
 
-	    docker
-	        push docker builds to hub.docker.io
+	    unstable
+	        Push target/ assets to packagecloud unstable.
+	        Push to docker hub under the unstable and \$VERSION-rc tags.
 
-	    spaces
-	        publish artifacts to DigitalOcean Spaces
+	    beta
+	        Push target/ assets to packagecloud beta.
+	        Docker tag \$VERSION-rc to beta.
+	        Create a github prerelease with assets.
 
-	    all
-	        deploy all builds
+	    stable
+	        Push target/ assets to packagecloud stable.
+	        Docker tag \$VERSION-rc to \$VERSION.
+	        Remove prerelease flag from the github release.
 
 	EOF
 }
@@ -72,38 +85,28 @@ function main() {
 	cmd=${1:-}
 
 	case "$cmd" in
-		github)
+		unstable)
 			check_version
 			check_target_files
-			cleanup
-			deploy_github
+			quiet_docker_pull "${PACKAGECLOUD_DOCKER_IMAGE}"
+			deploy_packagecloud "do-agent-unstable"
+			docker_login && deploy_unstable_docker
 			;;
-		spaces)
+		beta)
 			check_version
 			check_target_files
-			cleanup
-			deploy_spaces
+			quiet_docker_pull "${PACKAGECLOUD_DOCKER_IMAGE}"
+			deploy_packagecloud "do-agent-beta"
+			deploy_github_prerelease
+			docker_login && promote_docker "unstable" "beta"
 			;;
-		docker)
+		stable)
 			check_version
 			check_target_files
-			cleanup
-			deploy_docker
-			;;
-		promote)
-			check_version
-			cleanup
-			promote_spaces
+			quiet_docker_pull "${PACKAGECLOUD_DOCKER_IMAGE}"
+			deploy_packagecloud "do-agent"
 			promote_github
-			promote_docker
-			;;
-		all)
-			check_version
-			check_target_files
-			cleanup
-			deploy_spaces
-			deploy_github
-			deploy_docker
+			docker_login && promote_stable_docker
 			;;
 		help|--help|-h)
 			usage
@@ -121,10 +124,6 @@ function check_version() {
 		abort "VERSION is required and should be semver format (e.g. 1.2.34)"
 }
 
-function verify_gpg_key() {
-	stat "$GPG_PRIVATE_KEY" > /dev/null || abort "$GPG_PRIVATE_KEY is required"
-}
-
 function force_release_enabled() {
 	if is_enabled "${FORCE_RELEASE}" ; then
 		echo
@@ -135,198 +134,72 @@ function force_release_enabled() {
 	return 1
 }
 
-function cleanup() {
-	if is_enabled "${SKIP_CLEANUP}" ; then
-		announce "SKIP_CLEANUP is set to ${SKIP_CLEANUP}, skipping this step"
+function deploy_packagecloud() {
+	repo=${1:-}
+	[ -z "$repo" ] && abort "Destination repository is required. Usage: ${FUNCNAME[0]} <repo>"
+	if ! remote_enabled "packagecloud"; then
+		echo "packagecloud remote is disabled via REMOTES env var (${REMOTES}), skipping..."
 		return
 	fi
-	rm -rf "${PROJECT_ROOT}/repos"
-}
 
-# if a release with the VERSION tag is already published then we cannot deploy
-# this version over the previous release.
-function check_can_deploy_spaces() {
-	force_release_enabled && return 0
-	announce "Checking if we can deploy spaces"
+	announce "Deploying packages to packagecloud"
 
-	status_code=$(http_status_for "https://insights.nyc3.digitaloceanspaces.com/apt-beta/pool/main/main/d/do-agent/do-agent_${VERSION}_amd64.deb")
-	case $status_code in
-		404)
-			return 0
-			;;
-		200)
-			abort "'$VERSION' has already been deployed. Add a new git tag or use pass FORCE_RELEASE=1."
-			;;
-		*)
-			abort "Failed to check if a version already exists. Try again? Got status code '$status_code'"
-			;;
-	esac
-}
+	if force_release_enabled ; then
+		announce "Cleaning up any old versions of ${VERSION} on ${repo}"
+		curl -SsL "https://${PACKAGECLOUD_TOKEN}:@packagecloud.io/api/v1/repos/digitalocean-insights/${repo}/search.json?q=${VERSION}&per_page=100" \
+			| jq -r ".[] | select(.version == \"${VERSION}\") | \"\(.destroy_url)\"" \
+			| tee /dev/stderr \
+			| xargs -r -I{} curl -X DELETE -SsL -o /dev/null "https://${PACKAGECLOUD_TOKEN}:@packagecloud.io{}"
+	else
+		announce "Checking if we can deploy ${VERSION} to packagecloud ${repo}"
 
-function deploy_spaces() {
-	check_can_deploy_spaces
-	pull_spaces /
-	backup_spaces
-
-	announce "Deploying packages to spaces"
-	target_files | grep -P '\.deb$' | while IFS= read -r file; do
-		cp -Luv "$file" repos/apt-beta/pool/main/main/d/do-agent/
-	done
-
-	target_files | grep -P '\.rpm$' | while IFS= read -r file; do
-		dest=repos/yum-beta/x86_64/
-		[[ "$file" =~ "i386" ]] && \
-			dest=repos/yum-beta/i386/
-		cp -Luv "$file" "$dest"
-	done
-
-	rebuild_apt_beta_packages
-	rebuild_yum_beta_packages
-
-	# sync the packages first to prevent race conditions
-	push_spaces "/apt-beta/pool/main/" --exclude "*" --include "**/*.deb"
-	push_spaces "/yum-beta/" --exclude "*" --include "*/*.rpm"
-
-	# then sync the metadata and everything else
-	push_spaces "/apt-beta/dists/main/"
-	push_spaces "/yum-beta/"
-
-	announce "Deploy spaces completed"
-}
-
-function rebuild_apt_main_packages() {
-	verify_gpg_key
-	announce "Rebuilding apt package indexes"
-	docker run \
-		--rm -i \
-		--net=host \
-		-v "${PROJECT_ROOT}/repos/apt:/work/apt" \
-		-v "${PROJECT_ROOT}/sonar-agent.key:/work/sonar-agent.key:ro" \
-		-w /work \
-		"docker.internal.digitalocean.com/eng-insights/agent-packager-apt:${PACKAGER_VERSION}" \
-		|| abort "Failed to rebuild apt package indexes"
-}
-
-function rebuild_apt_beta_packages() {
-	verify_gpg_key
-	announce "Rebuilding apt package indexes"
-	docker run \
-		--rm -i \
-		--net=host \
-		-v "${PROJECT_ROOT}/repos/apt-beta:/work/apt" \
-		-v "${PROJECT_ROOT}/sonar-agent.key:/work/sonar-agent.key:ro" \
-		-w /work \
-		"docker.internal.digitalocean.com/eng-insights/agent-packager-apt:${PACKAGER_VERSION}" \
-		|| abort "Failed to rebuild apt package indexes"
-}
-
-function rebuild_yum_main_packages() {
-	verify_gpg_key
-	announce "Rebuilding yum package indexes"
-	docker run \
-		--rm -i \
-		--net=host \
-		-v "${PROJECT_ROOT}/repos/yum:/work/yum" \
-		-v "${PROJECT_ROOT}/sonar-agent.key:/work/sonar-agent.key:ro" \
-		-w /work \
-		"docker.internal.digitalocean.com/eng-insights/agent-packager-yum:${PACKAGER_VERSION}" \
-		|| abort "Failed to rebuild yum package indexes"
-}
-
-function rebuild_yum_beta_packages() {
-	verify_gpg_key
-	announce "Rebuilding yum package indexes"
-	docker run \
-		--rm -i \
-		--net=host \
-		-v "${PROJECT_ROOT}/repos/yum-beta:/work/yum" \
-		-v "${PROJECT_ROOT}/sonar-agent.key:/work/sonar-agent.key:ro" \
-		-w /work \
-		"docker.internal.digitalocean.com/eng-insights/agent-packager-yum:${PACKAGER_VERSION}" \
-		|| abort "Failed to rebuild yum package indexes"
-}
-
-# sync local cache to Spaces
-#
-# Usage: push_spaces <path> [optional aws cli args]
-#
-# Examples:
-#    # push everything
-#    push_spaces /
-#    push_spaces /apt-beta/pool/main --include "*" --exclude "*.txt"
-#    push_spaces / --include "*" --exclude "*.txt"
-function push_spaces() {
-	path=${1:-}
-	[ -z "$path" ] && abort "Usage: ${FUNCNAME[0]} <path> [optional aws cli args]"
-	[[ ! "$path" =~ ^/ ]] && abort "<path> must begin with a slash"
-
-	announce "Syncing Spaces changes to to ${path}"
-	aws s3 \
-		--endpoint-url https://nyc3.digitaloceanspaces.com \
-		sync \
-		"./repos${path}" \
-		"s3://insights${path}" \
-		--delete \
-		--acl public-read \
-		"${@:2}"
-}
-
-# sync Spaces directory to local cache
-#
-# Usage: pull_spaces <path> [optional aws cli args]
-#
-# Examples:
-#    # pull everything
-#    pull_spaces /
-#    pull_spaces /apt-beta/pool/main --include "*" --exclude "*.txt"
-#    pull_spaces / --include "*" --exclude "*.txt"
-function pull_spaces() {
-	path=${1:-}
-	[ -z "$path" ] && abort "Usage: ${FUNCNAME[0]} <path> [optional aws cli args]"
-	[[ ! "$path" =~ ^/ ]] && abort "<path> must begin with a slash"
-
-	announce "Syncing Spaces to local cache"
-	aws s3 \
-		--endpoint-url https://nyc3.digitaloceanspaces.com \
-		sync \
-		"s3://insights${path}" \
-		"./repos${path}" \
-		--quiet \
-		--delete \
-		--acl public-read \
-		"${@:2}"
-}
-
-# back up the local ./repos/ directory to ams3 Space "insights2"
-# used to keep backups before deploying
-function backup_spaces() {
-	announce "Backing up Spaces"
-	if is_enabled "${SKIP_BACKUP}" ; then
-		announce "SKIP_BACKUP is set to ${SKIP_BACKUP}, skipping..."
-		return
+		status_code=$(http_status_for "https://packagecloud.io/digitalocean-insights/${repo}/packages/ubuntu/bionic/do-agent_${VERSION}_amd64.deb")
+		case $status_code in
+			404)
+				echo "Success"
+				;;
+			200)
+				abort "'$VERSION' has already been deployed to ${repo}. Add a new git tag or use pass FORCE_RELEASE=1."
+				;;
+			*)
+				abort "Failed to check if a version already exists. Try again? Got status code '$status_code'"
+				;;
+		esac
 	fi
-	pull_spaces /
 
-	aws s3 \
-		--endpoint-url https://ams3.digitaloceanspaces.com \
-		sync \
-		./repos/ \
-		s3://insights2/ \
-		--delete \
-		--acl public-read
+	announce "Pushing packages to packagecloud"
+	target_files | grep -P '\.(deb|rpm)$'
+	echo "${SUPPORTED_DEB_DISTROS} ${SUPPORTED_RPM_DISTROS}"
+
+	# copy the target files into a temp dir to prevent the push globs from picking up different versions
+	tmpdir=.out/$(date +%s)
+	mkdir -p "${tmpdir}"
+
+	target_files | grep -P '\.(deb|rpm)$' | tee /dev/stderr | while IFS= read -r file; do
+		cp -Luv "${file}" "${tmpdir}/"
+	done
+
+	for distro in ${SUPPORTED_DEB_DISTROS}; do
+		package_cloud push "digitalocean-insights/${repo}/${distro}" "${tmpdir}/*.deb" &
+	done
+
+	for distro in ${SUPPORTED_RPM_DISTROS}; do
+		package_cloud push "digitalocean-insights/${repo}/${distro}" "${tmpdir}/*.rpm" &
+	done
+	wait
+
+	rm -rfv "${tmpdir}"
+
+	announce "Completed deploy to packagecloud ${repo}"
 }
 
-# interact with the awscli via docker
-function aws() {
+function package_cloud() {
 	docker run \
-		--rm -i \
-		-e "AWS_ACCESS_KEY_ID=${SPACES_ACCESS_KEY_ID}" \
-		-e "AWS_SECRET_ACCESS_KEY=${SPACES_SECRET_ACCESS_KEY}" \
-		-e "AWS_DEFAULT_REGION=nyc3" \
-		-v "$PROJECT_ROOT:/project" \
+		--rm \
+		-e "PACKAGECLOUD_TOKEN=${PACKAGECLOUD_TOKEN}" \
+		-v "${PROJECT_ROOT}:/project" \
 		-w /project \
-		-u "$(id -u)" \
-		mesosphere/aws-cli \
+		"${PACKAGECLOUD_DOCKER_IMAGE}" \
 		"$@"
 }
 
@@ -349,8 +222,12 @@ function check_can_deploy_github() {
 
 
 # deploy the compiled binaries and packages to github releases
-function deploy_github() {
+function deploy_github_prerelease() {
 	check_can_deploy_github
+	if ! remote_enabled "github"; then
+		echo "github remote is disabled via REMOTES env var (${REMOTES}), skipping..."
+		return
+	fi
 	announce "Deploying to Github"
 
 	create_github_release || abort "Github deploy failed"
@@ -369,46 +246,6 @@ function deploy_github() {
 			| jq -r '. | "Success: \(.name)"' &
 	done
 	wait
-}
-
-function check_can_promote_spaces() {
-	force_release_enabled && return 0
-	announce "Checking if we can promote spaces"
-
-	status_code=$(http_status_for "https://insights.nyc3.digitaloceanspaces.com/apt/pool/main/main/d/do-agent/do-agent_${VERSION}_amd64.deb")
-	case $status_code in
-		404)
-			return 0
-			;;
-		200)
-			abort "'$VERSION' has already been promoted. Deploy a new git tag or use pass FORCE_RELEASE=1."
-			;;
-		*)
-			abort "Failed to check if a version already exists. Try again? Got status code '$status_code'"
-			;;
-	esac
-}
-
-function promote_spaces() {
-	check_can_promote_spaces
-	pull_spaces /
-
-	announce "Promoting packages"
-	cp -Luv "$PROJECT_ROOT/repos/apt-beta/pool/main/main/d/do-agent/do-agent_${VERSION}_amd64.deb" "$PROJECT_ROOT/repos/apt/pool/main/main/d/do-agent/"
-	cp -Luv "$PROJECT_ROOT/repos/apt-beta/pool/main/main/d/do-agent/do-agent_${VERSION}_i386.deb" "$PROJECT_ROOT/repos/apt/pool/main/main/d/do-agent/"
-	cp -Luv "$PROJECT_ROOT/repos/yum-beta/i386/do-agent.${VERSION}.i386.rpm" "$PROJECT_ROOT/repos/yum/i386/"
-	cp -Luv "$PROJECT_ROOT/repos/yum-beta/x86_64/do-agent.${VERSION}.amd64.rpm" "$PROJECT_ROOT/repos/yum/x86_64/"
-
-	rebuild_apt_main_packages
-	rebuild_yum_main_packages
-
-	# sync the packages first to prevent race conditions
-	push_spaces "/apt/pool/main/" --exclude "*" --include "**/*.deb"
-	push_spaces "/yum/" --exclude "*" --include "*/*.rpm"
-
-	# then sync the metadata and everything else
-	push_spaces "/apt/dists/main/"
-	push_spaces "/yum/"
 }
 
 function check_can_promote_github() {
@@ -452,21 +289,27 @@ function check_can_promote_docker() {
 	esac
 }
 
-function promote_docker() {
-	check_can_promote_docker
-	announce "Tagging docker $VERSION-rc as $VERSION"
-
-	docker_login
-	local rc="$DOCKER_IMAGE:$VERSION-rc"
+function promote_stable_docker() {
 	IFS=. read -r major minor _ <<<"$VERSION"
+	promote_docker "$VERSION-rc" "$VERSION"
 
-	docker pull "$rc"
-
-	tags="latest $major $major.$minor $VERSION"
-	for tag in $tags; do
-		docker tag "$rc" "$DOCKER_IMAGE:$tag"
-		docker push "$DOCKER_IMAGE:$tag"
+	for tag in $major $major.$minor; do
+		docker tag "$VERSION" "$tag"
+		docker push "$tag"
 	done
+}
+
+function promote_docker() {
+	src_tag=${1:-} dest_tag=${2:-}
+	[ -z "$src_tag" ] && abort "src_tag is required. Usage: ${FUNCNAME[0]} <src_tag> <dest_tag>"
+	[ -z "$dest_tag" ] && abort "dest_tag is required. Usage: ${FUNCNAME[0]} <src_tag> <dest_tag>"
+
+	check_can_promote_docker
+	announce "Promoting docker tag ${src_tag} to ${dest_tag}"
+
+	quiet_docker_pull "$src_tag"
+	docker tag "$src_tag" "$DOCKER_IMAGE:$dest_tag"
+	docker push "$DOCKER_IMAGE:$dest_tag"
 }
 
 function http_status_for() {
@@ -558,7 +401,7 @@ function check_can_deploy_docker() {
 			return 0
 			;;
 		200)
-			abort "'$VERSION' has already been released. Add a new git tag or use pass FORCE_RELEASE=1."
+			abort "'$VERSION-rc' has already been released. Add a new git tag or use pass FORCE_RELEASE=1."
 			;;
 		*)
 			abort "Failed to check if a version already exists. Try again? Got status code '$status_code'"
@@ -568,31 +411,34 @@ function check_can_deploy_docker() {
 
 # build and push the RC docker hub image. This image is considered unstable
 # and should only be used for testing purposes
-function deploy_docker() {
+function deploy_unstable_docker() {
 	check_can_deploy_docker
+	if ! remote_enabled "docker"; then
+		echo "docker remote is disabled via REMOTES env var (${REMOTES}), skipping..."
+		return
+	fi
 	announce "Pushing docker images"
-	docker_login
 
-	docker build . -t "$DOCKER_IMAGE:unstable"
-	tags="${VERSION}-rc"
-
-	for tag in $tags; do
-		docker tag "$DOCKER_IMAGE:unstable" "$DOCKER_IMAGE:$tag"
-	done
-
-	for tag in $tags unstable; do
-		docker push "$DOCKER_IMAGE:$tag"
-	done
+	rc=${VERSION}-rc
+	docker build . -t "$DOCKER_IMAGE:unstable" -t "${rc}"
+	docker push "$DOCKER_IMAGE:unstable"
+	docker push "$DOCKER_IMAGE:${rc}"
 }
 
 # list the artifacts within the target/ directory
 function target_files() {
-	find target/pkg  -type f -iname "*${VERSION_REGEX}*" \
+	find target/pkg -type f -iname "*${VERSION_REGEX}*" \
 		| grep .
 }
 
 function check_target_files() {
 	target_files > /dev/null || abort "No packages for $VERSION were found in target/.  Did you forget to run make?"
+}
+
+function quiet_docker_pull() {
+	img=${1:-}
+	[ -z "$img" ] && abort "img param is required. Usage: ${FUNCNAME[0]} <img>"
+	docker pull "${img}" | grep -e 'Pulling from' -e Digest -e Status -e Error
 }
 
 # call CURL with github authentication
@@ -631,6 +477,12 @@ function is_enabled() {
 	else
 		return 1
 	fi
+}
+
+function remote_enabled() {
+	remote=${1:-}
+	[ -z "$remote" ] && abort "remote param is required. Usage: ${FUNCNAME[0]} <remote>"
+	[[ "$REMOTES" =~ $remote ]]
 }
 
 
