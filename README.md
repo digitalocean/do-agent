@@ -23,7 +23,7 @@ To install the do-agent on new Droplets simply select the Monitoring checkbox on
 
 ### Deb Repository
 ```
-echo "deb https://repos.sonar.digitalocean.com/apt main main" > /etc/apt/sources.list.d/sonar.list
+echo "deb https://repos.sonar.digitalocean.com/apt main main" > /etc/apt/sources.list.d/digitalocean-agent.list
 curl https://repos.sonar.digitalocean.com/sonar-agent.asc | sudo apt-key add -
 sudo apt-get update
 sudo apt-get install do-agent
@@ -32,7 +32,7 @@ sudo apt-get install do-agent
 ### Yum Repository
 
 ```
-cat <'EOF' > /etc/yum.repos.d/DigitalOcean-Sonar.repo
+cat <'EOF' > /etc/yum.repos.d/digitalocean-agent.repo
 [sonar]
 name=do agent
 baseurl=https://repos.sonar.digitalocean.com/yum/$basearch
