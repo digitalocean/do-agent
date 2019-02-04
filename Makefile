@@ -159,7 +159,7 @@ $(deb_package): $(base_package)
 		--conflicts do-agent \
 		--replaces do-agent \
 		--deb-group nobody \
-		--deb-user nogroup \
+		--deb-user do-agent \
 		-p $@ \
 		$<
 	chown -R $(USER):$(USER) target
@@ -180,7 +180,7 @@ $(rpm_package): $(base_package)
 		--conflicts do-agent \
 		--replaces do-agent \
 		--rpm-group nobody \
-		--rpm-user nobody \
+		--rpm-user do-agent \
 		--force \
 		-p $@ \
 		$<

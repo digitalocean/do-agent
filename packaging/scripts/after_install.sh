@@ -11,18 +11,24 @@ set -ue
 
 INSTALL_DIR=/opt/digitalocean/do-agent
 SVC_NAME=do-agent
-NOBODY_USER=nobody
-NOBODY_GROUP=nogroup
+USERNAME=do-agent
+USERGROUP=nogroup
 CRON=/etc/cron.daily/do-agent
 INIT_SVC_FILE="/etc/init/${SVC_NAME}.conf"
 SYSTEMD_SVC_FILE="/etc/systemd/system/${SVC_NAME}.service"
 
 # fedora uses nobody instead of nogroup
 getent group nobody 2> /dev/null \
-	&& NOBODY_GROUP=nobody
+	&& USERGROUP=nobody
 
 main() {
 	update_selinux
+
+	# create the user if it doesn't already exist
+	if ! getent passwd $USERNAME >/dev/null 2>&1; then
+		echo "Creating $USERNAME user"
+		adduser --system $USERNAME
+	fi
 
 	if command -v systemctl >/dev/null 2>&1; then
 		init_systemd
@@ -75,8 +81,8 @@ init_systemd() {
 	Wants=network-online.target
 
 	[Service]
-	User=${NOBODY_USER}
-	Group=${NOBODY_GROUP}
+	User=${USERNAME}
+	Group=${USERGROUP}
 	ExecStart=/opt/digitalocean/bin/do-agent
 	Restart=always
 
@@ -114,7 +120,7 @@ init_upstart() {
 	respawn
 
 	script
-	  exec su -s /bin/sh -c 'exec "\$0" "\$@"' ${NOBODY_USER} -- /opt/digitalocean/bin/do-agent --syslog
+	  exec su -s /bin/sh -c 'exec "\$0" "\$@"' ${USERNAME} -- /opt/digitalocean/bin/do-agent --syslog
 	end script
 	EOF
 	initctl reload-configuration
