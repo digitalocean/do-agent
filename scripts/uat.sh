@@ -30,13 +30,14 @@ SNYDER_SSH_FINGERPRINT="47:31:9b:8b:87:a7:2d:26:79:17:87:83:53:65:d4:b4"
 # executed/expanded on the server
 # shellcheck disable=SC1117
 USER_DATA_DEB="#!/bin/bash \n\
-[ -z \`command -v curl\` ] && apt-get -qq update && apt-get install -q -y curl \n\
-curl -sL https://insights.nyc3.cdn.digitaloceanspaces.com/install.sh | sudo bash"
+[ -z \`command -v curl\` ] && apt-get -qq update && apt-get -qq install -y curl \n\
+curl -SsL https://insights.nyc3.digitaloceanspaces.com/install-new.sh | sudo bash"
+
 
 # shellcheck disable=SC1117
 USER_DATA_RPM="#!/bin/bash \n\
-[ -z \`command -v curl\` ] && yum -y install curl \n\
-curl -sL https://insights.nyc3.cdn.digitaloceanspaces.com/install.sh | sudo bash"
+[ -z \`command -v curl\` ] && yum -q -y install curl \n\
+curl -SsL https://insights.nyc3.digitaloceanspaces.com/install-new.sh | sudo bash"
 
 
 function main() {
@@ -123,10 +124,6 @@ function command_create() {
 		create_image "$i" &
 	done
 	wait
-
-	if confirm "Open the tag list page?"; then
-		launch "https://cloud.digitalocean.com/tags/$TAG?i=${CONTEXT}"
-	fi
 }
 
 # ssh to all droplets and run <init system> status do-agent to verify
@@ -143,8 +140,7 @@ function command_status() {
 # version of do-agent
 function command_update() {
 	exec_rpm "yum -q -y update do-agent"
-	exec_deb "apt-get -qq update"
-	exec_deb "apt-get -qq install --only-upgrade do-agent"
+	exec_deb "apt-get -qq update && apt-get -qq install -y --only-upgrade do-agent"
 }
 
 # ssh to all droplets and execute a command
@@ -213,7 +209,7 @@ function command_ssh() {
 # show version information about remote installed versions
 function command_versions() {
 	exec_deb 'apt-cache policy do-agent | head -n3'
-	exec_rpm 'yum --cacheonly list do-agent'
+	exec_rpm 'yum list -C do-agent'
 }
 
 function command_create_status() {
@@ -235,6 +231,16 @@ function command_scp() {
 		scp -o "UserKnownHostsFile=/dev/null" -o "StrictHostKeyChecking=no" -o "LogLevel=ERROR" "$src" root@"${ip}":"$dest" &
 	done
 	wait
+}
+
+# switch all machines to the do-agent-beta repository for testing
+function command_use_beta() {
+	exec_ips "$(list_ips)" "curl -SsL https://insights.nyc3.digitaloceanspaces.com/install-new.sh | sudo BETA=1 bash"
+}
+
+# switch all machines to the do-agent-unstable repository for testing
+function command_use_unstable() {
+	exec_ips "$(list_ips)" "curl -SsL https://insights.nyc3.digitaloceanspaces.com/install-new.sh | sudo UNSTABLE=1 bash"
 }
 
 # ssh to all debian-based droplets (ubuntu/debian) and execute a command

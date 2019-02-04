@@ -261,6 +261,10 @@ function check_can_promote_github() {
 }
 
 function promote_github() {
+	if ! remote_enabled "github"; then
+		echo "github remote is disabled via REMOTES env var (${REMOTES}), skipping..."
+		return
+	fi
 	check_can_promote_github
 
 	announce "Removing prerelease flag from '$VERSION' on Github"
@@ -290,6 +294,10 @@ function check_can_promote_docker() {
 }
 
 function promote_stable_docker() {
+	if ! remote_enabled "docker"; then
+		echo "docker remote is disabled via REMOTES env var (${REMOTES}), skipping..."
+		return
+	fi
 	IFS=. read -r major minor _ <<<"$VERSION"
 	promote_docker "$VERSION-rc" "$VERSION"
 
@@ -303,6 +311,10 @@ function promote_docker() {
 	src_tag=${1:-} dest_tag=${2:-}
 	[ -z "$src_tag" ] && abort "src_tag is required. Usage: ${FUNCNAME[0]} <src_tag> <dest_tag>"
 	[ -z "$dest_tag" ] && abort "dest_tag is required. Usage: ${FUNCNAME[0]} <src_tag> <dest_tag>"
+	if ! remote_enabled "docker"; then
+		echo "docker remote is disabled via REMOTES env var (${REMOTES}), skipping..."
+		return
+	fi
 
 	check_can_promote_docker
 	announce "Promoting docker tag ${src_tag} to ${dest_tag}"
