@@ -13,6 +13,7 @@ FORCE_RELEASE=${FORCE_RELEASE:-0}
 SUPPORTED_DEB_DISTROS="ubuntu/trusty ubuntu/utopic ubuntu/vivid ubuntu/wily ubuntu/xenial ubuntu/yakkety ubuntu/zesty ubuntu/artful ubuntu/bionic ubuntu/cosmic debian/jessie debian/stretch debian/buster"
 SUPPORTED_RPM_DISTROS="fedora/27 fedora/28 fedora/29 el/6 el/7"
 REMOTES=${REMOTES:-docker,packagecloud,github}
+STAGE=""
 
 CI_LOG_URL=""
 [ -n "${CI_BASE_URL:-}" ] && CI_LOG_URL="${CI_BASE_URL}/tab/build/detail/${GO_PIPELINE_NAME}/${GO_PIPELINE_COUNTER}/${GO_STAGE_NAME}/${GO_STAGE_COUNTER}/${GO_JOB_NAME}"
@@ -82,9 +83,9 @@ function usage() {
 }
 
 function main() {
-	cmd=${1:-}
+	STAGE=${1:-}
 
-	case "$cmd" in
+	case "$STAGE" in
 		unstable)
 			check_version
 			check_target_files
@@ -113,7 +114,7 @@ function main() {
 			exit 0
 			;;
 		*)
-			abort "Unknown command '$cmd'. See $ME --help for help"
+			abort "Unknown command '$STAGE'. See $ME --help for help"
 			;;
 	esac
 }
@@ -223,11 +224,11 @@ function check_can_deploy_github() {
 
 # deploy the compiled binaries and packages to github releases
 function deploy_github_prerelease() {
-	check_can_deploy_github
 	if ! remote_enabled "github"; then
 		echo "github remote is disabled via REMOTES env var (${REMOTES}), skipping..."
 		return
 	fi
+	check_can_deploy_github
 	announce "Deploying to Github"
 
 	create_github_release || abort "Github deploy failed"
@@ -319,8 +320,8 @@ function promote_docker() {
 	check_can_promote_docker
 	announce "Promoting docker tag ${src_tag} to ${dest_tag}"
 
-	quiet_docker_pull "$src_tag"
-	docker tag "$src_tag" "$DOCKER_IMAGE:$dest_tag"
+	quiet_docker_pull "${DOCKER_IMAGE}:$src_tag"
+	docker tag "${DOCKER_IMAGE}:$src_tag" "$DOCKER_IMAGE:$dest_tag"
 	docker push "$DOCKER_IMAGE:$dest_tag"
 }
 
@@ -531,6 +532,11 @@ function notify() {
 		{
 		  "title": "Version",
 		  "value": "${VERSION}",
+		  "short": true
+		},
+		{
+		  "title": "Stage",
+		  "value": "${STAGE}",
 		  "short": true
 		},
 		{

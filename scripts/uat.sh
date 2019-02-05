@@ -276,6 +276,10 @@ function command_install() {
 	esac
 }
 
+function command_bin_version() {
+	exec_ips "$(list_ips)" /opt/digitalocean/bin/do-agent --version
+}
+
 # ssh to all debian-based droplets (ubuntu/debian) and execute a command
 function exec_deb() {
 	[ -z "$*" ] && abort "Usage: $0 exec_deb <command>"
