@@ -24,12 +24,6 @@ getent group nobody 2> /dev/null \
 main() {
 	update_selinux
 
-	# create the user if it doesn't already exist
-	if ! getent passwd $USERNAME >/dev/null 2>&1; then
-		echo "Creating $USERNAME user"
-		adduser --system $USERNAME
-	fi
-
 	if command -v systemctl >/dev/null 2>&1; then
 		init_systemd
 	elif command -v initctl >/dev/null 2>&1; then

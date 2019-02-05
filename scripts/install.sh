@@ -91,7 +91,7 @@ function remove_package() {
 
 	case "${dist}" in
 		debian|ubuntu)
-			apt-get -qq remove -y "${pkg}" || :
+			apt-get -qq remove --purge -y "${pkg}" || :
 			;;
 		centos|fedora)
 			yum -q -y remove "${pkg}" || :

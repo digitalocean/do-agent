@@ -15,7 +15,7 @@ NO_INSTALL=${NO_INSTALL:-0}
 # team context in the URL of the browser
 CONTEXT=14661f
 OS=$(uname | tr '[:upper:]' '[:lower:]')
-TAG=do-agent-uat-${USER}
+TAG=${TAG:-do-agent-uat-${USER}}
 SUPPORTED_IMAGES="centos-6-x32 centos-6-x64 centos-7-x64 debian-8-x32 debian-8-x64 \
 	debian-9-x64 fedora-27-x64 fedora-28-x64 ubuntu-14-04-x32 ubuntu-14-04-x64 \
 	ubuntu-16-04-x32 ubuntu-16-04-x64 ubuntu-18-04-x64 ubuntu-18-10-x64"
@@ -120,6 +120,10 @@ function command_graphs() {
 # create a droplet for every SUPPORTED_IMAGE and automatically install do-agent
 # using either apt or yum
 function command_create() {
+	if [ -n "$(list_ips)" ]; then
+		abort "You already have a set of droplets created with this tag: ${TAG}. Either delete them or try again with a different TAG"
+	fi
+
 	for i in $SUPPORTED_IMAGES; do
 		create_image "$i" &
 	done
