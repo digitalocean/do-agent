@@ -431,10 +431,10 @@ function deploy_unstable_docker() {
 	fi
 	announce "Pushing docker images"
 
-	rc=${VERSION}-rc
-	docker build . -t "$DOCKER_IMAGE:unstable" -t "${rc}"
-	docker push "$DOCKER_IMAGE:unstable"
-	docker push "$DOCKER_IMAGE:${rc}"
+	for tag in unstable ${VERSION}-rc; do
+		docker build . -t "$DOCKER_IMAGE:${tag}"
+		docker push "$DOCKER_IMAGE:${tag}"
+	done
 }
 
 # list the artifacts within the target/ directory
