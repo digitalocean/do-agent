@@ -21,29 +21,20 @@ To install the do-agent on new Droplets simply select the Monitoring checkbox on
 
 ## Installing via package managers
 
-### Deb Repository
-```
-echo "deb https://repos.sonar.digitalocean.com/apt main main" > /etc/apt/sources.list.d/digitalocean-agent.list
-curl https://repos.sonar.digitalocean.com/sonar-agent.asc | sudo apt-key add -
-sudo apt-get update
-sudo apt-get install do-agent
+```bash
+curl -L https://agent.digitalocean.com/install.sh | sudo bash
+# or wget
+wget -qO- https://agent.digitalocean.com/install.sh | sudo bash
 ```
 
-### Yum Repository
+If you prefer to inspect the script first:
 
-```
-cat <'EOF' > /etc/yum.repos.d/digitalocean-agent.repo
-[sonar]
-name=do agent
-baseurl=https://repos.sonar.digitalocean.com/yum/$basearch
-failovermethod=priority
-enabled=1
-gpgcheck=1
-gpgkey=https://repos.sonar.digitalocean.com/sonar-agent.asc
-EOF
-
-rpm --import https://repos.sonar.digitalocean.com/sonar-agent.asc
-yum install do-agent
+```bash
+curl -L -o ./install.sh https://agent.digitalocean.com/install.sh
+# inspect the file
+less ./install.sh
+# execute the file
+sudo ./install.sh
 ```
 
 ## Development
@@ -71,7 +62,7 @@ dep ensure -v -add <import path>
 
 do-agent can be uninstalled with your distribution's package manager
 
-`apt remove do-agent` for Debian based distros
+`apt-get remove do-agent` for Debian based distros
 
 `yum remove do-agent` for RHEL based distros
 
