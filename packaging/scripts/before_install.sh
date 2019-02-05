@@ -17,6 +17,7 @@ main() {
 	if command -v systemctl >/dev/null 2>&1; then
 		echo "Stopping systemctl service..."
 		systemctl stop ${SVC_NAME} 2>/dev/null || true
+		systemctl disable ${SVC_NAME} 2>/dev/null || true
 	elif command -v initctl >/dev/null 2>&1; then
 		echo "Stopping initctl service..."
 		initctl stop ${SVC_NAME} 2>/dev/null || true

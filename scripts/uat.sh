@@ -31,13 +31,13 @@ SNYDER_SSH_FINGERPRINT="47:31:9b:8b:87:a7:2d:26:79:17:87:83:53:65:d4:b4"
 # shellcheck disable=SC1117
 USER_DATA_DEB="#!/bin/bash \n\
 [ -z \`command -v curl\` ] && apt-get -qq update && apt-get -qq install -y curl \n\
-curl -SsL https://insights.nyc3.digitaloceanspaces.com/install-new.sh | sudo bash"
+curl -SsL https://agent.digitalocean.com/install.sh | sudo bash"
 
 
 # shellcheck disable=SC1117
 USER_DATA_RPM="#!/bin/bash \n\
 [ -z \`command -v curl\` ] && yum -q -y install curl \n\
-curl -SsL https://insights.nyc3.digitaloceanspaces.com/install-new.sh | sudo bash"
+curl -SsL https://agent.digitalocean.com/install.sh | sudo bash"
 
 
 function main() {
@@ -242,9 +242,38 @@ function command_use_beta() {
 	exec_ips "$(list_ips)" "curl -SsL https://insights.nyc3.digitaloceanspaces.com/install-new.sh | sudo BETA=1 bash"
 }
 
-# switch all machines to the do-agent-unstable repository for testing
-function command_use_unstable() {
-	exec_ips "$(list_ips)" "curl -SsL https://insights.nyc3.digitaloceanspaces.com/install-new.sh | sudo UNSTABLE=1 bash"
+# install a version of the agent. Can be unstable, beta, or stable
+function command_install() {
+	vers=${1:-}
+	vers=${vers// /} # lowercase
+	[ -z "$vers" ] && \
+		abort "Usage: $0 install <unstable|beta|stable|old>"
+
+	case "${vers// /}" in
+		unstable)
+			exec_deb "apt-get -qq update && apt-get -qq install -y curl"
+			exec_rpm "yum -q install -y curl"
+			exec_ips "$(list_ips)" "curl -SsL https://insights.nyc3.digitaloceanspaces.com/install-new.sh | sudo UNSTABLE=1 bash"
+			;;
+		beta)
+			exec_deb "apt-get -qq update && apt-get -qq install -y curl"
+			exec_rpm "yum -q install -y curl"
+			exec_ips "$(list_ips)" "curl -SsL https://insights.nyc3.digitaloceanspaces.com/install-new.sh | sudo BETA=1 bash"
+			;;
+		stable)
+			exec_deb "apt-get -qq update && apt-get -qq install -y curl"
+			exec_rpm "yum -q install -y curl"
+			exec_ips "$(list_ips)" "curl -SsL https://insights.nyc3.digitaloceanspaces.com/install-new.sh | sudo bash"
+			;;
+		old)
+			exec_deb "apt-get -qq update && apt-get -qq install -y curl"
+			exec_rpm "yum -q install -y curl"
+			exec_ips "$(list_ips)" "curl -SsL https://agent.digitalocean.com/install.sh | sudo bash"
+			;;
+		*)
+			abort "Usage: $0 install <unstable|beta|stable|old>"
+			;;
+	esac
 }
 
 # ssh to all debian-based droplets (ubuntu/debian) and execute a command
