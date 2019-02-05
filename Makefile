@@ -67,10 +67,6 @@ deb_package  := $(package_dir)/$(pkg_project)_$(VERSION)_$(PKG_ARCH).deb
 rpm_package  := $(package_dir)/$(pkg_project).$(VERSION).$(PKG_ARCH).rpm
 tar_package  := $(package_dir)/$(pkg_project).$(VERSION).tar.gz
 
-# use the binary's mtime for epoch for consistency. This needs to be lazily
-# evaluated since the binary does not yet exist
-epoch = $(shell date '+%s' -r $(binary))
-
 #############
 ## targets ##
 #############
@@ -174,7 +170,6 @@ $(rpm_package): $(base_package)
 	@$(fpm) \
 		--verbose \
 		--output-type rpm \
-		--epoch $(epoch) \
 		--input-type deb \
 		--depends cronie \
 		--conflicts do-agent \
