@@ -48,6 +48,7 @@ update_selinux() {
 
 	echo "setting nis_enabled to 1 to allow do-agent to execute"
 	setsebool -P nis_enabled 1 || echo "Failed" > /dev/stderr
+	systemctl daemon-reexec || true
 }
 
 patch_updates() {
@@ -60,13 +61,11 @@ patch_updates() {
 	/bin/bash ${script}
 	EOF
 
-	chmod a+x "${CRON}"
+	chmod +x "${CRON}"
 }
 
 init_systemd() {
-	systemctl stop "${SYSTEMD_SVC_FILE}" || true
-	# --now is unsupported on older versions of debian/systemd
-	systemctl disable "${SYSTEMD_SVC_FILE}" || true
+	echo "Creating ${SYSTEMD_SVC_FILE}..."
 	# cannot use symlink because of an old bug https://bugzilla.redhat.com/show_bug.cgi?id=955379
 	cat <<-EOF > "${SYSTEMD_SVC_FILE}"
 	[Unit]
@@ -91,14 +90,15 @@ init_systemd() {
 	WantedBy=multi-user.target
 	EOF
 
+	chmod +x ${SYSTEMD_SVC_FILE}
 	# --now is unsupported on older versions of debian/systemd
-	systemctl enable ${SYSTEMD_SVC_FILE}
+	systemctl daemon-reload
+	systemctl enable -f ${SVC_NAME}
 	systemctl start ${SVC_NAME}
 }
 
 init_upstart() {
-	initctl stop ${SVC_NAME} || true
-	rm -fv ${INIT_SVC_FILE}
+	echo "Creating ${INIT_SVC_FILE}..."
 	cat <<-EOF > ${INIT_SVC_FILE}
 	# do-agent - An agent that collects system metrics.
 	#
@@ -117,6 +117,8 @@ init_upstart() {
 	  exec su -s /bin/sh -c 'exec "\$0" "\$@"' ${USERNAME} -- /opt/digitalocean/bin/do-agent --syslog
 	end script
 	EOF
+
+	chmod +x ${INIT_SVC_FILE}
 	initctl reload-configuration
 	initctl start ${SVC_NAME}
 }
