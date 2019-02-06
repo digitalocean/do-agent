@@ -30,8 +30,8 @@ var (
 		stdoutOnly    bool
 		debug         bool
 		syslog        bool
-		kubernetes    bool
 		noProcesses   bool
+		kubernetes    string
 	}
 
 	// additionalParams is a list of extra command line flags to append
@@ -48,7 +48,6 @@ const (
 	defaultAuthURL     = "https://sonar.digitalocean.com"
 	defaultSonarURL    = ""
 	defaultTimeout     = 2 * time.Second
-	doKubeEndpoint     = "http://127.0.0.1:8080"
 )
 
 func init() {
@@ -74,7 +73,8 @@ func init() {
 		BoolVar(&config.syslog)
 
 	kingpin.Flag("k8s", "enable DO Kubernetes metrics collection (this must be a DOK8s node)").
-		BoolVar(&config.kubernetes)
+		Default("http://127.0.0.1:8080").
+		StringVar(&config.kubernetes)
 
 	kingpin.Flag("no-collector.processes", "disable processes cpu/memory collection").Default("false").
 		BoolVar(&config.noProcesses)
@@ -155,8 +155,8 @@ func initCollectors() []prometheus.Collector {
 		cols = append(cols, process.NewProcessCollector())
 	}
 
-	if config.kubernetes {
-		k, err := collector.NewScraper("dokubernetes", doKubeEndpoint, defaultTimeout)
+	if config.kubernetes != "" {
+		k, err := collector.NewScraper("dokubernetes", config.kubernetes, defaultTimeout)
 		if err != nil {
 			log.Error("Failed to initialize DO Kubernetes metrics: %+v", err)
 		} else {
