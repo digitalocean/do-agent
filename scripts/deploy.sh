@@ -303,8 +303,8 @@ function promote_stable_docker() {
 	promote_docker "$VERSION-rc" "$VERSION"
 
 	for tag in $major $major.$minor; do
-		docker tag "$VERSION" "$tag"
-		docker push "$tag"
+		docker tag "${DOCKER_IMAGE}:$VERSION" "${DOCKER_IMAGE}:$tag"
+		docker push "${DOCKER_IMAGE}:$tag"
 	done
 }
 
