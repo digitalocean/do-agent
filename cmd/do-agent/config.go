@@ -73,7 +73,6 @@ func init() {
 		BoolVar(&config.syslog)
 
 	kingpin.Flag("k8s-metrics-path", "enable DO Kubernetes metrics collection (this must be a DOK8s metrics endpoint)").
-		Default("http://127.0.0.1:8080/metrics").
 		StringVar(&config.kubernetes)
 
 	kingpin.Flag("no-collector.processes", "disable processes cpu/memory collection").Default("false").
