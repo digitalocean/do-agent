@@ -19,9 +19,9 @@ import (
 )
 
 // NewScraper creates a new scraper to scrape metrics from the provided host
-func NewScraper(name, host string, timeout time.Duration) (*Scraper, error) {
-	host = strings.TrimRight(host, "/")
-	req, err := http.NewRequest("GET", fmt.Sprintf("%s/metrics", host), nil)
+func NewScraper(name, metricsEndpoint string, timeout time.Duration) (*Scraper, error) {
+	metricsEndpoint = strings.TrimRight(metricsEndpoint, "/")
+	req, err := http.NewRequest("GET", metricsEndpoint, nil)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create http request")
 	}

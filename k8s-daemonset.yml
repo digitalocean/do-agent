@@ -57,7 +57,7 @@ spec:
           - "/bin/do-agent"
           - "--path.procfs=/host/proc"
           - "--path.sysfs=/host/sys"
-          - "--k8s=http://kube-state-metrics.kube-system.svc.cluster.local:8080/metrics"
+          - "--k8s-metrics-path=http://kube-state-metrics.kube-system.svc.cluster.local:8080/metrics"
       nodeSelector:
         beta.kubernetes.io/os: linux
       securityContext:
