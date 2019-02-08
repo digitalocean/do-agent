@@ -31,6 +31,7 @@ var (
 		debug         bool
 		syslog        bool
 		noProcesses   bool
+		noNode        bool
 		kubernetes    string
 	}
 
@@ -75,8 +76,14 @@ func init() {
 	kingpin.Flag("k8s-metrics-path", "enable DO Kubernetes metrics collection (this must be a DOK8s metrics endpoint)").
 		StringVar(&config.kubernetes)
 
+	kingpin.Flag("k8s-metrics-path", "enable DO Kubernetes metrics collection (this must be a DOK8s metrics endpoint)").
+		StringVar(&config.kubernetes)
+
 	kingpin.Flag("no-collector.processes", "disable processes cpu/memory collection").Default("false").
 		BoolVar(&config.noProcesses)
+
+	kingpin.Flag("no-collector.node", "disable processes node collection").Default("false").
+		BoolVar(&config.noNode)
 }
 
 func checkConfig() error {
@@ -165,16 +172,18 @@ func initCollectors() []prometheus.Collector {
 
 	// create the default DO agent to collect metrics about
 	// this device
-	node, err := collector.NewNodeCollector()
-	if err != nil {
-		log.Fatal("failed to create DO agent: %+v", err)
-	}
-	log.Info("%d node_exporter collectors were registered", len(node.Collectors()))
+	if !config.noNode {
+		node, err := collector.NewNodeCollector()
+		if err != nil {
+			log.Fatal("failed to create DO agent: %+v", err)
+		}
+		log.Info("%d node_exporter collectors were registered", len(node.Collectors()))
 
-	for name := range node.Collectors() {
-		log.Info("node_exporter collector registered %q", name)
+		for name := range node.Collectors() {
+			log.Info("node_exporter collector registered %q", name)
+		}
+		cols = append(cols, node)
 	}
-	cols = append(cols, node)
 
 	return cols
 }
