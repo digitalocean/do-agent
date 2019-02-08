@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"io/ioutil"
 	"net/url"
 	"os"
 	"strings"
@@ -33,6 +34,7 @@ var (
 		noProcesses   bool
 		noNode        bool
 		kubernetes    string
+		kubeWhitelist string
 	}
 
 	// additionalParams is a list of extra command line flags to append
@@ -76,8 +78,8 @@ func init() {
 	kingpin.Flag("k8s-metrics-path", "enable DO Kubernetes metrics collection (this must be a DOK8s metrics endpoint)").
 		StringVar(&config.kubernetes)
 
-	kingpin.Flag("k8s-metrics-path", "enable DO Kubernetes metrics collection (this must be a DOK8s metrics endpoint)").
-		StringVar(&config.kubernetes)
+	kingpin.Flag("k8s-whitelist", "list of metrics to scrape from Kubernetes. If no list provided all metrics are treated as valid").
+		StringVar(&config.kubeWhitelist)
 
 	kingpin.Flag("no-collector.processes", "disable processes cpu/memory collection").Default("false").
 		BoolVar(&config.noProcesses)
@@ -162,7 +164,9 @@ func initCollectors() []prometheus.Collector {
 	}
 
 	if config.kubernetes != "" {
-		k, err := collector.NewScraper("dokubernetes", config.kubernetes, defaultTimeout)
+
+		whitelist := parseWhitelist(config.kubeWhitelist)
+		k, err := collector.NewScraper("dokubernetes", config.kubernetes, whitelist, defaultTimeout)
 		if err != nil {
 			log.Error("Failed to initialize DO Kubernetes metrics: %+v", err)
 		} else {
@@ -208,4 +212,16 @@ func disableCollectors(names ...string) {
 // disableCollectorFlag creates the correct cli flag for the given collector name
 func disableCollectorFlag(name string) string {
 	return fmt.Sprintf("--no-collector.%s", name)
+}
+
+// parseWhitelist parses a whitelist file into a list of metric names
+// whitelist is expected to be a simple text file where each line contains a metric name to whitelist
+func parseWhitelist(path string) []string {
+	b, err := ioutil.ReadFile(path)
+	if err != nil {
+		log.Error("Failed to read whitelist: %+v. Treating all metrics as valid", err)
+		return nil
+	}
+
+	return strings.Split(string(b), "\n")
 }

@@ -19,7 +19,7 @@ import (
 )
 
 // NewScraper creates a new scraper to scrape metrics from the provided host
-func NewScraper(name, metricsEndpoint string, timeout time.Duration) (*Scraper, error) {
+func NewScraper(name, metricsEndpoint string, whitelist []string, timeout time.Duration) (*Scraper, error) {
 	metricsEndpoint = strings.TrimRight(metricsEndpoint, "/")
 	req, err := http.NewRequest("GET", metricsEndpoint, nil)
 	if err != nil {
@@ -30,11 +30,18 @@ func NewScraper(name, metricsEndpoint string, timeout time.Duration) (*Scraper, 
 	req.Header.Set("User-Agent", "Prometheus/2.3.0")
 	req.Header.Set("X-Prometheus-Scrape-Timeout-Seconds", fmt.Sprintf("%f", timeout.Seconds()))
 
+	// Create map of whitelist metrics
+	whiteMap := make(map[string]bool, len(whitelist))
+	for _, w := range whitelist {
+		whiteMap[w] = true
+	}
+
 	return &Scraper{
-		req:     req,
-		name:    name,
-		timeout: timeout,
-		client:  clients.NewHTTP(timeout),
+		req:       req,
+		name:      name,
+		whitelist: whiteMap,
+		timeout:   timeout,
+		client:    clients.NewHTTP(timeout),
 		scrapeDurationDesc: prometheus.NewDesc(
 			prometheus.BuildFQName(name, "scrape", "collector_duration_seconds"),
 			fmt.Sprintf("%s: Duration of a collector scrape.", name),
@@ -56,6 +63,7 @@ type Scraper struct {
 	req                *http.Request
 	client             *http.Client
 	name               string
+	whitelist          map[string]bool
 	scrapeDurationDesc *prometheus.Desc
 	scrapeSuccessDesc  *prometheus.Desc
 }
@@ -133,6 +141,9 @@ func (s *Scraper) scrape(ctx context.Context, ch chan<- prometheus.Metric) (oute
 	}
 
 	for _, mf := range parsed {
+		if s.FilterMetric(mf) {
+			continue
+		}
 		convertMetricFamily(mf, ch)
 	}
 
@@ -142,6 +153,15 @@ func (s *Scraper) scrape(ctx context.Context, ch chan<- prometheus.Metric) (oute
 // Name returns the name of this scraper
 func (s *Scraper) Name() string {
 	return s.name
+}
+
+// FilterMetric returns true if the metric should be skipped (filtered out)
+func (s *Scraper) FilterMetric(metricFamily *dto.MetricFamily) bool {
+	if len(s.whitelist) == 0 { // if no whitelist treat all metrics as valid
+		return false
+	}
+
+	return !s.whitelist[*metricFamily.Name]
 }
 
 // convertMetricFamily converts the dto metrics parsed from the expfmt package
