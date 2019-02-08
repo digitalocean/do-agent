@@ -33,7 +33,6 @@ var (
 		noProcesses   bool
 		noNode        bool
 		kubernetes    string
-		kubeWhitelist string
 	}
 
 	// additionalParams is a list of extra command line flags to append
