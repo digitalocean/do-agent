@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"net/url"
 	"os"
 	"strings"
@@ -46,6 +45,17 @@ var (
 	disabledCollectors = map[string]interface{}{}
 )
 
+var k8sWhitelist = map[string]bool{
+	"kube_pod_container_resource_requests_cpu_cores":    true,
+	"kube_pod_container_resource_requests_memory_bytes": true,
+	"kube_node_status_allocatable_cpu_cores":            true,
+	"kube_node_status_allocatable_memory_bytes":         true,
+	"kube_pod_container_status_waiting":                 true,
+	"kube_pod_container_status_running":                 true,
+	"kube_pod_container_status_ready":                   true,
+	"kube_pod_container_status_restarts_total":          true,
+}
+
 const (
 	defaultMetadataURL = "http://169.254.169.254/metadata"
 	defaultAuthURL     = "https://sonar.digitalocean.com"
@@ -77,9 +87,6 @@ func init() {
 
 	kingpin.Flag("k8s-metrics-path", "enable DO Kubernetes metrics collection (this must be a DOK8s metrics endpoint)").
 		StringVar(&config.kubernetes)
-
-	kingpin.Flag("k8s-whitelist", "list of metrics to scrape from Kubernetes. If no list provided all metrics are treated as valid").
-		StringVar(&config.kubeWhitelist)
 
 	kingpin.Flag("no-collector.processes", "disable processes cpu/memory collection").Default("false").
 		BoolVar(&config.noProcesses)
@@ -164,9 +171,7 @@ func initCollectors() []prometheus.Collector {
 	}
 
 	if config.kubernetes != "" {
-
-		whitelist := parseWhitelist(config.kubeWhitelist)
-		k, err := collector.NewScraper("dokubernetes", config.kubernetes, whitelist, defaultTimeout)
+		k, err := collector.NewScraper("dokubernetes", config.kubernetes, k8sWhitelist, defaultTimeout)
 		if err != nil {
 			log.Error("Failed to initialize DO Kubernetes metrics: %+v", err)
 		} else {
@@ -212,16 +217,4 @@ func disableCollectors(names ...string) {
 // disableCollectorFlag creates the correct cli flag for the given collector name
 func disableCollectorFlag(name string) string {
 	return fmt.Sprintf("--no-collector.%s", name)
-}
-
-// parseWhitelist parses a whitelist file into a list of metric names
-// whitelist is expected to be a simple text file where each line contains a metric name to whitelist
-func parseWhitelist(path string) []string {
-	b, err := ioutil.ReadFile(path)
-	if err != nil {
-		log.Error("Failed to read whitelist: %+v. Treating all metrics as valid", err)
-		return nil
-	}
-
-	return strings.Split(string(b), "\n")
 }

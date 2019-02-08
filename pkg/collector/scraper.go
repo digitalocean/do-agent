@@ -19,7 +19,7 @@ import (
 )
 
 // NewScraper creates a new scraper to scrape metrics from the provided host
-func NewScraper(name, metricsEndpoint string, whitelist []string, timeout time.Duration) (*Scraper, error) {
+func NewScraper(name, metricsEndpoint string, whitelist map[string]bool, timeout time.Duration) (*Scraper, error) {
 	metricsEndpoint = strings.TrimRight(metricsEndpoint, "/")
 	req, err := http.NewRequest("GET", metricsEndpoint, nil)
 	if err != nil {
@@ -30,16 +30,10 @@ func NewScraper(name, metricsEndpoint string, whitelist []string, timeout time.D
 	req.Header.Set("User-Agent", "Prometheus/2.3.0")
 	req.Header.Set("X-Prometheus-Scrape-Timeout-Seconds", fmt.Sprintf("%f", timeout.Seconds()))
 
-	// Create map of whitelist metrics
-	whiteMap := make(map[string]bool, len(whitelist))
-	for _, w := range whitelist {
-		whiteMap[w] = true
-	}
-
 	return &Scraper{
 		req:       req,
 		name:      name,
-		whitelist: whiteMap,
+		whitelist: whitelist,
 		timeout:   timeout,
 		client:    clients.NewHTTP(timeout),
 		scrapeDurationDesc: prometheus.NewDesc(

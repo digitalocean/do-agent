@@ -60,7 +60,7 @@ func TestWhitelist(t *testing.T) {
 	defer ts.Close()
 
 	// Only scrape kube_configmap_created
-	s, err := NewScraper("testscraper", ts.URL, []string{"kube_configmap_created"}, 30*time.Second)
+	s, err := NewScraper("testscraper", ts.URL, map[string]bool{"kube_configmap_created": true}, 30*time.Second)
 	require.NoError(t, err)
 
 	ch := make(chan prometheus.Metric)
