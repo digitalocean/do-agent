@@ -3,16 +3,12 @@ set -ueo pipefail
 # set -x
 
 ME=$(basename "$0")
-PROJECT_ROOT="$(git rev-parse --show-toplevel)"
 DOCKER_IMAGE="docker.io/digitalocean/do-agent"
 VERSION=${VERSION:-$(cat target/VERSION || true)}
 VERSION_REGEX="[^\\d]${VERSION}[^\\d]"
-PACKAGECLOUD_DOCKER_IMAGE="docker.io/digitalocean/packagecloud:0.3.05"
 
 FORCE_RELEASE=${FORCE_RELEASE:-0}
-SUPPORTED_DEB_DISTROS="ubuntu/trusty ubuntu/utopic ubuntu/vivid ubuntu/wily ubuntu/xenial ubuntu/yakkety ubuntu/zesty ubuntu/artful ubuntu/bionic ubuntu/cosmic debian/jessie debian/stretch debian/buster"
-SUPPORTED_RPM_DISTROS="fedora/27 fedora/28 fedora/29 el/6 el/7"
-REMOTES=${REMOTES:-docker,packagecloud,github}
+REMOTES=${REMOTES:-docker,github,rsync}
 STAGE=""
 
 CI_LOG_URL=""
@@ -46,8 +42,17 @@ function usage() {
 	    DOCKER_USER, DOCKER_PASSWORD  (required)
 	        Docker hub access credentials
 
-	    PACKAGECLOUD_TOKEN (required)
-	        https://packagecloud.io access token
+	    RSYNC_HOSTS (required)
+                CSV list of one or more user@host pairs to rsync to
+                for deploy rsync
+                For example:
+                  RSYNC_HOSTS=mscott@123.456.7.89
+                  RSYNC_HOSTS=cbratton@123.456.7.89,jhalpert@dm.com
+
+	    RSYNC_KEY_FILE (required)
+	        private ssh key file to use for deploy rsync
+                For example:
+                  RSYNC_KEY_FILE=/home/abernard/.ssh/id_rsa
 
 	    SLACK_WEBHOOK_URL (optional)
 	        Webhook URL to send notifications. Enables Slack
@@ -59,23 +64,23 @@ function usage() {
 	        to the remotes supported by each deployment.
 	        
 	        For example: 
-	          unstable deploys to docker,packagecloud
-	          beta deploys to docker,packagecloud,github
-	          stable deploys to docker,packagecloud,github
+	          unstable deploys to docker,rsync
+	          beta deploys to docker,rsync,github
+	          stable deploys to docker,rsync,github
 
 	COMMANDS:
 
 	    unstable
-	        Push target/ assets to packagecloud unstable.
+	        Push target/ assets to rsync unstable.
 	        Push to docker hub under the unstable and \$VERSION-rc tags.
 
 	    beta
-	        Push target/ assets to packagecloud beta.
+	        Push target/ assets to rsync beta.
 	        Docker tag \$VERSION-rc to beta.
 	        Create a github prerelease with assets.
 
 	    stable
-	        Push target/ assets to packagecloud stable.
+	        Push target/ assets to rsync stable.
 	        Docker tag \$VERSION-rc to \$VERSION.
 	        Remove prerelease flag from the github release.
 
@@ -89,23 +94,20 @@ function main() {
 		unstable)
 			check_version
 			check_target_files
-			quiet_docker_pull "${PACKAGECLOUD_DOCKER_IMAGE}"
-			deploy_packagecloud "do-agent-unstable"
+			deploy_rsync "do-agent-unstable"
 			docker_login && deploy_unstable_docker
 			;;
 		beta)
 			check_version
 			check_target_files
-			quiet_docker_pull "${PACKAGECLOUD_DOCKER_IMAGE}"
-			deploy_packagecloud "do-agent-beta"
+			deploy_rsync "do-agent-beta"
 			deploy_github_prerelease
 			docker_login && promote_docker "unstable" "beta"
 			;;
 		stable)
 			check_version
 			check_target_files
-			quiet_docker_pull "${PACKAGECLOUD_DOCKER_IMAGE}"
-			deploy_packagecloud "do-agent"
+			deploy_rsync "do-agent"
 			promote_github
 			docker_login && promote_stable_docker
 			;;
@@ -127,81 +129,88 @@ function check_version() {
 
 function force_release_enabled() {
 	if is_enabled "${FORCE_RELEASE}" ; then
-		echo
-		echo "WARNING! forcing a release of $VERSION"
-		echo
+		cat <<-EOM
+		WARNING! forcing a release of $VERSION"
+		EOM
 		return 0
 	fi
 	return 1
 }
 
-function deploy_packagecloud() {
+function deploy_rsync() {
 	repo=${1:-}
 	[ -z "$repo" ] && abort "Destination repository is required. Usage: ${FUNCNAME[0]} <repo>"
-	if ! remote_enabled "packagecloud"; then
-		echo "packagecloud remote is disabled via REMOTES env var (${REMOTES}), skipping..."
+	if ! remote_enabled "rsync"; then
+		echo "rsync remote is disabled via REMOTES env var (${REMOTES}), skipping..."
 		return
 	fi
 
-	announce "Deploying packages to packagecloud"
+	announce "Deploying packages with rsync"
 
-	if force_release_enabled ; then
-		announce "Cleaning up any old versions of ${VERSION} on ${repo}"
-		curl -SsL "https://${PACKAGECLOUD_TOKEN}:@packagecloud.io/api/v1/repos/digitalocean-insights/${repo}/search.json?q=${VERSION}&per_page=100" \
-			| jq -r ".[] | select(.version == \"${VERSION}\") | \"\(.destroy_url)\"" \
-			| tee /dev/stderr \
-			| xargs -r -I{} curl -X DELETE -SsL -o /dev/null "https://${PACKAGECLOUD_TOKEN}:@packagecloud.io{}"
-	else
-		announce "Checking if we can deploy ${VERSION} to packagecloud ${repo}"
+	failed=0
+	for host in $(echo "${RSYNC_HOSTS}" | tr ',' ' '); do
+		rsync_to_host "${repo}" "${host}" || failed=1
+	done
 
-		status_code=$(http_status_for "https://packagecloud.io/digitalocean-insights/${repo}/packages/ubuntu/bionic/do-agent_${VERSION}_amd64.deb")
-		case $status_code in
-			404)
-				echo "Success"
-				;;
-			200)
-				abort "'$VERSION' has already been deployed to ${repo}. Add a new git tag or use pass FORCE_RELEASE=1."
-				;;
-			*)
-				abort "Failed to check if a version already exists. Try again? Got status code '$status_code'"
-				;;
-		esac
+	if [ "$failed" == "1" ]; then
+		abort "One or more hosts failed to sync"
 	fi
-
-	announce "Pushing packages to packagecloud"
-	target_files | grep -P '\.(deb|rpm)$'
-	echo "${SUPPORTED_DEB_DISTROS} ${SUPPORTED_RPM_DISTROS}"
-
-	# copy the target files into a temp dir to prevent the push globs from picking up different versions
-	tmpdir=.out/$(date +%s)
-	mkdir -p "${tmpdir}"
-
-	target_files | grep -P '\.(deb|rpm)$' | tee /dev/stderr | while IFS= read -r file; do
-		cp -Luv "${file}" "${tmpdir}/"
-	done
-
-	for distro in ${SUPPORTED_DEB_DISTROS}; do
-		package_cloud push "digitalocean-insights/${repo}/${distro}" "${tmpdir}/*.deb" &
-	done
-
-	for distro in ${SUPPORTED_RPM_DISTROS}; do
-		package_cloud push "digitalocean-insights/${repo}/${distro}" "${tmpdir}/*.rpm" &
-	done
-	wait
-
-	rm -rfv "${tmpdir}"
-
-	announce "Completed deploy to packagecloud ${repo}"
 }
 
-function package_cloud() {
+function rsync_to_host() {
+	repo=${1:-} host=${2:-}
+	[ -z "$repo" ] && abort "Destination repository is required. Usage: ${FUNCNAME[0]} <repo>"
+	[ -z "$host" ] && abort "Destination host is required. Usage: ${FUNCNAME[0]} <host>"
+
+	announce "Deploying packages to ${host}"
+
+	target_files | grep -P '\.deb$' | while IFS= read -r file; do
+		echo "sending ${file}..."
+		rsync "$file" "${host}:/etc/repos/apt/${repo}/pool/main/main/d/do-agent/"
+	done
+
+	target_files | grep -P '\.rpm$' | while IFS= read -r file; do
+		dest=""
+		case "${file}" in 
+			*amd64*)
+				dest=/etc/repos/yum/${repo}/x86_64/
+			;;
+			*i386*)
+				dest=/etc/repos/yum/${repo}/i386/
+			;;
+			*)
+				echo "Skipping file '${file}' because the arch was not automatically detected" > /dev/stderr
+				continue
+			;;
+		esac
+		echo "sending ${file}..."
+		rsync "$file" "${host}:${dest}"
+	done
+}
+
+function rsync() {
+	sshcmd="ssh -i ${RSYNC_KEY_FILE} -o 'StrictHostKeyChecking=no' -o 'UserKnownHostsFile=/dev/null' -o 'LogLevel=ERROR'"
+	flags="-P -v"
+	if is_enabled "${FORCE_RELEASE}" ; then
+		# the ignore-times flag will ignore timestamps and
+		# forcefully sync files even if they match on the server
+		flags="${flags} --ignore-times"
+	else
+		# the ignore-existing flag will skip copying any files
+		# that already exist on the server
+		flags="${flags} --ignore-existing"
+	fi
+
+	# disabling shellcheck that asks ${flags} to be quoted because
+	# we intentionally want the flags to be expanded in this case
+	# shellcheck disable=SC2086
 	docker run \
 		--rm \
-		-e "PACKAGECLOUD_TOKEN=${PACKAGECLOUD_TOKEN}" \
-		-v "${PROJECT_ROOT}:/project" \
-		-w /project \
-		"${PACKAGECLOUD_DOCKER_IMAGE}" \
-		"$@"
+		-v "${RSYNC_KEY_FILE}:${RSYNC_KEY_FILE}" \
+		-v "$PWD:$PWD" \
+		-w "$PWD" \
+		docker.io/instrumentisto/rsync-ssh@sha256:13a5f8bc29f8151ef56f0fa877054a27863d364d72c1183ca7b0411e3ae7930d \
+		rsync ${flags} -e "${sshcmd}" "$@"
 }
 
 function check_can_deploy_github() {
@@ -402,8 +411,10 @@ function create_github_release() {
 }
 
 function docker_login() {
-	# gocd has an old version of docker that does not have --pasword-stdin
-	docker login -u "$DOCKER_USER" -p "$DOCKER_PASSWORD"
+	if [ -n "${DOCKER_USER:-}" ] || [ -n "${DOCKER_PASSWORD:-}" ]; then
+		# gocd has an old version of docker that does not have --pasword-stdin
+		docker login -u "$DOCKER_USER" -p "$DOCKER_PASSWORD"
+	fi
 }
 
 function check_can_deploy_docker() {
@@ -425,11 +436,11 @@ function check_can_deploy_docker() {
 # build and push the RC docker hub image. This image is considered unstable
 # and should only be used for testing purposes
 function deploy_unstable_docker() {
-	check_can_deploy_docker
 	if ! remote_enabled "docker"; then
 		echo "docker remote is disabled via REMOTES env var (${REMOTES}), skipping..."
 		return
 	fi
+	check_can_deploy_docker
 	announce "Pushing docker images"
 
 	for tag in unstable ${VERSION}-rc; do
@@ -466,8 +477,14 @@ function github_curl() {
 # abort with an error message
 function abort() {
 	read -r line func file <<< "$(caller 0)"
-	echo "ERROR in $file:$func:$line: $1" > /dev/stderr
+	echo "ABORT ERROR in $file:$func:$line: $1" > /dev/stderr
 	exit 1
+}
+
+# error with an error message
+function error() {
+	read -r line func file <<< "$(caller 0)"
+	echo "ERROR in $file:$func:$line: $1" > /dev/stderr
 }
 
 # print something to STDOUT with formatting

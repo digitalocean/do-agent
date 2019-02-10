@@ -237,17 +237,10 @@ function command_scp() {
 	wait
 }
 
-# switch all machines to the do-agent-beta repository for testing
-function command_use_beta() {
-	exec_ips "$(list_ips)" "curl -SsL https://insights.nyc3.digitaloceanspaces.com/install-new.sh | sudo BETA=1 bash"
-}
-
 # install a version of the agent. Can be unstable, beta, or stable
 function command_install() {
 	vers=${1:-}
 	vers=${vers// /} # lowercase
-	[ -z "$vers" ] && \
-		abort "Usage: $0 install <unstable|beta|stable|old>"
 
 	case "${vers// /}" in
 		unstable)

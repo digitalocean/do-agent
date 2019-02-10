@@ -14,6 +14,9 @@ set -ueo pipefail
 UNSTABLE=${UNSTABLE:-0}
 BETA=${BETA:-0}
 
+REPO_HOST=http://45.55.127.101
+REPO_GPG_KEY=${REPO_HOST}/sonar-agent.asc
+
 repo="do-agent"
 [ "${UNSTABLE}" != 0 ] && repo="do-agent-unstable"
 [ "${BETA}" != 0 ] && repo="do-agent-beta"
@@ -29,30 +32,57 @@ function main() {
 	clean
 	check_do
 	check_dist
-	update_packages
-	install_package curl
 
-	kind=""
 	case "${dist}" in
 		debian|ubuntu)
-			kind="deb"
+			install_apt
 			;;
 		centos|fedora)
-			kind="rpm"
+			install_rpm
 			;;
 		*)
 			not_supported
 			;;
 	esac
+}
 
-	curl -sL "https://packagecloud.io/install/repositories/digitalocean-insights/${repo}/script.${kind}.sh" \
-		| sudo bash
+function install_apt() {
+	# forcefully remove any existing installations
+	apt-get remove do-agent || :
 
-	move_source_file
+	echo "Installing apt repository..."
+	apt-get -qq update
+	apt-get install -y ca-certificates gnupg2 apt-utils
+	echo "deb ${REPO_HOST}/apt/${repo} main main" > /etc/apt/sources.list.d/digitalocean-agent.list
+	echo -n "Installing gpg key..."
+	curl -sL "${REPO_GPG_KEY}" | apt-key add -
+	apt-get -qq update
+	apt-get install -y do-agent
+}
 
-	update_packages
-	remove_package do-agent
-	install_package do-agent
+function install_rpm() {
+	echo "Installing yum repository..."
+
+	# forcefully remove any existing installations
+	yum remove do-agent || :
+
+	yum install -y pygpgme ca-certificates
+
+	cat <<-EOF > /etc/yum.repos.d/digitalocean-agent.repo
+	[digitalocean-agent]
+	name=DigitalOcean Agent
+	baseurl=${REPO_HOST}/yum/${repo}/\$basearch
+	repo_gpgcheck=0
+	gpgcheck=1
+	enabled=1
+	gpgkey=${REPO_GPG_KEY}
+	sslverify=0
+	sslcacert=/etc/pki/tls/certs/ca-bundle.crt
+	metadata_expire=300
+	EOF
+
+	yum --disablerepo="*" --enablerepo="digitalocean-agent" makecache
+	yum install -y do-agent
 }
 
 function clean() {
@@ -63,85 +93,6 @@ function clean() {
 		rm -f "${rpm_repo}"
 	fi
 	echo "OK"
-}
-
-function update_packages() {
-	echo -n "Updating package caches..."
-	case "${dist}" in
-		debian|ubuntu)
-			apt-get -qq clean || :
-			apt-get -qq autoclean || :
-			apt-get -qq update || :
-			;;
-		centos|fedora)
-			yum -q clean all || :
-			yum -q -y makecache || :
-			;;
-		*)
-			not_supported
-			;;
-	esac
-	echo "OK"
-}
-
-function remove_package() {
-	pkg=${1:-}
-	[ -z "${pkg}" ] && abort "Usage: ${FUNCNAME[0]} <package>"
-	echo "Removing package: ${pkg}..."
-
-	case "${dist}" in
-		debian|ubuntu)
-			apt-get -qq remove --purge -y "${pkg}" || :
-			;;
-		centos|fedora)
-			yum -q -y remove "${pkg}" || :
-			;;
-		*)
-			not_supported
-			;;
-	esac
-}
-
-function install_package() {
-	pkg=${1:-}
-	[ -z "${pkg}" ] && abort "Usage: ${FUNCNAME[0]} <package>"
-	echo "Installing package: ${pkg}..."
-
-	case "${dist}" in
-		debian|ubuntu)
-			apt-get -qq install -y "${pkg}"
-			;;
-		centos|fedora)
-			yum -q -y install "${pkg}"
-			;;
-		*)
-			not_supported
-			;;
-	esac
-}
-
-# we want the file to be consistently named across the unstable, beta, and stable releases
-function move_source_file() {
-	echo "Renaming source file(s)..."
-	src=""
-	dest=""
-	case "${dist}" in
-		debian|ubuntu)
-			src="/etc/apt/sources.list.d/digitalocean-insights_${repo}.list"
-			dest=${deb_list}
-			;;
-		centos|fedora)
-			src="/etc/yum.repos.d/digitalocean-insights_${repo}.repo"
-			dest=${rpm_repo}
-			;;
-		*)
-			not_supported
-			;;
-	esac
-
-	mv -v "${src}" "${dest}"
-	# use a consistent name for all versions of the repository
-	sed -i "s,digitalocean-insights_${repo},digitalocean-agent,g" "${dest}"
 }
 
 function check_dist() {
@@ -174,11 +125,11 @@ function check_do() {
 	if ! [ "$sys_vendor" = "DigitalOcean" ]; then
 		cat <<-EOF
 
-    The DigitalOcean Agent is only supported on DigitalOcean machines.
+		The DigitalOcean Agent is only supported on DigitalOcean machines.
 
-    If you are seeing this message on an older droplet, you may need to power-off
-    and then power-on at http://cloud.digitalocean.com. After power-cycling,
-    please re-run this script.
+		If you are seeing this message on an older droplet, you may need to power-off
+		and then power-on at http://cloud.digitalocean.com. After power-cycling,
+		please re-run this script.
 
 		EOF
 		exit 1
