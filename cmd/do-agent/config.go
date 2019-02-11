@@ -31,6 +31,7 @@ var (
 		debug         bool
 		syslog        bool
 		noProcesses   bool
+		noNode        bool
 		kubernetes    string
 	}
 
@@ -42,6 +43,22 @@ var (
 	// duplicate entries
 	disabledCollectors = map[string]interface{}{}
 )
+
+var k8sWhitelist = map[string]bool{
+	"kube_deployment_spec_replicas":               true,
+	"kube_deployment_status_replicas_available":   true,
+	"kube_deployment_status_replicas_unavailable": true,
+
+	"kube_daemonset_status_desired_number_scheduled": true,
+	"kube_daemonset_status_number_available":         true,
+	"kube_daemonset_status_number_unavailable":       true,
+
+	"kube_statefulset_replicas":              true,
+	"kube_statefulset_status_replicas_ready": true,
+
+	"kube_node_status_allocatable": true,
+	"kube_node_status_capacity":    true,
+}
 
 const (
 	defaultMetadataURL = "http://169.254.169.254/metadata"
@@ -77,6 +94,9 @@ func init() {
 
 	kingpin.Flag("no-collector.processes", "disable processes cpu/memory collection").Default("false").
 		BoolVar(&config.noProcesses)
+
+	kingpin.Flag("no-collector.node", "disable processes node collection").Default("false").
+		BoolVar(&config.noNode)
 }
 
 func checkConfig() error {
@@ -155,7 +175,7 @@ func initCollectors() []prometheus.Collector {
 	}
 
 	if config.kubernetes != "" {
-		k, err := collector.NewScraper("dokubernetes", config.kubernetes, defaultTimeout)
+		k, err := collector.NewScraper("dokubernetes", config.kubernetes, k8sWhitelist, defaultTimeout)
 		if err != nil {
 			log.Error("Failed to initialize DO Kubernetes metrics: %+v", err)
 		} else {
@@ -165,16 +185,18 @@ func initCollectors() []prometheus.Collector {
 
 	// create the default DO agent to collect metrics about
 	// this device
-	node, err := collector.NewNodeCollector()
-	if err != nil {
-		log.Fatal("failed to create DO agent: %+v", err)
-	}
-	log.Info("%d node_exporter collectors were registered", len(node.Collectors()))
+	if !config.noNode {
+		node, err := collector.NewNodeCollector()
+		if err != nil {
+			log.Fatal("failed to create DO agent: %+v", err)
+		}
+		log.Info("%d node_exporter collectors were registered", len(node.Collectors()))
 
-	for name := range node.Collectors() {
-		log.Info("node_exporter collector registered %q", name)
+		for name := range node.Collectors() {
+			log.Info("node_exporter collector registered %q", name)
+		}
+		cols = append(cols, node)
 	}
-	cols = append(cols, node)
 
 	return cols
 }

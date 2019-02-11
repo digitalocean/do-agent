@@ -37,7 +37,7 @@ func TestScraper(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	s, err := NewScraper("testscraper", ts.URL, 30*time.Second)
+	s, err := NewScraper("testscraper", ts.URL, nil, 30*time.Second)
 	require.NoError(t, err)
 
 	ch := make(chan prometheus.Metric)
@@ -50,4 +50,39 @@ func TestScraper(t *testing.T) {
 			break
 		}
 	}
+}
+
+func TestWhitelist(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		log.Info("metrics requested")
+		io.WriteString(w, testmetrics)
+	}))
+	defer ts.Close()
+
+	// Only scrape kube_configmap_created
+	s, err := NewScraper("testscraper", ts.URL, map[string]bool{"kube_configmap_created": true}, 30*time.Second)
+	require.NoError(t, err)
+
+	ch := make(chan prometheus.Metric)
+	go s.Collect(ch)
+	var whitelist int
+	for m := range ch {
+		switch m.Desc().String() {
+		case `Desc{fqName: "kube_configmap_created", help: "Unix creation timestamp", constLabels: {}, variableLabels: [namespace configmap]}`:
+			whitelist++
+			continue // expected whitelisted metric
+		case `Desc{fqName: "testscraper_scrape_collector_success", help: "testscraper: Whether a collector succeeded.", constLabels: {}, variableLabels: [collector]}`:
+			metric := &dto.Metric{}
+			m.Write(metric)
+			require.Equal(t, float64(1), *metric.Gauge.Value)
+			return
+		case `Desc{fqName: "testscraper_scrape_collector_duration_seconds", help: "testscraper: Duration of a collector scrape.", constLabels: {}, variableLabels: [collector]}`:
+			continue
+		default:
+			t.Errorf("Unexpected metric was scraped: %v", m.Desc())
+		}
+	}
+
+	// There are 3 whitelisted metrics we expected to receive
+	require.Equal(t, 3, whitelist)
 }
