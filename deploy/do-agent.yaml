@@ -1,20 +1,15 @@
----
 kind: Namespace
 apiVersion: v1
 metadata:
   name: monitoring
   labels:
     name: monitoring
-
-
 ---
 apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: do-agent
   namespace: monitoring
-
-
 ---
 apiVersion: apps/v1beta2
 kind: DaemonSet
