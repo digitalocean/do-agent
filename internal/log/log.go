@@ -9,15 +9,25 @@ import (
 	"github.com/pkg/errors"
 )
 
+type LogLevel int
+
 const (
 	initFailed  = "failed to initialize syslog logger"
 	syslogFlags = log.Lshortfile
 	normalFlags = log.LUTC | log.Ldate | log.Ltime | log.Lshortfile
+
+	// LevelDebug enables debug logging
+	LevelDebug LogLevel = iota
+	// LevelError enables error logging
+	LevelError LogLevel = iota
 )
 
 var (
 	infolog = log.New(os.Stdout, "INFO: ", normalFlags)
 	errlog  = log.New(os.Stderr, "ERROR: ", normalFlags)
+
+	// Level is which level of logging to enable
+	Level = LevelError
 )
 
 // InitSyslog initializes logging to syslog
@@ -37,8 +47,12 @@ func InitSyslog() (err error) {
 	return nil
 }
 
-// Info prints a message to syslog with level LOG_NOTICE
-func Info(msg string, params ...interface{}) {
+// Debug prints a message to syslog with level LOG_NOTICE
+func Debug(msg string, params ...interface{}) {
+	if Level > LevelDebug {
+		return
+	}
+
 	if err := infolog.Output(2, fmt.Sprintf(msg, params...)); err != nil {
 		fmt.Fprintf(os.Stderr, "ERROR writing log output: %+v", err)
 	}

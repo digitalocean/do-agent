@@ -21,7 +21,7 @@ func main() {
 	signal.Notify(stop, syscall.SIGTERM, syscall.SIGQUIT, syscall.SIGHUP, syscall.SIGINT)
 	go func() {
 		if sig := <-stop; sig != nil {
-			log.Info("caught signal, shutting down: %s", sig.String())
+			log.Error("caught signal, shutting down: %s", sig.String())
 		}
 		cancel()
 	}()

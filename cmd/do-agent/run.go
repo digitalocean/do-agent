@@ -31,18 +31,18 @@ func run(ctx context.Context, w metricWriter, th throttler, dec decorate.Decorat
 			log.Error("failed to gather metrics: %v", err)
 			return
 		}
-		log.Info("stats collected in %s", time.Since(start))
+		log.Debug("stats collected in %s", time.Since(start))
 
 		start = time.Now()
 		dec.Decorate(mfs)
-		log.Info("stats decorated in %s", time.Since(start))
+		log.Debug("stats decorated in %s", time.Since(start))
 
 		err = w.Write(mfs)
 		if err != nil {
 			log.Error("failed to send metrics: %v", err)
 			return
 		}
-		log.Info("stats written in %s", time.Since(start))
+		log.Debug("stats written in %s", time.Since(start))
 	}
 
 	exec()
