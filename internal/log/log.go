@@ -9,7 +9,8 @@ import (
 	"github.com/pkg/errors"
 )
 
-type LogLevel int
+// Level is a log level such a Debug or Error
+type Level int
 
 const (
 	initFailed  = "failed to initialize syslog logger"
@@ -17,18 +18,22 @@ const (
 	normalFlags = log.LUTC | log.Ldate | log.Ltime | log.Lshortfile
 
 	// LevelDebug enables debug logging
-	LevelDebug LogLevel = iota
+	LevelDebug Level = iota
 	// LevelError enables error logging
-	LevelError LogLevel = iota
+	LevelError Level = iota
 )
 
 var (
 	infolog = log.New(os.Stdout, "INFO: ", normalFlags)
 	errlog  = log.New(os.Stderr, "ERROR: ", normalFlags)
 
-	// Level is which level of logging to enable
-	Level = LevelError
+	level = LevelError
 )
+
+// SetLevel sets the log level
+func SetLevel(l Level) {
+	level = l
+}
 
 // InitSyslog initializes logging to syslog
 func InitSyslog() (err error) {
@@ -47,9 +52,9 @@ func InitSyslog() (err error) {
 	return nil
 }
 
-// Debug prints a message to syslog with level LOG_NOTICE
+// Debug prints a debug message. If syslog is enabled then LOG_NOTICE is used
 func Debug(msg string, params ...interface{}) {
-	if Level > LevelDebug {
+	if level > LevelDebug {
 		return
 	}
 
@@ -58,14 +63,14 @@ func Debug(msg string, params ...interface{}) {
 	}
 }
 
-// Error prints an error to syslog with level LOG_ERR
+// Error prints an error message. If syslog is enabled then LOG_ERR is used
 func Error(msg string, params ...interface{}) {
 	if err := errlog.Output(2, fmt.Sprintf(msg, params...)); err != nil {
 		fmt.Fprintf(os.Stderr, "ERROR writing log output: %+v", err)
 	}
 }
 
-// Fatal prints an error to syslog with level LOG_ERR with Fatal
+// Fatal logs Error and exits 1
 func Fatal(msg string, params ...interface{}) {
 	if err := errlog.Output(2, fmt.Sprintf(msg, params...)); err != nil {
 		fmt.Fprintf(os.Stderr, "ERROR writing log output: %+v", err)

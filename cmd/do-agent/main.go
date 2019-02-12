@@ -35,6 +35,10 @@ func main() {
 	kingpin.HelpFlag.Short('h')
 	kingpin.Parse()
 
+	if config.debug {
+		log.SetLevel(log.LevelDebug)
+	}
+
 	if config.syslog {
 		if err := log.InitSyslog(); err != nil {
 			log.Error("failed to initialize syslog. Using standard logging: %+v", err)
