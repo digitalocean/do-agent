@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net/url"
 	"os"
-	"strings"
 	"time"
 
 	"github.com/pkg/errors"
@@ -147,13 +146,6 @@ func newTimeseriesClient(ctx context.Context) (*WrappedTSClient, error) {
 
 	if config.sonarEndpoint != "" {
 		clientOptions = append(clientOptions, tsclient.WithWharfEndpoint(config.sonarEndpoint))
-	}
-
-	if config.debug {
-		logger := func(msg string) {
-			fmt.Println(strings.TrimSpace(msg))
-		}
-		clientOptions = append(clientOptions, tsclient.WithLogger(logger))
 	}
 
 	tsClient := tsclient.New(clientOptions...)

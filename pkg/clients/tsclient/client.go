@@ -24,6 +24,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/digitalocean/do-agent/internal/log"
 	"github.com/digitalocean/do-agent/pkg/clients/tsclient/structuredstream"
 
 	"github.com/golang/snappy"
@@ -63,7 +64,6 @@ type HTTPClient struct {
 	numConsecutiveFailures   int
 	bootstrapRequired        bool
 	trusted                  bool
-	logger                   LoggerFn
 	lastSend                 map[string]int64
 	isZeroTime               bool
 
@@ -90,14 +90,10 @@ type ClientOptions struct {
 	RadarEndpoint            string
 	Timeout                  time.Duration
 	IsTrusted                bool
-	Logger                   LoggerFn
 }
 
 // ClientOptFn allows for overriding options
 type ClientOptFn func(*ClientOptions)
-
-// LoggerFn allows for a custom logger to be passed
-type LoggerFn func(msg string)
 
 // WithWharfEndpoint overrides the default wharf endpoint, this option must be set when WithTrustedAppKey is used.
 func WithWharfEndpoint(endpoint string) ClientOptFn {
@@ -155,13 +151,6 @@ func WithTrustedAppKey(appName, appKey string) ClientOptFn {
 	}
 }
 
-// WithLogger enables logging to passed in function
-func WithLogger(logger LoggerFn) ClientOptFn {
-	return func(o *ClientOptions) {
-		o.Logger = logger
-	}
-}
-
 // New creates a new client
 func New(opts ...ClientOptFn) Client {
 	opt := &ClientOptions{
@@ -203,11 +192,6 @@ func New(opts ...ClientOptFn) Client {
 		}
 	}
 
-	logger := opt.Logger
-	if logger == nil {
-		logger = stubLogger
-	}
-
 	return &HTTPClient{
 		userAgent:                opt.UserAgent,
 		metadataEndpoint:         opt.MetadataEndpoint,
@@ -220,12 +204,9 @@ func New(opts ...ClientOptFn) Client {
 		waitInterval:             defaultWaitInterval,
 		bootstrapRequired:        true,
 		trusted:                  opt.IsTrusted,
-		logger:                   logger,
 		lastSend:                 map[string]int64{},
 	}
 }
-
-func stubLogger(msg string) {}
 
 func (c *HTTPClient) bootstrapFromMetadata() error {
 	var err error
@@ -238,26 +219,26 @@ func (c *HTTPClient) bootstrapFromMetadata() error {
 	if err != nil {
 		return err
 	}
-	c.logger(fmt.Sprintf("droplet ID: %s", c.dropletID))
+	log.Debug("droplet ID: %s", c.dropletID)
 
 	c.region, err = c.GetRegion()
 	if err != nil {
 		return err
 	}
-	c.logger(fmt.Sprintf("region: %s", c.region))
+	log.Debug("region: %s", c.region)
 
 	authToken, err := c.GetAuthToken()
 	if err != nil {
 		return err
 	}
-	c.logger(fmt.Sprintf("auth token: %s", authToken))
+	log.Debug("auth token: %s", truncate(authToken, 5))
 
 	appKey, err := c.GetAppKey(authToken)
 	if err != nil {
 		return err
 	}
 	c.appKey = appKey
-	c.logger(fmt.Sprintf("appkey: %s", c.appKey))
+	log.Debug("appkey: %s", truncate(c.appKey, 5))
 
 	return nil
 }
@@ -394,7 +375,7 @@ func (c *HTTPClient) Flush() error {
 	}
 
 	url := c.url()
-	c.logger(fmt.Sprintf("sending metrics to %s", url))
+	log.Debug("sending metrics to %s", url)
 	req, err := http.NewRequest("POST", url, bytes.NewBuffer(c.buf.Bytes()))
 	if err != nil {
 		c.numConsecutiveFailures++
@@ -475,8 +456,19 @@ func (c *HTTPClient) GetAppKey(authToken string) (string, error) {
 	return appKey, nil
 }
 
+func truncate(str string, num int) string {
+	s := str
+	if len(str) > num {
+		if num > 3 {
+			num -= 3
+		}
+		s = str[0:num] + "*******"
+	}
+	return s
+}
+
 func (c *HTTPClient) httpGet(url, authToken string) (string, error) {
-	c.logger(fmt.Sprintf("HTTP GET %s", url))
+	log.Debug("HTTP GET %s", url)
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return "", err
@@ -484,7 +476,7 @@ func (c *HTTPClient) httpGet(url, authToken string) (string, error) {
 	if authToken != "" {
 		authValue := "DOMETADATA " + authToken
 		req.Header.Add("Authorization", authValue)
-		c.logger(fmt.Sprintf("Authorization: %s", authValue))
+		log.Debug("Authorization: %s", truncate(authValue, 15))
 	}
 
 	resp, err := c.httpClient.Do(req)
@@ -494,7 +486,7 @@ func (c *HTTPClient) httpGet(url, authToken string) (string, error) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		c.logger(fmt.Sprintf("got status code %d while fetching %s (auth token: %s)", resp.StatusCode, url, authToken))
+		log.Debug("got status code %d while fetching %s (auth token: %s)", resp.StatusCode, url, truncate(authToken, 5))
 		return "", &UnexpectedHTTPStatusError{StatusCode: resp.StatusCode}
 	}
 

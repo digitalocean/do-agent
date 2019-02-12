@@ -14,8 +14,8 @@ type Level int
 
 const (
 	initFailed  = "failed to initialize syslog logger"
-	syslogFlags = log.Lshortfile
-	normalFlags = log.LUTC | log.Ldate | log.Ltime | log.Lshortfile
+	syslogFlags = log.Llongfile
+	normalFlags = log.LUTC | log.Ldate | log.Ltime | log.Llongfile
 
 	// LevelDebug enables debug logging
 	LevelDebug Level = iota
@@ -24,8 +24,8 @@ const (
 )
 
 var (
-	infolog = log.New(os.Stdout, "INFO: ", normalFlags)
-	errlog  = log.New(os.Stderr, "ERROR: ", normalFlags)
+	debuglog = log.New(os.Stdout, "DEBUG: ", normalFlags)
+	errlog   = log.New(os.Stderr, "ERROR: ", normalFlags)
 
 	level = LevelError
 )
@@ -37,11 +37,11 @@ func SetLevel(l Level) {
 
 // InitSyslog initializes logging to syslog
 func InitSyslog() (err error) {
-	il, err := syslog.NewLogger(syslog.LOG_NOTICE, syslogFlags)
+	dl, err := syslog.NewLogger(syslog.LOG_NOTICE, syslogFlags)
 	if err != nil {
 		return errors.Wrap(err, initFailed)
 	}
-	infolog = il
+	debuglog = dl
 
 	el, err := syslog.NewLogger(syslog.LOG_ERR, syslogFlags)
 	if err != nil {
@@ -58,7 +58,7 @@ func Debug(msg string, params ...interface{}) {
 		return
 	}
 
-	if err := infolog.Output(2, fmt.Sprintf(msg, params...)); err != nil {
+	if err := debuglog.Output(2, fmt.Sprintf(msg, params...)); err != nil {
 		fmt.Fprintf(os.Stderr, "ERROR writing log output: %+v", err)
 	}
 }
