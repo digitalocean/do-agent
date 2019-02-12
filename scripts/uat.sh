@@ -244,23 +244,15 @@ function command_install() {
 
 	case "${vers// /}" in
 		unstable)
-			exec_deb "apt-get -qq update && apt-get -qq install -y curl"
-			exec_rpm "yum -q install -y curl"
-			exec_ips "$(list_ips)" "curl -SsL https://insights.nyc3.digitaloceanspaces.com/install-new.sh | sudo UNSTABLE=1 bash"
+			exec_ips "$(list_ips)" "curl -SsL https://insights.nyc3.digitaloceanspaces.com/install-local.sh | sudo UNSTABLE=1 bash"
 			;;
 		beta)
-			exec_deb "apt-get -qq update && apt-get -qq install -y curl"
-			exec_rpm "yum -q install -y curl"
-			exec_ips "$(list_ips)" "curl -SsL https://insights.nyc3.digitaloceanspaces.com/install-new.sh | sudo BETA=1 bash"
+			exec_ips "$(list_ips)" "curl -SsL https://insights.nyc3.digitaloceanspaces.com/install-local.sh | sudo BETA=1 bash"
 			;;
 		stable)
-			exec_deb "apt-get -qq update && apt-get -qq install -y curl"
-			exec_rpm "yum -q install -y curl"
-			exec_ips "$(list_ips)" "curl -SsL https://insights.nyc3.digitaloceanspaces.com/install-new.sh | sudo bash"
+			exec_ips "$(list_ips)" "curl -SsL https://insights.nyc3.digitaloceanspaces.com/install-local.sh | sudo bash"
 			;;
 		old)
-			exec_deb "apt-get -qq update && apt-get -qq install -y curl"
-			exec_rpm "yum -q install -y curl"
 			exec_ips "$(list_ips)" "curl -SsL https://agent.digitalocean.com/install.sh | sudo bash"
 			;;
 		*)

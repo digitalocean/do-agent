@@ -48,7 +48,7 @@ function main() {
 
 function install_apt() {
 	# forcefully remove any existing installations
-	apt-get remove do-agent || :
+	apt-get remove -y do-agent || :
 
 	echo "Installing apt repository..."
 	apt-get -qq update
@@ -64,7 +64,7 @@ function install_rpm() {
 	echo "Installing yum repository..."
 
 	# forcefully remove any existing installations
-	yum remove do-agent || :
+	yum remove -y do-agent || :
 
 	yum install -y pygpgme ca-certificates
 
