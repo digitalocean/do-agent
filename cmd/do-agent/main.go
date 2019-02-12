@@ -21,7 +21,7 @@ func main() {
 	signal.Notify(stop, syscall.SIGTERM, syscall.SIGQUIT, syscall.SIGHUP, syscall.SIGINT)
 	go func() {
 		if sig := <-stop; sig != nil {
-			log.Info("caught signal, shutting down: %s", sig.String())
+			log.Error("caught signal, shutting down: %s", sig.String())
 		}
 		cancel()
 	}()
@@ -34,6 +34,10 @@ func main() {
 	// parse all command line flags which are defined across the app
 	kingpin.HelpFlag.Short('h')
 	kingpin.Parse()
+
+	if config.debug {
+		log.SetLevel(log.LevelDebug)
+	}
 
 	if config.syslog {
 		if err := log.InitSyslog(); err != nil {

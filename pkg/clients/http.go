@@ -4,6 +4,8 @@ import (
 	"net"
 	"net/http"
 	"time"
+
+	"github.com/digitalocean/do-agent/internal/log"
 )
 
 // HTTPClient is can make HTTP requests
@@ -37,4 +39,26 @@ func (c *FakeHTTPClient) Do(req *http.Request) (*http.Response, error) {
 		return c.DoFunc(req)
 	}
 	return nil, nil
+}
+
+// NewDebug creates a new DebugHTTPClient
+func NewDebug(timeout time.Duration) *DebugHTTPClient {
+	return &DebugHTTPClient{NewHTTP(timeout)}
+}
+
+// DebugHTTPClient is an *http.Client that prints Headers and Body to log
+type DebugHTTPClient struct {
+	*http.Client
+}
+
+// Do sends the http request and logs headers and body to DEBUG
+func (c *DebugHTTPClient) Do(req *http.Request) (*http.Response, error) {
+	resp, err := c.Client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+
+	log.Debug("%T: HTTP %s %s [%d %s]", c, req.Method, req.URL, resp.StatusCode, resp.Status)
+
+	return resp, err
 }

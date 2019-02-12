@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net/url"
 	"os"
-	"strings"
 	"time"
 
 	"github.com/pkg/errors"
@@ -149,13 +148,6 @@ func newTimeseriesClient(ctx context.Context) (*WrappedTSClient, error) {
 		clientOptions = append(clientOptions, tsclient.WithWharfEndpoint(config.sonarEndpoint))
 	}
 
-	if config.debug {
-		logger := func(msg string) {
-			fmt.Println(strings.TrimSpace(msg))
-		}
-		clientOptions = append(clientOptions, tsclient.WithLogger(logger))
-	}
-
 	tsClient := tsclient.New(clientOptions...)
 	wrappedTSClient := &WrappedTSClient{tsClient}
 
@@ -190,10 +182,10 @@ func initCollectors() []prometheus.Collector {
 		if err != nil {
 			log.Fatal("failed to create DO agent: %+v", err)
 		}
-		log.Info("%d node_exporter collectors were registered", len(node.Collectors()))
+		log.Debug("%d node_exporter collectors were registered", len(node.Collectors()))
 
 		for name := range node.Collectors() {
-			log.Info("node_exporter collector registered %q", name)
+			log.Debug("node_exporter collector registered %q", name)
 		}
 		cols = append(cols, node)
 	}
