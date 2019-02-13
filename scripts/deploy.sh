@@ -189,7 +189,8 @@ function rsync_to_host() {
 }
 
 function rsync() {
-	sshcmd="ssh -i ${RSYNC_KEY_FILE} -o 'StrictHostKeyChecking=no' -o 'UserKnownHostsFile=/dev/null' -o 'LogLevel=ERROR'"
+	key_file=$(realpath "${RSYNC_KEY_FILE}")
+	sshcmd="ssh -i '${key_file}' -o 'StrictHostKeyChecking=no' -o 'UserKnownHostsFile=/dev/null' -o 'LogLevel=ERROR'"
 	flags="-P -v"
 	if is_enabled "${FORCE_RELEASE}" ; then
 		# the ignore-times flag will ignore timestamps and
@@ -206,7 +207,7 @@ function rsync() {
 	# shellcheck disable=SC2086
 	docker run \
 		--rm \
-		-v "${RSYNC_KEY_FILE}:${RSYNC_KEY_FILE}" \
+		-v "${key_file}:${key_file}" \
 		-v "$PWD:$PWD" \
 		-w "$PWD" \
 		docker.io/instrumentisto/rsync-ssh@sha256:13a5f8bc29f8151ef56f0fa877054a27863d364d72c1183ca7b0411e3ae7930d \

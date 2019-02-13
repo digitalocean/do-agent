@@ -20,6 +20,7 @@ shellcheck   = @docker run --rm -i -v "$(CURDIR):$(CURDIR)" -w "$(CURDIR)" -u $(
 gometalinter = @docker run --rm -i -v "$(CURDIR):/go/src/$(importpath)" -w "/go/src/$(importpath)" -u $(shell id -u) digitalocean/gometalinter:2.0.11
 revgrep      = docker run --rm -i -v "$(CURDIR):$(CURDIR)" -w "$(CURDIR)" -u $(shell id -u) digitalocean/revgrep:latest
 fpm          = @docker run --rm -i -v "$(CURDIR):$(CURDIR)" -w "$(CURDIR)" -u $(shell id -u) digitalocean/fpm:latest
+vault        = @docker run --rm -i -u $(shell id -u) --net=host -e "VAULT_TOKEN=$(shell cat .vault-token || echo)" docker.internal.digitalocean.com/eng-insights/vault:0.11.5
 now          = $(shell date -u)
 git_rev      = $(shell git rev-parse --short HEAD)
 git_tag      = $(subst v,,$(shell git describe --tags --abbrev=0))
@@ -198,3 +199,23 @@ $(tar_package): $(base_package)
 	chown -R $(USER):$(USER) target
 # print all files within the archive
 	@docker run --rm -i -v "$(CURDIR):$(CURDIR)" -w "$(CURDIR)" ubuntu:xenial tar -ztvf $@
+
+.INTERMEDIATE: .vault-token
+.vault-token:
+	$(print)
+	$(vault) write -field token auth/approle/login role_id=$(VAULT_ROLE_ID) secret_id=$(VAULT_SECRET_ID) \
+		| cp /dev/stdin $@
+
+.INTERMEDIATE: .id_rsa.pub
+.id_rsa.pub: .vault-token
+	$(print)
+	$(vault) read --field ssh-pub-key secret/agent/packager/terraform \
+		| cp /dev/stdin $@
+
+.PHONY: deploy
+deploy: .id_rsa.pub
+ifndef release
+	$(error Usage: make deploy release=(unstable|beta|stable))
+endif
+	@RSYNC_KEY_FILE=$(CURDIR)/$^ ./scripts/deploy.sh $(release)
+
