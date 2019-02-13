@@ -206,14 +206,14 @@ $(tar_package): $(base_package)
 	$(vault) write -field token auth/approle/login role_id=$(VAULT_ROLE_ID) secret_id=$(VAULT_SECRET_ID) \
 		| cp /dev/stdin $@
 
-.INTERMEDIATE: .id_rsa.pub
-.id_rsa.pub: .vault-token
+.INTERMEDIATE: .id_rsa
+.id_rsa: .vault-token
 	$(print)
-	$(vault) read --field ssh-pub-key secret/agent/packager/terraform \
+	$(vault) read --field ssh-priv-key secret/agent/packager/terraform \
 		| cp /dev/stdin $@
 
 .PHONY: deploy
-deploy: .id_rsa.pub
+deploy: .id_rsa
 ifndef release
 	$(error Usage: make deploy release=(unstable|beta|stable))
 endif

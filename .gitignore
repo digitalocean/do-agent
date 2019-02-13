@@ -1,3 +1,5 @@
 target
 repos/
 sonar-agent.key
+.id_rsa
+.vault-token
