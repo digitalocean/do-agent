@@ -1,10 +1,7 @@
 package main
 
 import (
-	"context"
 	"os"
-	"os/signal"
-	"syscall"
 
 	"github.com/digitalocean/do-agent/internal/flags"
 	"github.com/digitalocean/do-agent/internal/log"
@@ -14,18 +11,6 @@ import (
 )
 
 func main() {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	stop := make(chan os.Signal, 1)
-	signal.Notify(stop, syscall.SIGTERM, syscall.SIGQUIT, syscall.SIGHUP, syscall.SIGINT)
-	go func() {
-		if sig := <-stop; sig != nil {
-			log.Error("caught signal, shutting down: %s", sig.String())
-		}
-		cancel()
-	}()
-
 	os.Args = append(os.Args, additionalParams...)
 
 	// read flags from cli directly first so we have access to them
@@ -53,7 +38,7 @@ func main() {
 	reg := prometheus.NewRegistry()
 	reg.MustRegister(cols...)
 
-	w, th := initWriter(ctx)
+	w, th := initWriter()
 	d := initDecorator()
-	run(ctx, w, th, d, reg)
+	run(w, th, d, reg)
 }
