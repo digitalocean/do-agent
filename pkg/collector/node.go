@@ -71,9 +71,9 @@ func (n *NodeCollector) Collect(ch chan<- prometheus.Metric) {
 		// Desc doesn't allow access to underlying fields like fqName. The String() output contains
 		// Desc{fqName: "node_network_transmit_bytes_total", help: "Network device statistic transmit_bytes.", constLabels: {}, variableLabels: [device]}
 		// this is ugly but currently all we can do
-		d := m.Desc().String()
+		d := strings.ToLower(m.Desc().String())
 		for s := range whitelist {
-			if strings.Contains(d, fmt.Sprintf(`fqName: "%s"`, s)) {
+			if strings.Contains(d, fmt.Sprintf(`fqname: "%s"`, s)) {
 				ch <- m
 			}
 		}
