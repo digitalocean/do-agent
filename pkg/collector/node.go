@@ -9,20 +9,20 @@ import (
 	"github.com/prometheus/node_exporter/collector"
 )
 
-var whitelist = map[string]bool{
-	"node_network_receive_bytes_total":  true,
-	"node_network_transmit_bytes_total": true,
-	"node_memory_memtotal_bytes":        true,
-	"node_memory_memfree_bytes":         true,
-	"node_memory_cached_bytes":          true,
-	"node_memory_swapcached_bytes":      true,
-	"node_memory_swapfree_bytes":        true,
-	"node_memory_swaptotal_bytes":       true,
-	"node_filesystem_size_bytes":        true,
-	"node_filesystem_free_bytes":        true,
-	"node_load1":                        true,
-	"node_load5":                        true,
-	"node_load15":                       true,
+var whitelist = []string{
+	"node_network_receive_bytes_total",
+	"node_network_transmit_bytes_total",
+	"node_memory_memtotal_bytes",
+	"node_memory_memfree_bytes",
+	"node_memory_cached_bytes",
+	"node_memory_swapcached_bytes",
+	"node_memory_swapfree_bytes",
+	"node_memory_swaptotal_bytes",
+	"node_filesystem_size_bytes",
+	"node_filesystem_free_bytes",
+	"node_load1",
+	"node_load5",
+	"node_load15",
 }
 
 // NewNodeCollector creates a new prometheus NodeCollector
@@ -72,7 +72,7 @@ func (n *NodeCollector) Collect(ch chan<- prometheus.Metric) {
 		// Desc{fqName: "node_network_transmit_bytes_total", help: "Network device statistic transmit_bytes.", constLabels: {}, variableLabels: [device]}
 		// this is ugly but currently all we can do
 		d := strings.ToLower(m.Desc().String())
-		for s := range whitelist {
+		for _, s := range whitelist {
 			if strings.Contains(d, fmt.Sprintf(`fqname: "%s"`, s)) {
 				ch <- m
 			}
