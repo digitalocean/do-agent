@@ -43,16 +43,16 @@ function usage() {
 	        Docker hub access credentials
 
 	    RSYNC_HOSTS (required)
-                CSV list of one or more user@host pairs to rsync to
-                for deploy rsync
-                For example:
-                  RSYNC_HOSTS=mscott@123.456.7.89
-                  RSYNC_HOSTS=cbratton@123.456.7.89,jhalpert@dm.com
+	        CSV list of one or more user@host pairs to rsync to
+	        for deploy rsync
+	        For example:
+	          RSYNC_HOSTS=mscott@123.456.7.89
+	          RSYNC_HOSTS=cbratton@123.456.7.89,jhalpert@dm.com
 
 	    RSYNC_KEY_FILE (required)
 	        private ssh key file to use for deploy rsync
-                For example:
-                  RSYNC_KEY_FILE=/home/abernard/.ssh/id_rsa
+	        For example:
+	          RSYNC_KEY_FILE=/home/abernard/.ssh/id_rsa
 
 	    SLACK_WEBHOOK_URL (optional)
 	        Webhook URL to send notifications. Enables Slack
