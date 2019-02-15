@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"fmt"
 	"net/url"
 	"os"
@@ -108,12 +107,12 @@ func checkConfig() error {
 	return nil
 }
 
-func initWriter(ctx context.Context) (metricWriter, throttler) {
+func initWriter() (metricWriter, throttler) {
 	if config.stdoutOnly {
 		return writer.NewFile(os.Stdout), &constThrottler{wait: 10 * time.Second}
 	}
 
-	tsc, err := newTimeseriesClient(ctx)
+	tsc, err := newTimeseriesClient()
 	if err != nil {
 		log.Fatal("failed to connect to sonar: %+v", err)
 	}
@@ -137,7 +136,7 @@ type WrappedTSClient struct {
 // Name returns the name of the client
 func (m *WrappedTSClient) Name() string { return "tsclient" }
 
-func newTimeseriesClient(ctx context.Context) (*WrappedTSClient, error) {
+func newTimeseriesClient() (*WrappedTSClient, error) {
 	clientOptions := []tsclient.ClientOptFn{
 		tsclient.WithUserAgent(fmt.Sprintf("do-agent-%s", version)),
 		tsclient.WithRadarEndpoint(config.authURL.String()),

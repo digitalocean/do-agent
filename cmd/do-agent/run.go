@@ -1,7 +1,9 @@
 package main
 
 import (
-	"context"
+	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"github.com/digitalocean/do-agent/internal/log"
@@ -23,7 +25,10 @@ type gatherer interface {
 	Gather() ([]*dto.MetricFamily, error)
 }
 
-func run(ctx context.Context, w metricWriter, th throttler, dec decorate.Decorator, g gatherer) {
+func run(w metricWriter, th throttler, dec decorate.Decorator, g gatherer) {
+	stop := make(chan os.Signal, 1)
+	signal.Notify(stop, syscall.SIGINT, syscall.SIGTERM, os.Interrupt)
+
 	exec := func() {
 		start := time.Now()
 		mfs, err := g.Gather()
@@ -51,7 +56,7 @@ func run(ctx context.Context, w metricWriter, th throttler, dec decorate.Decorat
 		select {
 		case <-time.After(th.WaitDuration()):
 			exec()
-		case <-ctx.Done():
+		case <-stop:
 			return
 		}
 	}
