@@ -14,7 +14,7 @@ set -ueo pipefail
 UNSTABLE=${UNSTABLE:-0}
 BETA=${BETA:-0}
 
-REPO_HOST=http://45.55.127.101
+REPO_HOST=https://repos.insights.digitalocean.com
 REPO_GPG_KEY=${REPO_HOST}/sonar-agent.asc
 
 repo="do-agent"
