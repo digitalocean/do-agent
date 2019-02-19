@@ -53,6 +53,7 @@ spec:
           - "/bin/do-agent"
           - "--path.procfs=/host/proc"
           - "--path.sysfs=/host/sys"
+          - "--k8s-metrics-path=http://kube-state-metrics.kube-system.svc.cluster.local:8080/metrics"
       nodeSelector:
         beta.kubernetes.io/os: linux
       securityContext:
@@ -72,48 +73,3 @@ spec:
       - hostPath:
           path: /
         name: root
----
-# Deployment to create a single do-agent that scrape kube-state metrics
-apiVersion: apps/v1beta2
-kind: Deployment 
-metadata:
-  labels:
-    app: do-kube-agent
-  name: do-kube-agent
-  namespace: monitoring
-spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      app: do-kube-agent
-  template:
-    metadata:
-      labels:
-        app: do-kube-agent
-    spec:
-      containers:
-      - name: do-kube-agent
-        image: docker.io/digitalocean/do-agent:unstable
-        resources:
-          limits:
-            cpu: 102m
-            memory: 100Mi
-          requests:
-            cpu: 102m
-            memory: 80Mi
-        command:
-          - "/bin/do-agent"
-          - "--path.procfs=/host/proc"
-          - "--path.sysfs=/host/sys"
-          - "--k8s-metrics-path=http://kube-state-metrics.kube-system.svc.cluster.local:8080/metrics"
-          - "--no-collector.node"
-          - "--no-collector.processes"
-      nodeSelector:
-        beta.kubernetes.io/os: linux
-      securityContext:
-        runAsNonRoot: true
-        runAsUser: 65534
-      serviceAccountName: do-agent
-      tolerations:
-      - effect: NoSchedule
-        key: node-role.kubernetes.io/master
