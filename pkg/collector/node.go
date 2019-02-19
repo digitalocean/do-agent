@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/digitalocean/do-agent/internal/log"
+
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/node_exporter/collector"
@@ -20,6 +22,9 @@ var whitelist = []string{
 	"node_memory_swaptotal_bytes",
 	"node_filesystem_size_bytes",
 	"node_filesystem_free_bytes",
+	"node_disk_read_bytes_total",
+	"node_disk_written_bytes_total",
+	"node_cpu_seconds_total",
 	"node_load1",
 	"node_load5",
 	"node_load15",
@@ -75,6 +80,8 @@ func (n *NodeCollector) Collect(ch chan<- prometheus.Metric) {
 		for _, s := range whitelist {
 			if strings.Contains(d, fmt.Sprintf(`fqname: "%s"`, s)) {
 				ch <- m
+			} else {
+				log.Debug("Node metric not whitelisted. Ignoring: %q", d)
 			}
 		}
 	}
