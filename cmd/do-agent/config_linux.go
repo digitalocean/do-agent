@@ -6,7 +6,7 @@ func init() {
 		"drbd", "edac", "entropy", "filefd", "hwmon", "infiniband",
 		"interrupts", "ipvs", "ksmd", "logind", "mdadm", "meminfo_numa",
 		"mountstats", "nfs", "nfsd", "ntp", "qdisc", "runit", "sockstat",
-		"supervisord", "systemd", "tcpstat", "textfile", "time", "timex",
-		"vmstat", "wifi", "xfs", "zfs",
+		"supervisord", "systemd", "tcpstat", "textfile", "time", "vmstat",
+		"wifi", "xfs", "zfs",
 	)
 }
