@@ -7,9 +7,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/digitalocean/do-agent/internal/log"
 	"github.com/prometheus/client_golang/prometheus"
 	dto "github.com/prometheus/client_model/go"
-	"github.com/prometheus/common/log"
 	"github.com/stretchr/testify/require"
 )
 
