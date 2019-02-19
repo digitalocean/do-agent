@@ -32,7 +32,7 @@ kube_configmap_metadata_resource_version{namespace="kube-system",configmap="core
 
 func TestScraper(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		log.Info("metrics requested")
+		log.Debug("metrics requested")
 		io.WriteString(w, testmetrics)
 	}))
 	defer ts.Close()
@@ -54,7 +54,7 @@ func TestScraper(t *testing.T) {
 
 func TestWhitelist(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		log.Info("metrics requested")
+		log.Debug("metrics requested")
 		io.WriteString(w, testmetrics)
 	}))
 	defer ts.Close()
