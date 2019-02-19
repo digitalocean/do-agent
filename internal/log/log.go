@@ -5,15 +5,12 @@ import (
 	"log"
 	"log/syslog"
 	"os"
-
-	"github.com/pkg/errors"
 )
 
 // Level is a log level such a Debug or Error
 type Level int
 
 const (
-	initFailed  = "failed to initialize syslog logger"
 	syslogFlags = log.Llongfile
 	normalFlags = log.LUTC | log.Ldate | log.Ltime | log.Llongfile
 
@@ -39,13 +36,13 @@ func SetLevel(l Level) {
 func InitSyslog() (err error) {
 	dl, err := syslog.NewLogger(syslog.LOG_NOTICE, syslogFlags)
 	if err != nil {
-		return errors.Wrap(err, initFailed)
+		return fmt.Errorf("InitSyslog failed to initialize debug logger: %+v", err)
 	}
 	debuglog = dl
 
 	el, err := syslog.NewLogger(syslog.LOG_ERR, syslogFlags)
 	if err != nil {
-		return errors.Wrap(err, initFailed)
+		return fmt.Errorf("InitSyslog failed to initialize error logger: %+v", err)
 	}
 	errlog = el
 
