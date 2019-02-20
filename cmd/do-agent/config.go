@@ -31,6 +31,7 @@ var (
 		noProcesses   bool
 		noNode        bool
 		kubernetes    string
+		postgres      string
 	}
 
 	// additionalParams is a list of extra command line flags to append
@@ -41,22 +42,6 @@ var (
 	// duplicate entries
 	disabledCollectors = map[string]interface{}{}
 )
-
-var k8sWhitelist = map[string]bool{
-	"kube_deployment_spec_replicas":               true,
-	"kube_deployment_status_replicas_available":   true,
-	"kube_deployment_status_replicas_unavailable": true,
-
-	"kube_daemonset_status_desired_number_scheduled": true,
-	"kube_daemonset_status_number_available":         true,
-	"kube_daemonset_status_number_unavailable":       true,
-
-	"kube_statefulset_replicas":              true,
-	"kube_statefulset_status_replicas_ready": true,
-
-	"kube_node_status_allocatable": true,
-	"kube_node_status_capacity":    true,
-}
 
 const (
 	defaultMetadataURL = "http://169.254.169.254/metadata"
@@ -95,6 +80,9 @@ func init() {
 
 	kingpin.Flag("no-collector.node", "disable processes node collection").Default("false").
 		BoolVar(&config.noNode)
+
+	kingpin.Flag("postgres-metrics-path", "enable DO DBAAS postgres metrics collection (this must be a DO DBAAS postgres metrics endpoint)").
+		StringVar(&config.postgres)
 }
 
 func checkConfig() error {
@@ -169,6 +157,15 @@ func initCollectors() []prometheus.Collector {
 		k, err := collector.NewScraper("dokubernetes", config.kubernetes, k8sWhitelist, defaultTimeout)
 		if err != nil {
 			log.Error("Failed to initialize DO Kubernetes metrics: %+v", err)
+		} else {
+			cols = append(cols, k)
+		}
+	}
+
+	if config.postgres != "" {
+		k, err := collector.NewScraper("dopostgres", config.postgres, postgresWhitelist, defaultTimeout)
+		if err != nil {
+			log.Error("Failed to initialize DO DBaaS postgres metrics collector: %+v", err)
 		} else {
 			cols = append(cols, k)
 		}
