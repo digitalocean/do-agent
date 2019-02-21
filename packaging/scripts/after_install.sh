@@ -90,7 +90,6 @@ init_systemd() {
 	WantedBy=multi-user.target
 	EOF
 
-	chmod +x ${SYSTEMD_SVC_FILE}
 	# --now is unsupported on older versions of debian/systemd
 	systemctl daemon-reload
 	systemctl enable -f ${SVC_NAME}
@@ -118,7 +117,6 @@ init_upstart() {
 	end script
 	EOF
 
-	chmod +x ${INIT_SVC_FILE}
 	initctl reload-configuration
 	initctl start ${SVC_NAME}
 }
