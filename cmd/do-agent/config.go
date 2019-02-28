@@ -31,7 +31,7 @@ var (
 		noProcesses   bool
 		noNode        bool
 		kubernetes    string
-		postgres      string
+		dbaas         string
 	}
 
 	// additionalParams is a list of extra command line flags to append
@@ -81,8 +81,8 @@ func init() {
 	kingpin.Flag("no-collector.node", "disable processes node collection").Default("false").
 		BoolVar(&config.noNode)
 
-	kingpin.Flag("postgres-metrics-path", "enable DO DBAAS postgres metrics collection (this must be a DO DBAAS postgres metrics endpoint)").
-		StringVar(&config.postgres)
+	kingpin.Flag("dbaas-metrics-path", "enable DO DBAAS metrics collection (this must be a DO DBAAS metrics endpoint)").
+		StringVar(&config.dbaas)
 }
 
 func checkConfig() error {
@@ -162,10 +162,10 @@ func initCollectors() []prometheus.Collector {
 		}
 	}
 
-	if config.postgres != "" {
-		k, err := collector.NewScraper("dopostgres", config.postgres, postgresWhitelist, defaultTimeout)
+	if config.dbaas != "" {
+		k, err := collector.NewScraper("dodbaas", config.dbaas, dbaasWhitelist, defaultTimeout)
 		if err != nil {
-			log.Error("Failed to initialize DO DBaaS postgres metrics collector: %+v", err)
+			log.Error("Failed to initialize DO DBaaS metrics collector: %+v", err)
 		} else {
 			cols = append(cols, k)
 		}
