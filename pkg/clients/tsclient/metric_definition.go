@@ -112,7 +112,7 @@ func NewDefinitionFromMap(m map[string]string) *Definition {
 	return NewDefinition(name, WithCommonLabels(m))
 }
 
-// GetLFM returns an lfm corresponding to a defitnition
+// GetLFM returns an lfm corresponding to a definition
 func GetLFM(def *Definition, labels []string) (string, error) {
 	lfm := []string{def.name}
 	for _, x := range def.sortedLabels {

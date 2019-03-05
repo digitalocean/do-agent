@@ -10,16 +10,17 @@ import (
 	"strings"
 	"time"
 
-	"github.com/digitalocean/do-agent/internal/log"
-	"github.com/digitalocean/do-agent/pkg/clients"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	dto "github.com/prometheus/client_model/go"
 	"github.com/prometheus/common/expfmt"
+
+	"github.com/digitalocean/do-agent/internal/log"
+	"github.com/digitalocean/do-agent/pkg/clients"
 )
 
 // NewScraper creates a new scraper to scrape metrics from the provided host
-func NewScraper(name, metricsEndpoint string, whitelist map[string]bool, timeout time.Duration) (*Scraper, error) {
+func NewScraper(name, metricsEndpoint string, extraMetricLabels []*dto.LabelPair, whitelist map[string]bool, timeout time.Duration) (*Scraper, error) {
 	metricsEndpoint = strings.TrimRight(metricsEndpoint, "/")
 	req, err := http.NewRequest("GET", metricsEndpoint, nil)
 	if err != nil {
@@ -31,11 +32,12 @@ func NewScraper(name, metricsEndpoint string, whitelist map[string]bool, timeout
 	req.Header.Set("X-Prometheus-Scrape-Timeout-Seconds", fmt.Sprintf("%f", timeout.Seconds()))
 
 	return &Scraper{
-		req:       req,
-		name:      name,
-		whitelist: whitelist,
-		timeout:   timeout,
-		client:    clients.NewHTTP(timeout),
+		req:               req,
+		name:              name,
+		extraMetricLabels: extraMetricLabels,
+		whitelist:         whitelist,
+		timeout:           timeout,
+		client:            clients.NewHTTP(timeout),
 		scrapeDurationDesc: prometheus.NewDesc(
 			prometheus.BuildFQName(name, "scrape", "collector_duration_seconds"),
 			fmt.Sprintf("%s: Duration of a collector scrape.", name),
@@ -58,6 +60,7 @@ type Scraper struct {
 	client             *http.Client
 	name               string
 	whitelist          map[string]bool
+	extraMetricLabels  []*dto.LabelPair
 	scrapeDurationDesc *prometheus.Desc
 	scrapeSuccessDesc  *prometheus.Desc
 }
@@ -138,7 +141,7 @@ func (s *Scraper) scrape(ctx context.Context, ch chan<- prometheus.Metric) (oute
 		if s.FilterMetric(mf) {
 			continue
 		}
-		convertMetricFamily(mf, ch)
+		convertMetricFamily(mf, ch, s.extraMetricLabels)
 	}
 
 	return nil
@@ -164,13 +167,16 @@ func (s *Scraper) FilterMetric(metricFamily *dto.MetricFamily) bool {
 // this was copied from github.com/prometheus/node_exporter
 // see https://github.com/prometheus/node_exporter/blob/f56e8fcdf48ead56f1f149dbf1301ac028ef589b/collector/textfile.go#L63
 // for more details
-func convertMetricFamily(metricFamily *dto.MetricFamily, ch chan<- prometheus.Metric) {
+func convertMetricFamily(metricFamily *dto.MetricFamily, ch chan<- prometheus.Metric, extraLabels []*dto.LabelPair) {
 	var valType prometheus.ValueType
 	var val float64
 
 	allLabelNames := map[string]struct{}{}
 	for _, metric := range metricFamily.Metric {
 		labels := metric.GetLabel()
+		if extraLabels != nil {
+			labels = append(labels, extraLabels...)
+		}
 		for _, label := range labels {
 			if _, ok := allLabelNames[label.GetName()]; !ok {
 				allLabelNames[label.GetName()] = struct{}{}
@@ -180,6 +186,9 @@ func convertMetricFamily(metricFamily *dto.MetricFamily, ch chan<- prometheus.Me
 
 	for _, metric := range metricFamily.Metric {
 		labels := metric.GetLabel()
+		if extraLabels != nil {
+			labels = append(labels, extraLabels...)
+		}
 		var names []string
 		var values []string
 		for _, label := range labels {

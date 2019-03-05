@@ -2,12 +2,16 @@ package main
 
 import (
 	"fmt"
+	"io/ioutil"
+	"net/http"
 	"net/url"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
+	dto "github.com/prometheus/client_model/go"
 	"gopkg.in/alecthomas/kingpin.v2"
 
 	"github.com/digitalocean/do-agent/internal/log"
@@ -41,6 +45,9 @@ var (
 	// disabledCollectors is a hash used by disableCollectors to prevent
 	// duplicate entries
 	disabledCollectors = map[string]interface{}{}
+
+	kubernetesClusterUUIDUserDataPrefix = "k8saas_cluster_uuid: "
+	kubernetesClusterUUIDLabel = "kubernetes_cluster_uuid"
 )
 
 const (
@@ -141,6 +148,35 @@ func newTimeseriesClient() (*WrappedTSClient, error) {
 	return wrappedTSClient, nil
 }
 
+// getKubernetesClusterUUID retrieves the k8s cluster UUID from the droplet metadata
+func getKubernetesClusterUUID() (string, error) {
+	resp, err := http.Get(fmt.Sprintf("%s/v1/user-data", config.metadataURL))
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return "", errors.Errorf("got status code %d while fetching kubernetes cluster UUID", resp.StatusCode)
+	}
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return "", err
+	}
+	userData := string(body)
+	return parseKubernetesClusterUUID(userData), nil
+}
+
+// parseKubernetesClusterUUID parses the user data and returns the value of the kubernetes cluster UUID
+func parseKubernetesClusterUUID(userData string) string {
+	userDataSplit := strings.Split(userData, "\n")
+	for _, line := range userDataSplit {
+		if strings.HasPrefix(line, kubernetesClusterUUIDUserDataPrefix) {
+			return strings.Trim(strings.TrimPrefix(line, kubernetesClusterUUIDUserDataPrefix), "\"")
+		}
+	}
+	return ""
+}
+
 // initCollectors initializes the prometheus collectors. By default this
 // includes node_exporter and buildInfo for each remote target
 func initCollectors() []prometheus.Collector {
@@ -154,7 +190,15 @@ func initCollectors() []prometheus.Collector {
 	}
 
 	if config.kubernetes != "" {
-		k, err := collector.NewScraper("dokubernetes", config.kubernetes, k8sWhitelist, defaultTimeout)
+		kubernetesClusterUUID, err := getKubernetesClusterUUID()
+		if err != nil {
+			log.Error("Failed to get cluster UUID when initializing DO Kubernetes metrics: %+v", err)
+		}
+		var kubernetesLabels []*dto.LabelPair
+		if kubernetesClusterUUID != "" {
+			kubernetesLabels = append(kubernetesLabels, &dto.LabelPair{Name: &kubernetesClusterUUIDLabel, Value: &kubernetesClusterUUID})
+		}
+		k, err := collector.NewScraper("dokubernetes", config.kubernetes, kubernetesLabels, k8sWhitelist, defaultTimeout)
 		if err != nil {
 			log.Error("Failed to initialize DO Kubernetes metrics: %+v", err)
 		} else {
@@ -163,7 +207,7 @@ func initCollectors() []prometheus.Collector {
 	}
 
 	if config.dbaas != "" {
-		k, err := collector.NewScraper("dodbaas", config.dbaas, dbaasWhitelist, defaultTimeout)
+		k, err := collector.NewScraper("dodbaas", config.dbaas, nil, dbaasWhitelist, defaultTimeout)
 		if err != nil {
 			log.Error("Failed to initialize DO DBaaS metrics collector: %+v", err)
 		} else {
