@@ -152,7 +152,7 @@ func getKubernetesClusterUUID() (string, error) {
 	client := metadata.NewClient(metadata.WithBaseURL(config.metadataURL))
 	userData, err := client.UserData()
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("failed to get user data: %+v", err)
 	}
 	return parseKubernetesClusterUUID(userData), nil
 }
