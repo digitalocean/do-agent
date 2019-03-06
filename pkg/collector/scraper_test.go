@@ -69,20 +69,20 @@ func TestScraperAddsKubernetesClusterUUID(t *testing.T) {
 	ch := make(chan prometheus.Metric)
 	go s.Collect(ch)
 	for m := range ch {
-		if m.Desc().String() != `Desc{fqName: "testscraper_scrape_collector_success", help: "testscraper: Whether a collector succeeded.", constLabels: {}, variableLabels: [collector]}` &&
-			m.Desc().String() != `Desc{fqName: "testscraper_scrape_collector_duration_seconds", help: "testscraper: Duration of a collector scrape.", constLabels: {}, variableLabels: [collector]}` {
-			metric := &dto.Metric{}
-			m.Write(metric)
-			require.Equal(t, float64(1), *metric.Gauge.Value)
-			foundClusterUUIDLabel := false
-			for _, lbl := range metric.GetLabel() {
-				if lbl.GetName() == kubernetesClusterUUID && lbl.GetValue() == clusterUUID {
-					foundClusterUUIDLabel = true
-				}
-			}
-			require.True(t, foundClusterUUIDLabel)
-			break
+		if m.Desc().String() == `Desc{fqName: "testscraper_scrape_collector_success", help: "testscraper: Whether a collector succeeded.", constLabels: {}, variableLabels: [collector]}` ||
+			m.Desc().String() == `Desc{fqName: "testscraper_scrape_collector_duration_seconds", help: "testscraper: Duration of a collector scrape.", constLabels: {}, variableLabels: [collector]}` {
+			continue
 		}
+		metric := &dto.Metric{}
+		m.Write(metric)
+		foundClusterUUIDLabel := false
+		for _, lbl := range metric.GetLabel() {
+			if lbl.GetName() == kubernetesClusterUUID && lbl.GetValue() == clusterUUID {
+				foundClusterUUIDLabel = true
+			}
+		}
+		require.True(t, foundClusterUUIDLabel)
+		break
 	}
 }
 
