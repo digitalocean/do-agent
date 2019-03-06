@@ -47,6 +47,8 @@ var (
 
 	kubernetesClusterUUIDUserDataPrefix = "k8saas_cluster_uuid: "
 	kubernetesClusterUUIDLabel = "kubernetes_cluster_uuid"
+
+	errClusterUUIDNotFound = errors.New("kubernetes cluster UUID not found")
 )
 
 const (
@@ -154,18 +156,18 @@ func getKubernetesClusterUUID() (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("failed to get user data: %+v", err)
 	}
-	return parseKubernetesClusterUUID(userData), nil
+	return parseKubernetesClusterUUID(userData)
 }
 
 // parseKubernetesClusterUUID parses the user data and returns the value of the kubernetes cluster UUID
-func parseKubernetesClusterUUID(userData string) string {
+func parseKubernetesClusterUUID(userData string) (string, error) {
 	userDataSplit := strings.Split(userData, "\n")
 	for _, line := range userDataSplit {
 		if strings.HasPrefix(line, kubernetesClusterUUIDUserDataPrefix) {
-			return strings.Trim(strings.TrimPrefix(line, kubernetesClusterUUIDUserDataPrefix), "\"")
+			return strings.Trim(strings.TrimPrefix(line, kubernetesClusterUUIDUserDataPrefix), "\""), nil
 		}
 	}
-	return ""
+	return "", errClusterUUIDNotFound
 }
 
 // initCollectors initializes the prometheus collectors. By default this
@@ -181,20 +183,7 @@ func initCollectors() []prometheus.Collector {
 	}
 
 	if config.kubernetes != "" {
-		kubernetesClusterUUID, err := getKubernetesClusterUUID()
-		if err != nil {
-			log.Error("Failed to get cluster UUID when initializing DO Kubernetes metrics: %+v", err)
-		}
-		var kubernetesLabels []*dto.LabelPair
-		if kubernetesClusterUUID != "" {
-			kubernetesLabels = append(kubernetesLabels, &dto.LabelPair{Name: &kubernetesClusterUUIDLabel, Value: &kubernetesClusterUUID})
-		}
-		k, err := collector.NewScraper("dokubernetes", config.kubernetes, kubernetesLabels, k8sWhitelist, defaultTimeout)
-		if err != nil {
-			log.Error("Failed to initialize DO Kubernetes metrics: %+v", err)
-		} else {
-			cols = append(cols, k)
-		}
+		cols = appendKubernetesCollectors(cols)
 	}
 
 	if config.dbaas != "" {
@@ -221,6 +210,24 @@ func initCollectors() []prometheus.Collector {
 		cols = append(cols, node)
 	}
 
+	return cols
+}
+
+// appendKubernetesCollectors appends a kubernetes metrics collector if it can be initialized successfully
+func appendKubernetesCollectors(cols []prometheus.Collector) []prometheus.Collector {
+	kubernetesClusterUUID, err := getKubernetesClusterUUID()
+	if err != nil {
+		log.Error("Failed to get cluster UUID when initializing DO Kubernetes metrics: %+v", err)
+		return cols
+	}
+	var kubernetesLabels []*dto.LabelPair
+	kubernetesLabels = append(kubernetesLabels, &dto.LabelPair{Name: &kubernetesClusterUUIDLabel, Value: &kubernetesClusterUUID})
+	k, err := collector.NewScraper("dokubernetes", config.kubernetes, kubernetesLabels, k8sWhitelist, defaultTimeout)
+	if err != nil {
+		log.Error("Failed to initialize DO Kubernetes metrics: %+v", err)
+		return cols
+	}
+	cols = append(cols, k)
 	return cols
 }
 
