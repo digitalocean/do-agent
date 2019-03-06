@@ -54,6 +54,14 @@
 
 [[projects]]
   branch = "master"
+  digest = "1:61de135f4b8df007636577b431ab965672680ebf15ac6c3978f28a3f509a086e"
+  name = "github.com/digitalocean/go-metadata"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "15bd36e5f6f745f32074d0705a27aee05ae0a216"
+
+[[projects]]
+  branch = "master"
   digest = "1:986d4634d695548183c069aa43d520b50b228ec1e9af8ec5b7e9d3598635e95c"
   name = "github.com/ema/qdisc"
   packages = ["."]
@@ -275,6 +283,7 @@
   analyzer-name = "dep"
   analyzer-version = 1
   input-imports = [
+    "github.com/digitalocean/go-metadata",
     "github.com/golang/snappy",
     "github.com/pkg/errors",
     "github.com/prometheus/client_golang/prometheus",

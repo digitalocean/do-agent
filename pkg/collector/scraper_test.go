@@ -7,10 +7,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/digitalocean/do-agent/internal/log"
 	"github.com/prometheus/client_golang/prometheus"
 	dto "github.com/prometheus/client_model/go"
 	"github.com/stretchr/testify/require"
+
+	"github.com/digitalocean/do-agent/internal/log"
 )
 
 var testmetrics = `# HELP kube_configmap_info Information about configmap.
@@ -37,7 +38,7 @@ func TestScraper(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	s, err := NewScraper("testscraper", ts.URL, nil, 30*time.Second)
+	s, err := NewScraper("testscraper", ts.URL, nil, nil, 30*time.Second)
 	require.NoError(t, err)
 
 	ch := make(chan prometheus.Metric)
@@ -51,6 +52,41 @@ func TestScraper(t *testing.T) {
 		}
 	}
 }
+func TestScraperAddsKubernetesClusterUUID(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		log.Debug("metrics requested")
+		io.WriteString(w, testmetrics)
+	}))
+	defer ts.Close()
+
+	kubernetesClusterUUID := "kubernetes_cluster_uuid"
+	clusterUUID := "123-345-678000"
+	var kubernetesLabels []*dto.LabelPair
+	kubernetesLabels = append(kubernetesLabels, &dto.LabelPair{Name: &kubernetesClusterUUID, Value: &clusterUUID})
+	s, err := NewScraper("testscraper", ts.URL, kubernetesLabels, nil, 30*time.Second)
+	require.NoError(t, err)
+
+	ch := make(chan prometheus.Metric)
+	go s.Collect(ch)
+	for m := range ch {
+		if m.Desc().String() == `Desc{fqName: "testscraper_scrape_collector_success", help: "testscraper: Whether a collector succeeded.", constLabels: {}, variableLabels: [collector]}` ||
+			m.Desc().String() == `Desc{fqName: "testscraper_scrape_collector_duration_seconds", help: "testscraper: Duration of a collector scrape.", constLabels: {}, variableLabels: [collector]}` {
+			continue
+		}
+		metric := &dto.Metric{}
+		m.Write(metric)
+		foundClusterUUIDLabel := false
+		for _, lbl := range metric.GetLabel() {
+			if lbl.GetName() == kubernetesClusterUUID && lbl.GetValue() == clusterUUID {
+				foundClusterUUIDLabel = true
+			}
+		}
+		require.True(t, foundClusterUUIDLabel)
+		break
+	}
+}
+
+
 
 func TestWhitelist(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -60,7 +96,7 @@ func TestWhitelist(t *testing.T) {
 	defer ts.Close()
 
 	// Only scrape kube_configmap_created
-	s, err := NewScraper("testscraper", ts.URL, map[string]bool{"kube_configmap_created": true}, 30*time.Second)
+	s, err := NewScraper("testscraper", ts.URL, nil, map[string]bool{"kube_configmap_created": true}, 30*time.Second)
 	require.NoError(t, err)
 
 	ch := make(chan prometheus.Metric)
