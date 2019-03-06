@@ -36,3 +36,7 @@
 [[constraint]]
   version = "0.16.0"
   name = "github.com/prometheus/node_exporter"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/digitalocean/go-metadata"

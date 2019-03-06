@@ -2,13 +2,12 @@ package main
 
 import (
 	"fmt"
-	"io/ioutil"
-	"net/http"
 	"net/url"
 	"os"
 	"strings"
 	"time"
 
+	"github.com/digitalocean/go-metadata"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	dto "github.com/prometheus/client_model/go"
@@ -150,19 +149,11 @@ func newTimeseriesClient() (*WrappedTSClient, error) {
 
 // getKubernetesClusterUUID retrieves the k8s cluster UUID from the droplet metadata
 func getKubernetesClusterUUID() (string, error) {
-	resp, err := http.Get(fmt.Sprintf("%s/v1/user-data", config.metadataURL))
+	client := metadata.NewClient(metadata.WithBaseURL(config.metadataURL))
+	userData, err := client.UserData()
 	if err != nil {
 		return "", err
 	}
-	defer resp.Body.Close()
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return "", errors.Errorf("got status code %d while fetching kubernetes cluster UUID", resp.StatusCode)
-	}
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return "", err
-	}
-	userData := string(body)
 	return parseKubernetesClusterUUID(userData), nil
 }
 
