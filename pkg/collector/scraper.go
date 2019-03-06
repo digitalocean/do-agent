@@ -164,51 +164,17 @@ func (s *Scraper) FilterMetric(metricFamily *dto.MetricFamily) bool {
 // convertMetricFamily converts the dto metrics parsed from the expfmt package
 // into the prometheus.Metrics required to pass over the channel
 //
-// this was copied from github.com/prometheus/node_exporter
+// this was copied and extended/refactored from github.com/prometheus/node_exporter
 // see https://github.com/prometheus/node_exporter/blob/f56e8fcdf48ead56f1f149dbf1301ac028ef589b/collector/textfile.go#L63
 // for more details
 func convertMetricFamily(metricFamily *dto.MetricFamily, ch chan<- prometheus.Metric, extraLabels []*dto.LabelPair) {
 	var valType prometheus.ValueType
 	var val float64
 
-	allLabelNames := map[string]struct{}{}
-	for _, metric := range metricFamily.Metric {
-		labels := metric.GetLabel()
-		if extraLabels != nil {
-			labels = append(labels, extraLabels...)
-		}
-		for _, label := range labels {
-			if _, ok := allLabelNames[label.GetName()]; !ok {
-				allLabelNames[label.GetName()] = struct{}{}
-			}
-		}
-	}
+	allLabelNames := getAllLabelNames(metricFamily, extraLabels)
 
 	for _, metric := range metricFamily.Metric {
-		labels := metric.GetLabel()
-		if extraLabels != nil {
-			labels = append(labels, extraLabels...)
-		}
-		var names []string
-		var values []string
-		for _, label := range labels {
-			names = append(names, label.GetName())
-			values = append(values, label.GetValue())
-		}
-
-		for k := range allLabelNames {
-			present := false
-			for _, name := range names {
-				if k == name {
-					present = true
-					break
-				}
-			}
-			if !present {
-				names = append(names, k)
-				values = append(values, "")
-			}
-		}
+		names, values := getLabelNamesAndValues(metric, extraLabels, allLabelNames)
 
 		metricType := metricFamily.GetType()
 		switch metricType {
@@ -269,4 +235,49 @@ func convertMetricFamily(metricFamily *dto.MetricFamily, ch chan<- prometheus.Me
 			)
 		}
 	}
+}
+
+// getLabelNamesAndValues returns a slice of label names and a slice of label values from the metric and extra labels.
+func getLabelNamesAndValues(metric *dto.Metric, extraLabels []*dto.LabelPair, allLabelNames map[string]struct{}) ([]string, []string) {
+	labels := metric.GetLabel()
+	if extraLabels != nil {
+		labels = append(labels, extraLabels...)
+	}
+	var names []string
+	var values []string
+	for _, label := range labels {
+		names = append(names, label.GetName())
+		values = append(values, label.GetValue())
+	}
+	for k := range allLabelNames {
+		present := false
+		for _, name := range names {
+			if k == name {
+				present = true
+				break
+			}
+		}
+		if !present {
+			names = append(names, k)
+			values = append(values, "")
+		}
+	}
+	return names, values
+}
+
+// getAllLabelNames returns the map of all label names from the metric family including any extra labels provided.
+func getAllLabelNames(metricFamily *dto.MetricFamily, extraLabels []*dto.LabelPair) map[string]struct{} {
+	allLabelNames := map[string]struct{}{}
+	for _, metric := range metricFamily.Metric {
+		labels := metric.GetLabel()
+		if extraLabels != nil {
+			labels = append(labels, extraLabels...)
+		}
+		for _, label := range labels {
+			if _, ok := allLabelNames[label.GetName()]; !ok {
+				allLabelNames[label.GetName()] = struct{}{}
+			}
+		}
+	}
+	return allLabelNames
 }
