@@ -34,9 +34,25 @@
   unused-packages = true
 
 [[constraint]]
-  version = "0.16.0"
+  version = "0.17.0"
   name = "github.com/prometheus/node_exporter"
 
 [[constraint]]
   branch = "master"
   name = "github.com/digitalocean/go-metadata"
+
+[[override]]
+  name = "github.com/mdlayher/netlink"
+  revision = "794849f2d5bf05e15f14bbae6bca4dfc94e7595e"
+
+[[override]]
+  name = "github.com/mdlayher/genetlink"
+  revision = "7615bc153978352e5f20442221cf606b624e5890"
+
+[[override]]
+  name = "github.com/mdlayher/wifi"
+  revision = "efdf3f4195d9fc8b73013b3706fe626b7fb807d8"
+
+[[override]]
+  name = "github.com/prometheus/procfs"
+  revision = "185b4288413d2a0dd0806f78c90dde719829e5ae"

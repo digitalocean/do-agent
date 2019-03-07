@@ -93,19 +93,19 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:82993553515c494e149cbbb73a63899e8f1c6a5b4c456e60baf170ad6c347033"
-  name = "github.com/kolo/xmlrpc"
-  packages = ["."]
-  pruneopts = "UT"
-  revision = "0826b98aaa29c0766956cb40d45cf7482a597671"
-
-[[projects]]
-  branch = "master"
   digest = "1:9e23318fb92c60935e4de2ce13710979f1dffd5c7a4ec4b29a740c27da9b735c"
   name = "github.com/lufia/iostat"
   packages = ["."]
   pruneopts = "UT"
   revision = "9f7362b77ad333b26c01c99de52a11bdb650ded2"
+
+[[projects]]
+  digest = "1:7c35eb5d42e3495541fe2ab6e4a4565d2d837929b375d0f25c05ebac60377b59"
+  name = "github.com/mattn/go-xmlrpc"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "ac7d848e9140a83d03bb431b8fce180a31c97560"
+  version = "v0.0.1"
 
 [[projects]]
   digest = "1:ff5ebae34cfbf047d505ee150de27e60570e8c394b3b8fdbb720ff6ac71985fc"
@@ -116,33 +116,31 @@
   version = "v1.0.1"
 
 [[projects]]
-  branch = "master"
-  digest = "1:b09276b1610275e1abfc39d4d9541992236b085856c8007cab0de35b66f64444"
+  digest = "1:82b1f6a07e08c3c22d73bdc4aa8647f0002b00ab2bb1d7066e6fa2831bd5a63d"
   name = "github.com/mdlayher/genetlink"
   packages = ["."]
   pruneopts = "UT"
-  revision = "0b18675c0b77924cf6bbf279b68cf9064c4cd265"
+  revision = "7615bc153978352e5f20442221cf606b624e5890"
 
 [[projects]]
-  branch = "master"
-  digest = "1:890d856eab10e2dd292069fb5511169ae62b773e2550ffdc30a3dc3110a458d2"
+  digest = "1:f94bb489a426fc49f2e70e4e5c13f87fdb4645bbbd5933c6cf675d9a59b042df"
   name = "github.com/mdlayher/netlink"
   packages = [
     ".",
     "nlenc",
   ]
   pruneopts = "UT"
-  revision = "25817dc2553bde648b4bd825e625e87d92658bb7"
+  revision = "794849f2d5bf05e15f14bbae6bca4dfc94e7595e"
 
 [[projects]]
-  digest = "1:7594e49d674520323e1b044b144cd70b8baebe6aaaf66588a420c7abb2037e79"
+  digest = "1:56c3ffebb3cca0e9f558afce406e95a85e6096ecb19983b2e706853f19ca75f4"
   name = "github.com/mdlayher/wifi"
   packages = [
     ".",
     "internal/nl80211",
   ]
   pruneopts = "UT"
-  revision = "17fb8383f38adbf6a7f12e6cbd1d461760aabf5c"
+  revision = "efdf3f4195d9fc8b73013b3706fe626b7fb807d8"
 
 [[projects]]
   digest = "1:40e195917a951a8bf867cd05de2a46aaf1806c50cf92eebf4c16f78cd196f747"
@@ -189,15 +187,15 @@
   revision = "7600349dcfe1abd18d72d3a1770870d9800a7801"
 
 [[projects]]
-  digest = "1:79248486f72e39547c368c8c1b9e752a2e379ee24d0cba1b40bfc22df0b5c977"
+  digest = "1:ff87691409a15572cff0e4ad9035c82141cf6cf5ff45e6826d2ae8838bbee85d"
   name = "github.com/prometheus/node_exporter"
   packages = ["collector"]
   pruneopts = "UT"
-  revision = "d42bd70f4363dced6b77d8fc311ea57b63387e4f"
-  version = "v0.16.0"
+  revision = "f6f6194a436b9a63d0439abc585c76b19a206b21"
+  version = "v0.17.0"
 
 [[projects]]
-  digest = "1:95ae2d8b8dbda56e99360d1992e5f6b63b4939629da038cc11b563c883f18528"
+  digest = "1:76bd9523eef1ee37e35db596bf8fd5ad70fab6818e4d60b7712610028c3d0102"
   name = "github.com/prometheus/procfs"
   packages = [
     ".",
@@ -208,7 +206,7 @@
     "xfs",
   ]
   pruneopts = "UT"
-  revision = "fe93d378a6b03758a2c1b65e86cf630bf78681c0"
+  revision = "185b4288413d2a0dd0806f78c90dde719829e5ae"
 
 [[projects]]
   digest = "1:9e9193aa51197513b3abcb108970d831fbcf40ef96aa845c4f03276e1fa316d2"
@@ -260,7 +258,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:29e91217e562e59d0542db37fb4db1c5d6efad93733287f55c67852f75609f42"
+  digest = "1:029fca33b5fd066b3b8e33450bd88cc0b0629d850f9511127c9c736fe2a987b7"
   name = "golang.org/x/sys"
   packages = [
     "unix",
@@ -269,7 +267,7 @@
     "windows/svc/eventlog",
   ]
   pruneopts = "UT"
-  revision = "bff228c7b664c5fce602223a05fb708fd8654986"
+  revision = "572b51eaf7221935bdec454796989ba8318fa6f3"
 
 [[projects]]
   digest = "1:c06d9e11d955af78ac3bbb26bd02e01d2f61f689e1a3bce2ef6fb683ef8a7f2d"
