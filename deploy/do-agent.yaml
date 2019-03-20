@@ -1,24 +1,16 @@
-kind: Namespace
-apiVersion: v1
-metadata:
-  name: monitoring
-  labels:
-    name: monitoring
----
 apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: do-agent
-  namespace: monitoring
+  namespace: kube-system
 ---
-# DaemonSet to create a do-agent on each node that scrapes node metrics
 apiVersion: apps/v1beta2
 kind: DaemonSet
 metadata:
   labels:
     app: do-node-agent
   name: do-node-agent
-  namespace: monitoring
+  namespace: kube-system
 spec:
   selector:
     matchLabels:
