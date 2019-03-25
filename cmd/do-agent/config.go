@@ -16,7 +16,6 @@ import (
 	"gopkg.in/alecthomas/kingpin.v2"
 
 	"github.com/digitalocean/do-agent/internal/log"
-	"github.com/digitalocean/do-agent/internal/process"
 	"github.com/digitalocean/do-agent/pkg/clients/tsclient"
 	"github.com/digitalocean/do-agent/pkg/collector"
 	"github.com/digitalocean/do-agent/pkg/decorate"
@@ -191,10 +190,6 @@ func initCollectors() []prometheus.Collector {
 	// buildInfo provides build information for tracking metrics internally
 	cols := []prometheus.Collector{
 		buildInfo,
-	}
-
-	if !config.noProcesses {
-		cols = append(cols, process.NewProcessCollector())
 	}
 
 	if config.kubernetes != "" {
