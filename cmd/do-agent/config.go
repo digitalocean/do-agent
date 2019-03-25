@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"net/http"
 	"net/url"
 	"os"
 	"strings"
@@ -10,6 +11,7 @@ import (
 	"github.com/digitalocean/go-metadata"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	dto "github.com/prometheus/client_model/go"
 	"gopkg.in/alecthomas/kingpin.v2"
 
@@ -24,17 +26,18 @@ import (
 
 var (
 	config struct {
-		targets       map[string]string
-		metadataURL   *url.URL
-		authURL       *url.URL
-		sonarEndpoint string
-		stdoutOnly    bool
-		debug         bool
-		syslog        bool
-		noProcesses   bool
-		noNode        bool
-		kubernetes    string
-		dbaas         string
+		targets          map[string]string
+		metadataURL      *url.URL
+		authURL          *url.URL
+		sonarEndpoint    string
+		stdoutOnly       bool
+		debug            bool
+		syslog           bool
+		noProcesses      bool
+		noNode           bool
+		kubernetes       string
+		dbaas            string
+		webListenAddress string
 	}
 
 	// additionalParams is a list of extra command line flags to append
@@ -46,16 +49,17 @@ var (
 	disabledCollectors = map[string]interface{}{}
 
 	kubernetesClusterUUIDUserDataPrefix = "k8saas_cluster_uuid: "
-	kubernetesClusterUUIDLabel = "kubernetes_cluster_uuid"
+	kubernetesClusterUUIDLabel          = "kubernetes_cluster_uuid"
 
 	errClusterUUIDNotFound = errors.New("kubernetes cluster UUID not found")
 )
 
 const (
-	defaultMetadataURL = "http://169.254.169.254/metadata"
-	defaultAuthURL     = "https://sonar.digitalocean.com"
-	defaultSonarURL    = ""
-	defaultTimeout     = 2 * time.Second
+	defaultMetadataURL      = "http://169.254.169.254/metadata"
+	defaultAuthURL          = "https://sonar.digitalocean.com"
+	defaultSonarURL         = ""
+	defaultTimeout          = 2 * time.Second
+	defaultWebListenAddress = "127.0.0.1:9100"
 )
 
 func init() {
@@ -91,6 +95,8 @@ func init() {
 
 	kingpin.Flag("dbaas-metrics-path", "enable DO DBAAS metrics collection (this must be a DO DBAAS metrics endpoint)").
 		StringVar(&config.dbaas)
+
+	kingpin.Flag("web.listen-address", "write prometheus metrics to a scrapeable endpoint on a port as well (ex. \":9100\")").Default(defaultWebListenAddress).StringVar(&config.webListenAddress)
 }
 
 func checkConfig() error {
@@ -103,7 +109,16 @@ func checkConfig() error {
 	return nil
 }
 
-func initWriter() (metricWriter, throttler) {
+func initWriter(g gatherer) (metricWriter, throttler) {
+	if config.webListenAddress != "" {
+		go func() {
+			http.Handle("/", promhttp.HandlerFor(g, promhttp.HandlerOpts{}))
+			err := http.ListenAndServe(config.webListenAddress, nil)
+			if err != nil {
+				log.Fatal(err.Error())
+			}
+		}()
+	}
 	if config.stdoutOnly {
 		return writer.NewFile(os.Stdout), &constThrottler{wait: 10 * time.Second}
 	}

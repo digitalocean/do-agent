@@ -38,7 +38,7 @@ func main() {
 	reg := prometheus.NewRegistry()
 	reg.MustRegister(cols...)
 
-	w, th := initWriter()
+	w, th := initWriter(reg)
 	d := initDecorator()
 	run(w, th, d, reg)
 }
