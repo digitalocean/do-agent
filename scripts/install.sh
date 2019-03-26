@@ -51,13 +51,13 @@ function install_apt() {
 	apt-get remove -y do-agent || :
 
 	echo "Installing apt repository..."
-	apt-get -qq update
-	apt-get install -y ca-certificates gnupg2 apt-utils
+	apt-get -qq update || true
+	apt-get -qq install -y ca-certificates gnupg2 apt-utils apt-transport-https
 	echo "deb ${REPO_HOST}/apt/${repo} main main" > /etc/apt/sources.list.d/digitalocean-agent.list
 	echo -n "Installing gpg key..."
 	curl -sL "${REPO_GPG_KEY}" | apt-key add -
-	apt-get -qq update
-	apt-get install -y do-agent
+	apt-get -qq update -o Dir::Etc::sourcelist="sources.list.d/digitalocean-agent.list"
+	apt-get -qq install -y do-agent
 }
 
 function install_rpm() {
