@@ -37,6 +37,7 @@ var (
 		kubernetes       string
 		dbaas            string
 		webListenAddress string
+		webListen        bool
 	}
 
 	// additionalParams is a list of extra command line flags to append
@@ -95,7 +96,9 @@ func init() {
 	kingpin.Flag("dbaas-metrics-path", "enable DO DBAAS metrics collection (this must be a DO DBAAS metrics endpoint)").
 		StringVar(&config.dbaas)
 
-	kingpin.Flag("web.listen-address", "write prometheus metrics to a scrapeable endpoint on a port as well (ex. \":9100\")").Default(defaultWebListenAddress).StringVar(&config.webListenAddress)
+	kingpin.Flag("web.listen", "enable a local endpoint for scapeable prometheus metrics as well").Default("false").BoolVar(&config.webListen)
+
+	kingpin.Flag("web.listen-address", "write prometheus metrics to the specified port (ex. \":9100\")").Default(defaultWebListenAddress).StringVar(&config.webListenAddress)
 }
 
 func checkConfig() error {
@@ -109,7 +112,7 @@ func checkConfig() error {
 }
 
 func initWriter(g gatherer) (metricWriter, throttler) {
-	if config.webListenAddress != "" {
+	if config.webListen {
 		go func() {
 			http.Handle("/", promhttp.HandlerFor(g, promhttp.HandlerOpts{}))
 			err := http.ListenAndServe(config.webListenAddress, nil)
