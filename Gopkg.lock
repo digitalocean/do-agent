@@ -159,9 +159,12 @@
   version = "v1.0.0"
 
 [[projects]]
-  digest = "1:04c5e27cb1e31ef8975ea047288ba21daf78906f8b5b1b9831b561fa549dc331"
+  digest = "1:2a0a6e77f97fe281cb51c5a08b201e2628044036b23b6ab6edc682c03651493a"
   name = "github.com/prometheus/client_golang"
-  packages = ["prometheus"]
+  packages = [
+    "prometheus",
+    "prometheus/promhttp",
+  ]
   pruneopts = "UT"
   revision = "42bc0a18c2207d46ac4039bbb6b4cf1507872837"
 
@@ -285,6 +288,7 @@
     "github.com/golang/snappy",
     "github.com/pkg/errors",
     "github.com/prometheus/client_golang/prometheus",
+    "github.com/prometheus/client_golang/prometheus/promhttp",
     "github.com/prometheus/client_model/go",
     "github.com/prometheus/common/expfmt",
     "github.com/prometheus/node_exporter/collector",
