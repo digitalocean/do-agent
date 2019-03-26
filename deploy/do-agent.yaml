@@ -22,7 +22,7 @@ spec:
     spec:
       containers:
       - name: do-node-agent
-        image: docker.io/digitalocean/do-agent:2.0
+        image: docker.io/digitalocean/do-agent:stable
         resources:
           limits:
             cpu: 102m
