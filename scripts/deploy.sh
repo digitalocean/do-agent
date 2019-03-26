@@ -311,7 +311,7 @@ function promote_stable_docker() {
 	IFS=. read -r major minor _ <<<"$VERSION"
 	promote_docker "$VERSION-rc" "$VERSION"
 
-	for tag in $major $major.$minor; do
+	for tag in stable $major $major.$minor; do
 		docker tag "${DOCKER_IMAGE}:$VERSION" "${DOCKER_IMAGE}:$tag"
 		docker push "${DOCKER_IMAGE}:$tag"
 	done

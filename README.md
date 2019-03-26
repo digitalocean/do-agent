@@ -78,7 +78,7 @@ For example:
 docker run \
         -v /proc:/host/proc:ro \
         -v /sys:/host/sys:ro \
-        digitalocean/do-agent:2
+        digitalocean/do-agent:stable
 ```
 
 ## Report an Issue
