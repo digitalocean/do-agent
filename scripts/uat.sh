@@ -140,6 +140,15 @@ function command_status() {
 	fi"
 }
 
+# check the cloud init status of a newly created droplet
+function command_boot_status() {
+	command_exec "if [ -f /var/lib/cloud/instance/boot-finished ]; then \
+		echo \"$(tput setaf 2)Ready $(tput sgr 0)\"
+	else \
+		echo \"$(tput setaf 1)NOT ready $(tput sgr 0)\"
+	fi"
+}
+
 # ssh to all droplets and run yum/apt update to upgrade to the latest published
 # version of do-agent
 function command_update() {
@@ -244,13 +253,13 @@ function command_install() {
 
 	case "${vers// /}" in
 		unstable)
-			exec_ips "$(list_ips)" "curl -SsL https://insights.nyc3.digitaloceanspaces.com/install-new.sh | sudo UNSTABLE=1 bash"
+			exec_ips "$(list_ips)" "curl -SsL https://insights.nyc3.digitaloceanspaces.com/install.sh | sudo UNSTABLE=1 bash"
 			;;
 		beta)
-			exec_ips "$(list_ips)" "curl -SsL https://insights.nyc3.digitaloceanspaces.com/install-new.sh | sudo BETA=1 bash"
+			exec_ips "$(list_ips)" "curl -SsL https://insights.nyc3.digitaloceanspaces.com/install.sh | sudo BETA=1 bash"
 			;;
 		stable)
-			exec_ips "$(list_ips)" "curl -SsL https://insights.nyc3.digitaloceanspaces.com/install-new.sh | sudo bash"
+			exec_ips "$(list_ips)" "curl -SsL https://insights.nyc3.digitaloceanspaces.com/install.sh | sudo bash"
 			;;
 		old)
 			exec_ips "$(list_ips)" "curl -SsL https://agent.digitalocean.com/install.sh | sudo bash"
@@ -333,7 +342,7 @@ function create_image() {
 	fi
 
 	body=$(mktemp)
-	cat <<EOF > "$body"
+	cat <<-EOF > "$body"
 	{
 		"name": "$image",
 		"region": "nyc3",
@@ -350,11 +359,9 @@ function create_image() {
 		"user_data": "${user_data}",
 		"tags": [ "${TAG}" ]
 	}
-EOF
+	EOF
 
-	request POST "/droplets" "@${body}" \
-		| jq -r '.droplet | "Created: \(.id): \(.name)"'
-
+	echo "Image: $image: $( request POST "/droplets" "@${body}" \ | jq -r '.droplet | "ID: \(.id)"')"
 }
 
 
