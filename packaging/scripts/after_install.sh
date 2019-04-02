@@ -76,7 +76,7 @@ init_systemd() {
 	[Service]
 	User=${USERNAME}
 	Group=${USERGROUP}
-	ExecStart=/opt/digitalocean/bin/do-agent
+	ExecStart=/opt/digitalocean/bin/do-agent --syslog
 	Restart=always
 
 	OOMScoreAdjust=-900
