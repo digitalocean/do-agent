@@ -16,29 +16,30 @@ NO_INSTALL=${NO_INSTALL:-0}
 CONTEXT=14661f
 OS=$(uname | tr '[:upper:]' '[:lower:]')
 TAG=${TAG:-do-agent-uat-${USER}}
-SUPPORTED_IMAGES="centos-6-x32 centos-6-x64 centos-7-x64 debian-8-x32 debian-8-x64 \
-	debian-9-x64 fedora-27-x64 fedora-28-x64 ubuntu-14-04-x32 ubuntu-14-04-x64 \
-	ubuntu-16-04-x32 ubuntu-16-04-x64 ubuntu-18-04-x64 ubuntu-18-10-x64"
+
+# map name=>imageID OR DO image name
+# images should use IDs since images may be deleted from
+# DO website
+declare -A SUPPORTED_IMAGES
+SUPPORTED_IMAGES["debian-8-x32"]="31737616"
+SUPPORTED_IMAGES["debian-8-x64"]="31734516"
+SUPPORTED_IMAGES["debian-9-x64"]="debian-9-x64"
+SUPPORTED_IMAGES["centos-6-x32"]="centos-6-x32"
+SUPPORTED_IMAGES["centos-6-x64"]="centos-6-x64"
+SUPPORTED_IMAGES["centos-7-x64"]="centos-7-x64"
+SUPPORTED_IMAGES["fedora-27-x64"]="fedora-27-x64"
+SUPPORTED_IMAGES["fedora-28-x64"]="fedora-28-x64"
+SUPPORTED_IMAGES["ubuntu-14-04-x32"]="ubuntu-14-04-x32"
+SUPPORTED_IMAGES["ubuntu-14-04-x64"]="ubuntu-14-04-x64"
+SUPPORTED_IMAGES["ubuntu-16-04-x32"]="ubuntu-16-04-x32"
+SUPPORTED_IMAGES["ubuntu-16-04-x64"]="ubuntu-16-04-x64"
+SUPPORTED_IMAGES["ubuntu-18-04-x64"]="ubuntu-18-04-x64"
+SUPPORTED_IMAGES["ubuntu-18-10-x64"]="ubuntu-18-10-x64"
 
 JONES_SSH_FINGERPRINT="a1:bc:00:38:56:1f:d2:b1:8e:0d:4f:9c:f0:dd:66:6d"
 THOR_SSH_FINGERPRINT="c6:c6:01:e8:71:0a:58:02:2c:b3:e5:95:0e:b1:46:06"
 EVAN_SSH_FINGERPRINT="b9:40:22:bd:fb:d8:fa:fa:4e:11:d9:8e:58:e9:41:73"
 SNYDER_SSH_FINGERPRINT="47:31:9b:8b:87:a7:2d:26:79:17:87:83:53:65:d4:b4"
-
-# disabling literal '\n' error in shellcheck since that is the expected
-# behavior because it will be added to the JSON request body and
-# executed/expanded on the server
-# shellcheck disable=SC1117
-USER_DATA_DEB="#!/bin/bash \n\
-[ -z \`command -v curl\` ] && apt-get -qq update && apt-get -qq install -y curl \n\
-curl -SsL https://agent.digitalocean.com/install.sh | sudo bash"
-
-
-# shellcheck disable=SC1117
-USER_DATA_RPM="#!/bin/bash \n\
-[ -z \`command -v curl\` ] && yum -q -y install curl \n\
-curl -SsL https://agent.digitalocean.com/install.sh | sudo bash"
-
 
 function main() {
 	cmd=${1:-}
@@ -75,9 +76,9 @@ function usage() {
 	echo
 }
 
-# delete all droplets tagged with $TAG
-function command_delete() {
-	confirm "Are you sure you want to delete all droplets with the tag ${TAG}?" \
+# destroy all droplets tagged with $TAG
+function command_destroy() {
+	confirm "Are you sure you want to destroy all droplets with the tag ${TAG}?" \
 		|| (echo "Aborted" && return 1)
 
 	echo "Deleting..."
@@ -121,11 +122,11 @@ function command_graphs() {
 # using either apt or yum
 function command_create() {
 	if [ -n "$(list_ips)" ]; then
-		abort "You already have a set of droplets created with this tag: ${TAG}. Either delete them or try again with a different TAG"
+		abort "You already have a set of droplets created with this tag: ${TAG}. Either destroy them or try again with a different TAG"
 	fi
 
-	for i in $SUPPORTED_IMAGES; do
-		create_image "$i" &
+	for name in "${!SUPPORTED_IMAGES[@]}"; do
+		create_image "$name" &
 	done
 	wait
 }
@@ -141,7 +142,7 @@ function command_status() {
 }
 
 # check the cloud init status of a newly created droplet
-function command_boot_status() {
+function command_init_status() {
 	command_exec "if [ -f /var/lib/cloud/instance/boot-finished ]; then \
 		echo \"$(tput setaf 2)Ready $(tput sgr 0)\"
 	else \
@@ -202,6 +203,7 @@ function exec_ips() {
 			ssh -o "StrictHostKeyChecking no" \
 				-o "UserKnownHostsFile=/dev/null" \
 				-o "LogLevel=ERROR" \
+				-o "BatchMode=yes" \
 				"root@${ip}" "${script}" 2>/dev/stdout || true
 		)" &
 	done
@@ -220,7 +222,7 @@ function command_ssh() {
 }
 
 # show version information about remote installed versions
-function command_versions() {
+function command_version() {
 	exec_deb 'apt-cache policy do-agent | head -n3'
 	exec_rpm 'yum list -C do-agent'
 }
@@ -327,27 +329,32 @@ function list_ips_rpm() {
 
 # create a droplet with the provided image
 function create_image() {
-	image=$1
-	if [ -z "$image" ]; then
-		abort "Usage: ${FUNCNAME[0]} <image>"
+	image_name=$1
+	if [ -z "${image_name}" ]; then
+		abort "Usage: ${FUNCNAME[0]} <image_name>"
 	else
-		echo "Creating image $image..."
+		echo "Creating image ${image_name}..."
 	fi
 
-	user_data=""
+	image_id="${SUPPORTED_IMAGES[${image_name}]}"
+	if [ -z "${image_id}" ]; then
+		abort "${FUNCNAME[0]} unknown image name ${image_name}"
+	fi
 
+
+	monitoring="false"
 	if [ "${NO_INSTALL}" == "0" ]; then
-		user_data=${USER_DATA_RPM}
-		[[ "$image" =~ debian|ubuntu ]] && user_data=${USER_DATA_DEB}
+		monitoring="true"
 	fi
 
 	body=$(mktemp)
 	cat <<-EOF > "$body"
 	{
-		"name": "$image",
+		"name": "${image_name}",
+		"monitoring": "${monitoring}",
 		"region": "nyc3",
 		"size": "s-1vcpu-1gb",
-		"image": "$image",
+		"image": "${image_id}",
 		"ssh_keys": [
 			"${JONES_SSH_FINGERPRINT}",
 			"${THOR_SSH_FINGERPRINT}",
@@ -356,12 +363,11 @@ function create_image() {
 		],
 		"backups": false,
 		"ipv6": false,
-		"user_data": "${user_data}",
-		"tags": [ "${TAG}" ]
+		"tags": [ "${TAG}", "agent-testing" ]
 	}
 	EOF
 
-	echo "Image: $image: $( request POST "/droplets" "@${body}" \ | jq -r '.droplet | "ID: \(.id)"')"
+	echo "Image: ${image_name}: $( request POST "/droplets" "@${body}" \ | jq -r '.droplet | "ID: \(.id)"')"
 }
 
 
