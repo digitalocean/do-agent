@@ -30,7 +30,7 @@ create_user() {
 	# create the user if it doesn't already exist
 	if ! getent passwd $USERNAME >/dev/null 2>&1; then
 		echo "Creating $USERNAME user..."
-		adduser -M --system $USERNAME
+		useradd -M --system $USERNAME
 	fi
 }
 
