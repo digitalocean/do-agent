@@ -24,6 +24,7 @@ main() {
 	fi
 
 	remove_cron
+	userdel -f -r do-agent
 }
 
 remove_cron() {
