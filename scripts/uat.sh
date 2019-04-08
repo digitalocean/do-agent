@@ -106,6 +106,17 @@ function command_browse() {
 	launch "https://cloud.digitalocean.com/tags/$TAG?i=${CONTEXT}"
 }
 
+function command_grafana() {
+	urls=$(command_list_ids | xargs -n1 -I{} echo "https://grafana.internal.digitalocean.com/d/Sx4Cj7riz/insights-droplet-graphs?orgId=1&var-DropletID={}&var-region=nyc3&var-Datacenter=prod-pandora-droplets-nyc3&from=now-30m&to=now" | tee /dev/stderr)
+	if confirm "Open these urls?"; then
+		for u in $urls; do
+			launch "$u" &>/dev/null
+		done
+	else
+		echo "Aborting"
+	fi
+}
+
 # graphs all droplets in the browser
 function command_graphs() {
 	urls=$(command_list_ids | xargs -n1 -I{} echo https://cloud.digitalocean.com/droplets/{}/graphs?i=${CONTEXT} | tee /dev/stderr)
