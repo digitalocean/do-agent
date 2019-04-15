@@ -41,21 +41,25 @@ sudo ./install.sh
 
 ### Requirements
 
-- [go](https://golang.org/dl/)
-- [golang/dep](https://github.com/golang/dep#installation)
+- [go](https://golang.org/dl/) 1.11 or later
 - [GNU Make](https://www.gnu.org/software/make/)
 - [gometalinter](https://github.com/alecthomas/gometalinter#installing)
 
 ```
-git clone git@github.com:digitalocean/do-agent.git \
-        $GOPATH/src/github.com/digitalocean/do-agent
-cd !$
+git clone git@github.com:digitalocean/do-agent.git
+cd do-agent
 
-# build the project
+### build the project
 make
 
-# add dependencies
-dep ensure -v -add <import path>
+### add dependencies
+# first make sure you have the appropriate flags set to use go modules
+# We recommend using https://github.com/direnv/direnv to automatically set
+# these from the .envrc file in this project or you can manually set them
+export GO111MODULE=on GOFLAGS=-mod=vendor
+
+# then add your imports to any go file and run
+go mod vendor
 ```
 
 ### Uninstall
