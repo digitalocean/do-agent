@@ -15,6 +15,7 @@ import (
 	dto "github.com/prometheus/client_model/go"
 	"gopkg.in/alecthomas/kingpin.v2"
 
+	"github.com/digitalocean/do-agent/internal/flags"
 	"github.com/digitalocean/do-agent/internal/log"
 	"github.com/digitalocean/do-agent/pkg/clients/tsclient"
 	"github.com/digitalocean/do-agent/pkg/collector"
@@ -66,8 +67,8 @@ func init() {
 	kingpin.CommandLine.Name = "do-agent"
 
 	kingpin.Flag("auth-host", "Endpoint to use for obtaining droplet app key").
-		Envar("DO_AGENT_AUTH_HOST").
 		Default(defaultAuthURL).
+		Envar("DO_AGENT_AUTH_URL").
 		URLVar(&config.authURL)
 
 	kingpin.Flag("metadata-host", "Endpoint to use for obtaining droplet metadata").
@@ -75,8 +76,8 @@ func init() {
 		URLVar(&config.metadataURL)
 
 	kingpin.Flag("sonar-host", "Endpoint to use for delivering metrics").
-		Envar("DO_AGENT_SONAR_HOST").
 		Default(defaultSonarURL).
+		Envar("DO_AGENT_SONAR_HOST").
 		StringVar(&config.sonarEndpoint)
 
 	kingpin.Flag("stdout-only", "write all metrics to stdout only").
@@ -103,6 +104,17 @@ func init() {
 	kingpin.Flag("web.listen", "enable a local endpoint for scapeable prometheus metrics as well").Default("false").BoolVar(&config.webListen)
 
 	kingpin.Flag("web.listen-address", "write prometheus metrics to the specified port (ex. \":9100\")").Default(defaultWebListenAddress).StringVar(&config.webListenAddress)
+}
+
+func initConfig() {
+	os.Args = append(os.Args, additionalParams...)
+
+	// read flags from cli directly first so we have access to them
+	flags.Init(os.Args[1:])
+
+	// parse all command line flags which are defined across the app
+	kingpin.HelpFlag.Short('h')
+	kingpin.Parse()
 }
 
 func checkConfig() error {
