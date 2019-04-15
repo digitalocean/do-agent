@@ -7,7 +7,7 @@ import (
 	"github.com/digitalocean/do-agent/internal/log"
 
 	"github.com/prometheus/client_golang/prometheus"
-	kingpin "gopkg.in/alecthomas/kingpin.v2"
+	"gopkg.in/alecthomas/kingpin.v2"
 )
 
 func main() {
