@@ -42,7 +42,7 @@ var (
 
 	// additionalParams is a list of extra command line flags to append
 	// this is mostly needed for appending node_exporter flags when necessary.
-	additionalParams = []string{}
+	additionalParams []string
 
 	// disabledCollectors is a hash used by disableCollectors to prevent
 	// duplicate entries
@@ -63,7 +63,10 @@ const (
 )
 
 func init() {
+	kingpin.CommandLine.Name = "do-agent"
+
 	kingpin.Flag("auth-host", "Endpoint to use for obtaining droplet app key").
+		Envar("DO_AGENT_AUTH_HOST").
 		Default(defaultAuthURL).
 		URLVar(&config.authURL)
 
@@ -72,6 +75,7 @@ func init() {
 		URLVar(&config.metadataURL)
 
 	kingpin.Flag("sonar-host", "Endpoint to use for delivering metrics").
+		Envar("DO_AGENT_SONAR_HOST").
 		Default(defaultSonarURL).
 		StringVar(&config.sonarEndpoint)
 
@@ -247,7 +251,7 @@ func appendKubernetesCollectors(cols []prometheus.Collector) []prometheus.Collec
 // disableCollectors disables collectors by names by adding a list of
 // --no-collector.<name> flags to additionalParams
 func disableCollectors(names ...string) {
-	f := []string{}
+	var f []string
 	for _, name := range names {
 		if _, ok := disabledCollectors[name]; ok {
 			// already disabled
