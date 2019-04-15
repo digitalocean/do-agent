@@ -1,24 +1,13 @@
 package main
 
 import (
-	"os"
-
-	"github.com/digitalocean/do-agent/internal/flags"
 	"github.com/digitalocean/do-agent/internal/log"
 
 	"github.com/prometheus/client_golang/prometheus"
-	"gopkg.in/alecthomas/kingpin.v2"
 )
 
 func main() {
-	os.Args = append(os.Args, additionalParams...)
-
-	// read flags from cli directly first so we have access to them
-	flags.Init(os.Args[1:])
-
-	// parse all command line flags which are defined across the app
-	kingpin.HelpFlag.Short('h')
-	kingpin.Parse()
+	initConfig()
 
 	if config.debug {
 		log.SetLevel(log.LevelDebug)
