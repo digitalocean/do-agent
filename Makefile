@@ -36,12 +36,12 @@ go = docker run --rm -i \
 	-u "$(shell id -u)" \
 	-e "GOOS=$(GOOS)" \
 	-e "GOARCH=$(GOARCH)" \
-	-e "GO111MODULE=on" \
+  -e "GO111MODULE=on" \
 	-e "GOFLAGS=-mod=vendor" \
 	-e "GOCACHE=$(CURDIR)/target/.cache/go" \
 	-v "$(CURDIR):$(CURDIR)" \
 	-w "$(CURDIR)" \
-	golang:1.11.5 \
+	golang:1.12.1 \
 	go
 
 ldflags = '\
