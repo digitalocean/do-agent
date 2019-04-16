@@ -30,10 +30,11 @@ go = docker run --rm -i \
 	-u "$(shell id -u)" \
 	-e "GOOS=$(GOOS)" \
 	-e "GOARCH=$(GOARCH)" \
-	-e "GOPATH=/gopath" \
-	-e "GOCACHE=/gopath/src/$(importpath)/target/.cache/go" \
-	-v "$(CURDIR):/gopath/src/$(importpath)" \
-	-w "/gopath/src/$(importpath)" \
+	-e "GO111MODULE=on" \
+	-e "GOFLAGS=-mod=vendor" \
+	-e "GOCACHE=$(CURDIR)/target/.cache/go" \
+	-v "$(CURDIR):$(CURDIR)" \
+	-w "$(CURDIR)" \
 	golang:1.11.5 \
 	go
 
@@ -52,7 +53,6 @@ package_dir     := $(out)/pkg
 cache           := $(out)/.cache
 project         := $(notdir $(CURDIR))# project name
 pkg_project     := $(subst _,-,$(project))# package cannot have underscores in the name
-importpath      := github.com/digitalocean/$(project)# import path used in gocode
 gofiles         := $(shell find -type f -iname '*.go' ! -path './vendor/*')
 vendorgofiles   := $(shell find -type f -iname '*.go' -path './vendor/*')
 shellscripts    := $(shell find -type f -iname '*.sh' ! -path './repos/*' ! -path './vendor/*')
