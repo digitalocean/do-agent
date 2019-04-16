@@ -43,7 +43,7 @@ sudo ./install.sh
 
 - [go](https://golang.org/dl/) 1.11 or later
 - [GNU Make](https://www.gnu.org/software/make/)
-- [gometalinter](https://github.com/alecthomas/gometalinter#installing)
+- Docker
 
 ```
 git clone git@github.com:digitalocean/do-agent.git

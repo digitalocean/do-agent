@@ -243,11 +243,11 @@ func getLabelNamesAndValues(metric *dto.Metric, extraLabels []*dto.LabelPair, al
 	if extraLabels != nil {
 		labels = append(labels, extraLabels...)
 	}
-	var names []string
-	var values []string
-	for _, label := range labels {
-		names = append(names, label.GetName())
-		values = append(values, label.GetValue())
+	names := make([]string, len(labels))
+	values := make([]string, len(labels))
+	for i, label := range labels {
+		names[i] = label.GetName()
+		values[i] = label.GetValue()
 	}
 	for k := range allLabelNames {
 		present := false
