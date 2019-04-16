@@ -14,6 +14,7 @@ package tsclient
 
 import (
 	"bytes"
+	"context"
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
@@ -314,8 +315,8 @@ func (c *HTTPClient) addMetricWithMSEpochTime(def *Definition, ms int64, value f
 
 	writer := structuredstream.NewWriter(c.w)
 	writer.WriteUint16PrefixedString(lfm)
-	writer.Write(int64(ms))
-	writer.Write(float64(value))
+	writer.Write(ms)
+	writer.Write(value)
 	return writer.Error()
 }
 
@@ -392,7 +393,7 @@ func (c *HTTPClient) Flush() error {
 	req.Header.Set(contentTypeHeader, binaryContentType)
 	req.Header.Add(authKeyHeader, c.appKey)
 
-	resp, err := c.httpClient.Do(req)
+	resp, err := c.httpClient.Do(req.WithContext(context.Background()))
 	if err != nil {
 		c.numConsecutiveFailures++
 		if c.isZeroTime {
@@ -479,7 +480,7 @@ func (c *HTTPClient) httpGet(url, authToken string) (string, error) {
 		log.Debug("Authorization: %s", truncate(authValue, 15))
 	}
 
-	resp, err := c.httpClient.Do(req)
+	resp, err := c.httpClient.Do(req.WithContext(context.Background()))
 	if err != nil {
 		return "", err
 	}
