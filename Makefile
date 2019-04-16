@@ -17,7 +17,6 @@ print        = @printf "\n:::::::::::::::: [$(shell date -u)] $@ :::::::::::::::
 touch        = @touch $@
 jq           = @docker run --rm -i colstrom/jq
 shellcheck   = @docker run --rm -i -v "$(CURDIR):$(CURDIR)" -w "$(CURDIR)" -u $(shell id -u) koalaman/shellcheck:v0.6.0
-gometalinter = @docker run --rm -i -v "$(CURDIR):/go/src/$(importpath)" -w "/go/src/$(importpath)" -u $(shell id -u) digitalocean/gometalinter:2.0.11
 revgrep      = docker run --rm -i -v "$(CURDIR):$(CURDIR)" -w "$(CURDIR)" -u $(shell id -u) digitalocean/revgrep:latest
 fpm          = @docker run --rm -i -v "$(CURDIR):$(CURDIR)" -w "$(CURDIR)" -u $(shell id -u) digitalocean/fpm:latest
 vault        = @docker run --rm -i -u $(shell id -u) --net=host -e "VAULT_TOKEN=$(shell cat .vault-token || echo)" docker.internal.digitalocean.com/eng-insights/vault:0.11.5
@@ -25,6 +24,13 @@ now          = $(shell date -u)
 git_rev      = $(shell git rev-parse --short HEAD)
 git_tag      = $(subst v,,$(shell git describe --tags --abbrev=0))
 VERSION     ?= $(git_tag)
+
+linter = docker run --rm -i -v "$(CURDIR):$(CURDIR)" -w "$(CURDIR)" -e "GOPATH" -e "GOCACHE=$(CURDIR)/target/.cache/go" \
+	-u $(shell id -u) golangci/golangci-lint:v1.16 \
+	golangci-lint run --no-config --disable-all -E gosec -E interfacer -E vet -E deadcode -E gocyclo -E golint \
+	-E varcheck -E dupl -E ineffassign -E misspell -E unconvert -E gosec -E nakedret -E goconst -E gofmt -E unparam \
+	-E prealloc \
+	./...
 
 go = docker run --rm -i \
 	-u "$(shell id -u)" \
@@ -88,7 +94,7 @@ lint: $(cache)/lint $(cache)/shellcheck
 $(cache)/lint: $(gofiles)
 	$(print)
 	$(mkdir)
-	@$(gometalinter) --config=.gometalinter.json ./... | $(revgrep) master
+	@$(linter) ./... | $(revgrep) master
 	$(touch)
 
 shellcheck: $(cache)/shellcheck
