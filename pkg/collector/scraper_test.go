@@ -7,6 +7,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
+
 	"github.com/prometheus/client_golang/prometheus"
 	dto "github.com/prometheus/client_model/go"
 	"github.com/stretchr/testify/require"
@@ -34,7 +36,8 @@ kube_configmap_metadata_resource_version{namespace="kube-system",configmap="core
 func TestScraper(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		log.Debug("metrics requested")
-		io.WriteString(w, testmetrics)
+		_, err := io.WriteString(w, testmetrics)
+		assert.NoError(t, err)
 	}))
 	defer ts.Close()
 
@@ -46,7 +49,7 @@ func TestScraper(t *testing.T) {
 	for m := range ch {
 		if m.Desc().String() == `Desc{fqName: "testscraper_scrape_collector_success", help: "testscraper: Whether a collector succeeded.", constLabels: {}, variableLabels: [collector]}` {
 			metric := &dto.Metric{}
-			m.Write(metric)
+			require.NoError(t, m.Write(metric))
 			require.Equal(t, float64(1), *metric.Gauge.Value)
 			break
 		}
@@ -55,7 +58,8 @@ func TestScraper(t *testing.T) {
 func TestScraperAddsKubernetesClusterUUID(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		log.Debug("metrics requested")
-		io.WriteString(w, testmetrics)
+		_, err := io.WriteString(w, testmetrics)
+		assert.NoError(t, err)
 	}))
 	defer ts.Close()
 
@@ -74,7 +78,7 @@ func TestScraperAddsKubernetesClusterUUID(t *testing.T) {
 			continue
 		}
 		metric := &dto.Metric{}
-		m.Write(metric)
+		require.NoError(t, m.Write(metric))
 		foundClusterUUIDLabel := false
 		for _, lbl := range metric.GetLabel() {
 			if lbl.GetName() == kubernetesClusterUUID && lbl.GetValue() == clusterUUID {
@@ -86,12 +90,11 @@ func TestScraperAddsKubernetesClusterUUID(t *testing.T) {
 	}
 }
 
-
-
 func TestWhitelist(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		log.Debug("metrics requested")
-		io.WriteString(w, testmetrics)
+		_, err := io.WriteString(w, testmetrics)
+		assert.NoError(t, err)
 	}))
 	defer ts.Close()
 
@@ -109,7 +112,7 @@ func TestWhitelist(t *testing.T) {
 			continue // expected whitelisted metric
 		case `Desc{fqName: "testscraper_scrape_collector_success", help: "testscraper: Whether a collector succeeded.", constLabels: {}, variableLabels: [collector]}`:
 			metric := &dto.Metric{}
-			m.Write(metric)
+			require.NoError(t, m.Write(metric))
 			require.Equal(t, float64(1), *metric.Gauge.Value)
 			return
 		case `Desc{fqName: "testscraper_scrape_collector_duration_seconds", help: "testscraper: Duration of a collector scrape.", constLabels: {}, variableLabels: [collector]}`:

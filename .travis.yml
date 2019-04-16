@@ -5,10 +5,6 @@ sudo: required
 services:
   - docker
 
-addons:
-  apt:
-    update: true
-
 matrix:
   # fail fast
   fast_finish: true
@@ -16,15 +12,7 @@ matrix:
     - go: 1.12.1
 
 before_install:
-  - sudo apt-get install -y shellcheck
-  - go get -u github.com/golang/dep/...
-  # coveralls.io deps
   - go get golang.org/x/tools/cmd/cover github.com/mattn/goveralls
-  # install gometalinter
-  - curl -L https://git.io/vp6lP | sh
-  # gometalinter installs to ./bin
-  - export PATH="$GOPATH/bin:$PWD/bin:$PATH"
-  - dep ensure
 
 install:
   - skip

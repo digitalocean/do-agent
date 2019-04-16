@@ -141,10 +141,7 @@ func initWriter(g gatherer) (metricWriter, throttler) {
 		return writer.NewFile(os.Stdout), &constThrottler{wait: 10 * time.Second}
 	}
 
-	tsc, err := newTimeseriesClient()
-	if err != nil {
-		log.Fatal("failed to connect to sonar: %+v", err)
-	}
+	tsc := newTimeseriesClient()
 	return writer.NewSonar(tsc), tsc
 }
 
@@ -165,7 +162,7 @@ type WrappedTSClient struct {
 // Name returns the name of the client
 func (m *WrappedTSClient) Name() string { return "tsclient" }
 
-func newTimeseriesClient() (*WrappedTSClient, error) {
+func newTimeseriesClient() *WrappedTSClient {
 	clientOptions := []tsclient.ClientOptFn{
 		tsclient.WithUserAgent(fmt.Sprintf("do-agent-%s", version)),
 		tsclient.WithRadarEndpoint(config.authURL.String()),
@@ -179,7 +176,7 @@ func newTimeseriesClient() (*WrappedTSClient, error) {
 	tsClient := tsclient.New(clientOptions...)
 	wrappedTSClient := &WrappedTSClient{tsClient}
 
-	return wrappedTSClient, nil
+	return wrappedTSClient
 }
 
 // getKubernetesClusterUUID retrieves the k8s cluster UUID from the droplet metadata
@@ -263,7 +260,7 @@ func appendKubernetesCollectors(cols []prometheus.Collector) []prometheus.Collec
 // disableCollectors disables collectors by names by adding a list of
 // --no-collector.<name> flags to additionalParams
 func disableCollectors(names ...string) {
-	var f []string
+	f := make([]string, 0, len(names))
 	for _, name := range names {
 		if _, ok := disabledCollectors[name]; ok {
 			// already disabled
