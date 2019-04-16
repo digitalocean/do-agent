@@ -13,7 +13,7 @@ matrix:
   # fail fast
   fast_finish: true
   include:
-    - go: 1.11.5
+    - go: 1.12.1
 
 before_install:
   - sudo apt-get install -y shellcheck
