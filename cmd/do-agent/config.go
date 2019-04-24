@@ -103,7 +103,7 @@ func init() {
 	kingpin.Flag("dbaas-metrics-path", "enable DO DBAAS metrics collection (this must be a DO DBAAS metrics endpoint)").
 		StringVar(&config.dbaas)
 
-	kingpin.Flag("web.listen", "enable a local endpoint for scapeable prometheus metrics as well").
+	kingpin.Flag("web.listen", "enable a local endpoint for scrapeable prometheus metrics as well").
 		Default("false").
 		BoolVar(&config.webListen)
 
