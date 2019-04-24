@@ -36,7 +36,7 @@ go = docker run --rm -i \
 	-u "$(shell id -u)" \
 	-e "GOOS=$(GOOS)" \
 	-e "GOARCH=$(GOARCH)" \
-  -e "GO111MODULE=on" \
+	-e "GO111MODULE=on" \
 	-e "GOFLAGS=-mod=vendor" \
 	-e "GOCACHE=$(CURDIR)/target/.cache/go" \
 	-v "$(CURDIR):$(CURDIR)" \
@@ -61,7 +61,7 @@ project         := $(notdir $(CURDIR))# project name
 pkg_project     := $(subst _,-,$(project))# package cannot have underscores in the name
 gofiles         := $(shell find -type f -iname '*.go' ! -path './vendor/*')
 vendorgofiles   := $(shell find -type f -iname '*.go' -path './vendor/*')
-shellscripts    := $(shell find -type f -iname '*.sh' ! -path './repos/*' ! -path './vendor/*')
+shellscripts    := $(shell find -type f -iname '*.sh' ! -path './repos/*' ! -path './vendor/*' ! -path './.git/*')
 # the name of the binary built with local resources
 binary          := $(out)/$(project)-$(GOOS)-$(GOARCH)
 cover_profile   := $(out)/.coverprofile

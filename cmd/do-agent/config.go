@@ -92,18 +92,24 @@ func init() {
 	kingpin.Flag("k8s-metrics-path", "enable DO Kubernetes metrics collection (this must be a DOK8s metrics endpoint)").
 		StringVar(&config.kubernetes)
 
-	kingpin.Flag("no-collector.processes", "disable processes cpu/memory collection").Default("false").
+	kingpin.Flag("no-collector.processes", "disable processes cpu/memory collection").
+		Default("false").
 		BoolVar(&config.noProcesses)
 
-	kingpin.Flag("no-collector.node", "disable processes node collection").Default("false").
+	kingpin.Flag("no-collector.node", "disable processes node collection").
+		Default("false").
 		BoolVar(&config.noNode)
 
 	kingpin.Flag("dbaas-metrics-path", "enable DO DBAAS metrics collection (this must be a DO DBAAS metrics endpoint)").
 		StringVar(&config.dbaas)
 
-	kingpin.Flag("web.listen", "enable a local endpoint for scapeable prometheus metrics as well").Default("false").BoolVar(&config.webListen)
+	kingpin.Flag("web.listen", "enable a local endpoint for scrapeable prometheus metrics as well").
+		Default("false").
+		BoolVar(&config.webListen)
 
-	kingpin.Flag("web.listen-address", "write prometheus metrics to the specified port (ex. \":9100\")").Default(defaultWebListenAddress).StringVar(&config.webListenAddress)
+	kingpin.Flag("web.listen-address", `write prometheus metrics to the specified port (ex. ":9100")`).
+		Default(defaultWebListenAddress).
+		StringVar(&config.webListenAddress)
 }
 
 func initConfig() {
