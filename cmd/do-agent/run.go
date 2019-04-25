@@ -45,7 +45,8 @@ func run(w metricWriter, th throttler, dec decorate.Decorator, g gatherer) {
 	}
 
 	exec()
-	for range time.After(th.WaitDuration()) {
+	for {
+		time.Sleep(th.WaitDuration())
 		exec()
 	}
 }
