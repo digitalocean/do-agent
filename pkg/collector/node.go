@@ -2,14 +2,18 @@ package collector
 
 import (
 	"fmt"
+	"regexp"
 	"strings"
 
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
+	dto "github.com/prometheus/client_model/go"
 	"github.com/prometheus/node_exporter/collector"
 )
 
-var whitelist = []string{
+var networkNameWhitelistReg = regexp.MustCompile(`^(eno|eth|ens)\d+`)
+
+var metricWhitelist = []string{
 	"node_network_receive_bytes_total",
 	"node_network_transmit_bytes_total",
 	"node_memory_memtotal_bytes",
@@ -75,12 +79,31 @@ func (n *NodeCollector) Collect(ch chan<- prometheus.Metric) {
 		// Desc{fqName: "node_network_transmit_bytes_total", help: "Network device statistic transmit_bytes.", constLabels: {}, variableLabels: [device]}
 		// this is ugly but currently all we can do
 		d := strings.ToLower(m.Desc().String())
-		for _, s := range whitelist {
-			if strings.Contains(d, fmt.Sprintf(`fqname: "%s"`, s)) {
-				ch <- m
+		for _, s := range metricWhitelist {
+			if !strings.Contains(d, fmt.Sprintf(`fqname: "%s"`, s)) {
+				continue
 			}
+			if strings.Contains(d, "node_network") && !validNetwork(m) {
+				continue
+			}
+			ch <- m
 		}
 	}
+}
+
+// validNetwork checks that the network name for this metric is whitelisted. If the metric is not in the whitelist
+func validNetwork(m prometheus.Metric) bool {
+	var mt dto.Metric
+	if err := m.Write(&mt); err != nil {
+		return false
+	}
+	for _, lp := range mt.GetLabel() {
+		if lp.GetName() != "device" {
+			continue
+		}
+		return networkNameWhitelistReg.MatchString(lp.GetValue())
+	}
+	return false
 }
 
 // Describe describes the metrics collected using prometheus/node_exporter
