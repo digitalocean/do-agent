@@ -8,14 +8,10 @@ import (
 const (
 	ignoredMountPointFlag = "--collector.filesystem.ignored-mount-points"
 	ignoredFSTypesFlag    = "--collector.filesystem.ignored-fs-types"
+	ignoredMountPoints    = `^/(rootfs/)?(sys|proc|dev|host|etc|var/(lib|run)/docker/[^$]+|run/docker/[^$]+)($$|/)`
 )
 
 var (
-	ignoredMountPoints = strings.Join([]string{
-		"fusectl", "lxcfs", "mqueue", "none", "rootfs", "sunrpc",
-		"systemd", "udev",
-	}, `|`)
-
 	ignoredFSTypes = strings.Join([]string{
 		"aufs", "autofs", "binfmt_misc", "cifs", "cgroup", "debugfs",
 		"devpts", "devtmpfs", "ecryptfs", "efivarfs", "fuse",
