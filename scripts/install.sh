@@ -66,7 +66,7 @@ function install_rpm() {
 	# forcefully remove any existing installations
 	yum remove -y do-agent || :
 
-	yum install -y pygpgme ca-certificates
+	yum install -y gpgme ca-certificates
 
 	cat <<-EOF > /etc/yum.repos.d/digitalocean-agent.repo
 	[digitalocean-agent]
