@@ -164,8 +164,13 @@ function command_init_status() {
 # ssh to all droplets and run yum/apt update to upgrade to the latest published
 # version of do-agent
 function command_update() {
-	exec_rpm "yum -q -y update do-agent"
-	exec_deb "apt-get -qq update && apt-get -qq install -y --only-upgrade do-agent"
+	exec_ips "$(list_ips)" /opt/digitalocean/do-agent/scripts/update.sh
+}
+
+# remove do-agent from all uat machines
+function command_uninstall() {
+	exec_rpm "yum remove -qq -y do-agent"
+	exec_deb "apt-get -qq purge -y do-agent"
 }
 
 # ssh to all droplets and execute a command
