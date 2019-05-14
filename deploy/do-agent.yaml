@@ -20,6 +20,8 @@ spec:
       labels:
         app: do-node-agent
     spec:
+      dnsPolicy: ClusterFirstWithHostNet
+      hostNetwork: true
       containers:
       - name: do-node-agent
         image: docker.io/digitalocean/do-agent:stable
