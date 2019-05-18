@@ -12,7 +12,8 @@ SVC_NAME=do-agent
 USERNAME=do-agent
 
 main() {
-	create_user
+	echo "Creating $USERNAME user..."
+	useradd -M --system $USERNAME || true
 
 	if command -v systemctl >/dev/null 2>&1; then
 		echo "Stopping systemctl service..."
@@ -23,14 +24,6 @@ main() {
 		initctl stop ${SVC_NAME} 2>/dev/null || true
 	else
 		echo "ERROR: Unknown init system" > /dev/stderr
-	fi
-}
-
-create_user() {
-	# create the user if it doesn't already exist
-	if ! getent passwd $USERNAME >/dev/null 2>&1; then
-		echo "Creating $USERNAME user..."
-		useradd -M --system $USERNAME
 	fi
 }
 
