@@ -24,6 +24,8 @@ getent group nobody 2> /dev/null \
 main() {
 	update_selinux
 
+	useradd -M --system $USERNAME || true
+
 	if command -v systemctl >/dev/null 2>&1; then
 		init_systemd
 	elif command -v initctl >/dev/null 2>&1; then
