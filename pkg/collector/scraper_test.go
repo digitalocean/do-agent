@@ -41,7 +41,7 @@ func TestScraper(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	s, err := NewScraper("testscraper", ts.URL, nil, nil, 30*time.Second)
+	s, err := NewScraper("testscraper", ts.URL, nil, nil, WithTimeout(30*time.Second))
 	require.NoError(t, err)
 
 	ch := make(chan prometheus.Metric)
@@ -67,7 +67,7 @@ func TestScraperAddsKubernetesClusterUUID(t *testing.T) {
 	clusterUUID := "123-345-678000"
 	var kubernetesLabels []*dto.LabelPair
 	kubernetesLabels = append(kubernetesLabels, &dto.LabelPair{Name: &kubernetesClusterUUID, Value: &clusterUUID})
-	s, err := NewScraper("testscraper", ts.URL, kubernetesLabels, nil, 30*time.Second)
+	s, err := NewScraper("testscraper", ts.URL, kubernetesLabels, nil, WithTimeout(30*time.Second))
 	require.NoError(t, err)
 
 	ch := make(chan prometheus.Metric)
@@ -99,7 +99,7 @@ func TestWhitelist(t *testing.T) {
 	defer ts.Close()
 
 	// Only scrape kube_configmap_created
-	s, err := NewScraper("testscraper", ts.URL, nil, map[string]bool{"kube_configmap_created": true}, 30*time.Second)
+	s, err := NewScraper("testscraper", ts.URL, nil, map[string]bool{"kube_configmap_created": true}, WithTimeout(30*time.Second))
 	require.NoError(t, err)
 
 	ch := make(chan prometheus.Metric)
