@@ -254,7 +254,7 @@ func appendKubernetesCollectors(cols []prometheus.Collector) []prometheus.Collec
 	}
 	var kubernetesLabels []*dto.LabelPair
 	kubernetesLabels = append(kubernetesLabels, &dto.LabelPair{Name: &kubernetesClusterUUIDLabel, Value: &kubernetesClusterUUID})
-	k, err := collector.NewScraper("dokubernetes", config.kubernetes, kubernetesLabels, k8sWhitelist, WithTimeout(defaultTimeout))
+	k, err := collector.NewScraper("dokubernetes", config.kubernetes, kubernetesLabels, k8sWhitelist, WithTimeout(defaultTimeout), WithLogLevel(log.LevelDebug))
 	if err != nil {
 		log.Error("Failed to initialize DO Kubernetes metrics: %+v", err)
 		return cols
