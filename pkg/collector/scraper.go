@@ -19,8 +19,41 @@ import (
 	"github.com/digitalocean/do-agent/pkg/clients"
 )
 
+var defaultScrapeTimeout = 5 * time.Second
+
+type scraperOpts struct {
+	timeout  time.Duration
+	logLevel log.Level
+}
+
+// Option is used to configure optional scraper options.
+type Option func(o *scraperOpts)
+
+// WithTimeout configures a scraper with a timeout for scraping metrics.
+func WithTimeout(d time.Duration) Option {
+	return func(o *scraperOpts) {
+		o.timeout = d
+	}
+}
+
+// WithLogLevel configures a custom log level for scraping.
+func WithLogLevel(l log.Level) Option {
+	return func(o *scraperOpts) {
+		o.logLevel = l
+	}
+}
+
 // NewScraper creates a new scraper to scrape metrics from the provided host
-func NewScraper(name, metricsEndpoint string, extraMetricLabels []*dto.LabelPair, whitelist map[string]bool, timeout time.Duration) (*Scraper, error) {
+func NewScraper(name, metricsEndpoint string, extraMetricLabels []*dto.LabelPair, whitelist map[string]bool, opts ...Option) (*Scraper, error) {
+	defOpts := &scraperOpts{
+		timeout:  defaultScrapeTimeout,
+		logLevel: log.LevelError,
+	}
+
+	for _, opt := range opts {
+		opt(defOpts)
+	}
+
 	metricsEndpoint = strings.TrimRight(metricsEndpoint, "/")
 	req, err := http.NewRequest("GET", metricsEndpoint, nil)
 	if err != nil {
@@ -29,15 +62,16 @@ func NewScraper(name, metricsEndpoint string, extraMetricLabels []*dto.LabelPair
 	req.Header.Add("Accept", `text/plain;version=0.0.4;q=1,*/*;q=0.1`)
 	req.Header.Add("Accept-Encoding", "gzip")
 	req.Header.Set("User-Agent", "Prometheus/2.3.0")
-	req.Header.Set("X-Prometheus-Scrape-Timeout-Seconds", fmt.Sprintf("%f", timeout.Seconds()))
+	req.Header.Set("X-Prometheus-Scrape-Timeout-Seconds", fmt.Sprintf("%f", defOpts.timeout.Seconds()))
 
 	return &Scraper{
 		req:               req,
 		name:              name,
 		extraMetricLabels: extraMetricLabels,
 		whitelist:         whitelist,
-		timeout:           timeout,
-		client:            clients.NewHTTP(timeout),
+		timeout:           defOpts.timeout,
+		logLevel:          defOpts.logLevel,
+		client:            clients.NewHTTP(defOpts.timeout),
 		scrapeDurationDesc: prometheus.NewDesc(
 			prometheus.BuildFQName(name, "scrape", "collector_duration_seconds"),
 			fmt.Sprintf("%s: Duration of a collector scrape.", name),
@@ -56,6 +90,7 @@ func NewScraper(name, metricsEndpoint string, extraMetricLabels []*dto.LabelPair
 // Scraper is a remote metric scraper that scrapes HTTP endpoints
 type Scraper struct {
 	timeout            time.Duration
+	logLevel           log.Level
 	req                *http.Request
 	client             *http.Client
 	name               string
@@ -63,6 +98,19 @@ type Scraper struct {
 	extraMetricLabels  []*dto.LabelPair
 	scrapeDurationDesc *prometheus.Desc
 	scrapeSuccessDesc  *prometheus.Desc
+}
+
+// log emits log messages respecting the scraper's log level.
+func (s *Scraper) log(msg string, params ...interface{}) {
+	var logFunc func(msg string, params ...interface{})
+	switch s.logLevel {
+	case log.LevelDebug:
+		logFunc = log.Debug
+	case log.LevelError:
+		logFunc = log.Error
+	}
+
+	logFunc(msg, params...)
 }
 
 // readStream makes an HTTP request to the remote and returns the response body
@@ -76,7 +124,7 @@ func (s *Scraper) readStream(ctx context.Context) (r io.ReadCloser, outerr error
 		if err := r.Close(); err != nil {
 			// This should not happen, but if it does it'll be nice
 			// to know why we have a bunch of unclosed messages
-			log.Error("failed to close stream on error: %+v", errors.WithStack(err))
+			s.log("failed to close stream on error: %+v", errors.WithStack(err))
 		}
 	}()
 
@@ -121,7 +169,7 @@ func (s *Scraper) Collect(ch chan<- prometheus.Metric) {
 
 	if err := s.scrape(ctx, ch); err != nil {
 		failed = true
-		log.Error("collection failed for %q: %v", s.Name(), err)
+		s.log("collection failed for %q: %v", s.Name(), err)
 	}
 }
 
