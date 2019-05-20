@@ -11,12 +11,8 @@ matrix:
   include:
     - go: 1.12.1
 
-before_install:
-  - go get golang.org/x/tools/cmd/cover github.com/mattn/goveralls
-
 install:
   - skip
 
 script:
   - make ci
-  - goveralls -coverprofile=target/.coverprofile -service=travis-ci -repotoken $COVERALLS_API_TOKEN

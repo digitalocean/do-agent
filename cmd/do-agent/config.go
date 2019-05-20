@@ -219,7 +219,7 @@ func initCollectors() []prometheus.Collector {
 	}
 
 	if config.dbaas != "" {
-		k, err := collector.NewScraper("dodbaas", config.dbaas, nil, dbaasWhitelist, defaultTimeout)
+		k, err := collector.NewScraper("dodbaas", config.dbaas, nil, dbaasWhitelist, collector.WithTimeout(defaultTimeout))
 		if err != nil {
 			log.Error("Failed to initialize DO DBaaS metrics collector: %+v", err)
 		} else {
@@ -254,7 +254,7 @@ func appendKubernetesCollectors(cols []prometheus.Collector) []prometheus.Collec
 	}
 	var kubernetesLabels []*dto.LabelPair
 	kubernetesLabels = append(kubernetesLabels, &dto.LabelPair{Name: &kubernetesClusterUUIDLabel, Value: &kubernetesClusterUUID})
-	k, err := collector.NewScraper("dokubernetes", config.kubernetes, kubernetesLabels, k8sWhitelist, defaultTimeout)
+	k, err := collector.NewScraper("dokubernetes", config.kubernetes, kubernetesLabels, k8sWhitelist, collector.WithTimeout(defaultTimeout), collector.WithLogLevel(log.LevelDebug))
 	if err != nil {
 		log.Error("Failed to initialize DO Kubernetes metrics: %+v", err)
 		return cols
