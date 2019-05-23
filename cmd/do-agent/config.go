@@ -13,6 +13,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	dto "github.com/prometheus/client_model/go"
+	"github.com/prometheus/common/model"
 	"gopkg.in/alecthomas/kingpin.v2"
 
 	"github.com/digitalocean/do-agent/internal/flags"
@@ -301,6 +302,14 @@ func convertToLabelPairs(s []string) []*dto.LabelPair {
 		vals := strings.SplitN(lbl, ":", 2)
 		if len(vals) != 2 { // require a key value pair
 			log.Fatal("Bad additional-label %s, must be in the format of <key>:<value>", lbl)
+		}
+
+		if !model.LabelName(vals[0]).IsValid() {
+			log.Fatal("Bad additional-label name %s", vals[0])
+		}
+
+		if !model.LabelValue(vals[1]).IsValid() {
+			log.Fatal("Bad additional-label value %s", vals[1])
 		}
 
 		l = append(l, &dto.LabelPair{
