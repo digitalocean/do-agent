@@ -296,7 +296,7 @@ func disableCollectorFlag(name string) string {
 }
 
 func convertToLabelPairs(s []string) []*dto.LabelPair {
-	var l []*dto.LabelPair
+	l := []*dto.LabelPair{}
 	for _, lbl := range s {
 		vals := strings.SplitN(lbl, ":", 2)
 		if len(vals) != 2 { // require a key value pair

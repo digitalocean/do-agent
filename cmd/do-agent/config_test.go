@@ -87,8 +87,8 @@ func TestConvertLabelPairs(t *testing.T) {
 	require.Equal(t, []*dto.LabelPair{{Name: sPtr("user_id"), Value: sPtr("12:34:56")}}, pairs)
 
 	pairs = convertToLabelPairs([]string{})
-	require.Nil(t, pairs)
+	require.Empty(t, pairs)
 
 	pairs = convertToLabelPairs(nil)
-	require.Nil(t, pairs)
+	require.Empty(t, pairs)
 }
