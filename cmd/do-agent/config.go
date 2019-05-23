@@ -39,6 +39,7 @@ var (
 		dbaas            string
 		webListenAddress string
 		webListen        bool
+		additionalLabels []string
 	}
 
 	// additionalParams is a list of extra command line flags to append
@@ -110,6 +111,8 @@ func init() {
 	kingpin.Flag("web.listen-address", `write prometheus metrics to the specified port (ex. ":9100")`).
 		Default(defaultWebListenAddress).
 		StringVar(&config.webListenAddress)
+
+	kingpin.Flag("additional-label", "key value pairs for labels to add to all metrics (ex: user_id:1234)").StringsVar(&config.additionalLabels)
 }
 
 func initConfig() {
