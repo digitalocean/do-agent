@@ -3,6 +3,7 @@ package main
 import (
 	"testing"
 
+	dto "github.com/prometheus/client_model/go"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -71,4 +72,23 @@ k8saas_dns_service_ip: "YES"`
 	require.Error(t, err)
 	require.Equal(t, err, errClusterUUIDNotFound)
 	assert.EqualValues(t, "", parsed)
+}
+
+func TestConvertLabelPairs(t *testing.T) {
+
+	sPtr := func(s string) *string { return &s }
+	pairs := convertToLabelPairs([]string{"user_id:1234"})
+	require.Equal(t, []*dto.LabelPair{{Name: sPtr("user_id"), Value: sPtr("1234")}}, pairs)
+
+	pairs = convertToLabelPairs([]string{"user_id:1234", "dbaas_cluster_uuid:ruiheiuqhf"})
+	require.Equal(t, []*dto.LabelPair{{Name: sPtr("user_id"), Value: sPtr("1234")}, {Name: sPtr("dbaas_cluster_uuid"), Value: sPtr("ruiheiuqhf")}}, pairs)
+
+	pairs = convertToLabelPairs([]string{"user_id:12:34:56"})
+	require.Equal(t, []*dto.LabelPair{{Name: sPtr("user_id"), Value: sPtr("12:34:56")}}, pairs)
+
+	pairs = convertToLabelPairs([]string{})
+	require.Empty(t, pairs)
+
+	pairs = convertToLabelPairs(nil)
+	require.Empty(t, pairs)
 }

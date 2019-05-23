@@ -13,6 +13,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	dto "github.com/prometheus/client_model/go"
+	"github.com/prometheus/common/model"
 	"gopkg.in/alecthomas/kingpin.v2"
 
 	"github.com/digitalocean/do-agent/internal/flags"
@@ -39,6 +40,7 @@ var (
 		dbaas            string
 		webListenAddress string
 		webListen        bool
+		additionalLabels []string
 	}
 
 	// additionalParams is a list of extra command line flags to append
@@ -110,6 +112,8 @@ func init() {
 	kingpin.Flag("web.listen-address", `write prometheus metrics to the specified port (ex. ":9100")`).
 		Default(defaultWebListenAddress).
 		StringVar(&config.webListenAddress)
+
+	kingpin.Flag("additional-label", "key value pairs for labels to add to all metrics (ex: user_id:1234)").StringsVar(&config.additionalLabels)
 }
 
 func initConfig() {
@@ -152,12 +156,19 @@ func initWriter(g gatherer) (metricWriter, throttler) {
 }
 
 func initDecorator() decorate.Chain {
-	return decorate.Chain{
+	chain := decorate.Chain{
 		compat.Names{},
 		compat.Disk{},
 		compat.CPU{},
 		decorate.LowercaseNames{},
 	}
+
+	// If additionalLabels provided convert into decorator
+	if len(config.additionalLabels) != 0 {
+		chain = append(chain, decorate.LabelAppender(convertToLabelPairs(config.additionalLabels)))
+	}
+
+	return chain
 }
 
 // WrappedTSClient wraps the tsClient and adds a Name method to it
@@ -283,4 +294,29 @@ func disableCollectors(names ...string) {
 // disableCollectorFlag creates the correct cli flag for the given collector name
 func disableCollectorFlag(name string) string {
 	return fmt.Sprintf("--no-collector.%s", name)
+}
+
+func convertToLabelPairs(s []string) []*dto.LabelPair {
+	l := []*dto.LabelPair{}
+	for _, lbl := range s {
+		vals := strings.SplitN(lbl, ":", 2)
+		if len(vals) != 2 { // require a key value pair
+			log.Fatal("Bad additional-label %s, must be in the format of <key>:<value>", lbl)
+		}
+
+		if !model.LabelName(vals[0]).IsValid() {
+			log.Fatal("Bad additional-label name %s", vals[0])
+		}
+
+		if !model.LabelValue(vals[1]).IsValid() {
+			log.Fatal("Bad additional-label value %s", vals[1])
+		}
+
+		l = append(l, &dto.LabelPair{
+			Name:  &vals[0],
+			Value: &vals[1],
+		})
+	}
+
+	return l
 }
