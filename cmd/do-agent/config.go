@@ -155,12 +155,19 @@ func initWriter(g gatherer) (metricWriter, throttler) {
 }
 
 func initDecorator() decorate.Chain {
-	return decorate.Chain{
+	chain := decorate.Chain{
 		compat.Names{},
 		compat.Disk{},
 		compat.CPU{},
 		decorate.LowercaseNames{},
 	}
+
+	// If additionalLabels provided convert into decorator
+	if len(config.additionalLabels) != 0 {
+		chain = append(chain, decorate.LabelAppender(convertToLabelPairs(config.additionalLabels)))
+	}
+
+	return chain
 }
 
 // WrappedTSClient wraps the tsClient and adds a Name method to it
@@ -286,4 +293,21 @@ func disableCollectors(names ...string) {
 // disableCollectorFlag creates the correct cli flag for the given collector name
 func disableCollectorFlag(name string) string {
 	return fmt.Sprintf("--no-collector.%s", name)
+}
+
+func convertToLabelPairs(s []string) []*dto.LabelPair {
+	var l []*dto.LabelPair
+	for _, lbl := range s {
+		vals := strings.SplitN(lbl, ":", 2)
+		if len(vals) != 2 { // require a key value pair
+			log.Fatal("Bad additional-label %s, must be in the format of <key>:<value>", lbl)
+		}
+
+		l = append(l, &dto.LabelPair{
+			Name:  &vals[0],
+			Value: &vals[1],
+		})
+	}
+
+	return l
 }
