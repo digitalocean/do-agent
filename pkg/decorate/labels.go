@@ -1,12 +1,14 @@
 package decorate
 
-import dto "github.com/prometheus/client_model/go"
+import (
+	dto "github.com/prometheus/client_model/go"
+)
 
-// Labels is a list of label pairs that need to be added/overwritten on all metrics
-type Labels []*dto.LabelPair
+// LabelAppender is a list of label pairs that need to be added on all metrics
+type LabelAppender []*dto.LabelPair
 
-// Decorate adds/overwritesa metric labels from its list
-func (l Labels) Decorate(mfs []*dto.MetricFamily) {
+// Decorate adds metric labels from its list
+func (l LabelAppender) Decorate(mfs []*dto.MetricFamily) {
 	for _, fam := range mfs {
 		metrics := fam.GetMetric()
 		for _, metric := range metrics {
@@ -16,6 +18,6 @@ func (l Labels) Decorate(mfs []*dto.MetricFamily) {
 }
 
 // Name is the name of this decorator
-func (Labels) Name() string {
-	return "Labels"
+func (LabelAppender) Name() string {
+	return "LabelsAppender"
 }
