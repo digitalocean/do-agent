@@ -1,9 +1,11 @@
 package main
 
 import (
-	"github.com/digitalocean/do-agent/internal/log"
+	"net/http"
 
+	"github.com/digitalocean/do-agent/internal/log"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 func main() {
@@ -27,7 +29,18 @@ func main() {
 	reg := prometheus.NewRegistry()
 	reg.MustRegister(cols...)
 
-	w, th := initWriter(reg)
+	if config.webListen {
+		go func() {
+			http.Handle("/", promhttp.HandlerFor(reg, promhttp.HandlerOpts{}))
+			err := http.ListenAndServe(config.webListenAddress, nil)
+			if err != nil {
+				log.Error("failed to init HTTP listener: %+v", err.Error())
+			}
+		}()
+	}
+
+	w, th := initWriter()
 	d := initDecorator()
+
 	run(w, th, d, reg)
 }

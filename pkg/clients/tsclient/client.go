@@ -18,28 +18,31 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"math/rand"
 	"net"
 	"net/http"
-	"strconv"
+	"sync/atomic"
 	"time"
+
+	"github.com/golang/snappy"
+	"github.com/pkg/errors"
 
 	"github.com/digitalocean/do-agent/internal/log"
 	"github.com/digitalocean/do-agent/pkg/clients/tsclient/structuredstream"
-
-	"github.com/golang/snappy"
 )
 
 const (
-	binaryContentType     = "application/timeseries-binary-0"
-	userAgentHeader       = "User-Agent"
-	pushIntervalHeaderKey = "X-Metric-Push-Interval"
-	authKeyHeader         = "X-Auth-Key"
-	contentTypeHeader     = "Content-Type"
+	binaryContentType = "application/timeseries-binary-0"
+	userAgentHeader   = "User-Agent"
+	authKeyHeader     = "X-Auth-Key"
+	contentTypeHeader = "Content-Type"
 
-	defaultWaitInterval = time.Second * 60
-	maxWaitInterval     = time.Hour
+	defaultWaitIntervalSeconds = 60
+	defaultMaxBatchSize        = 1000
+	defaultMaxMetricLength     = 512
+	maxWaitInterval            = 10 * time.Minute
 )
 
 // Client is an interface for sending batches of metrics
@@ -48,6 +51,8 @@ type Client interface {
 	AddMetricWithTime(def *Definition, t time.Time, value float64, labels ...string) error
 	Flush() error
 	WaitDuration() time.Duration
+	MaxBatchSize() int
+	MaxMetricLength() int
 	ResetWaitTimer()
 }
 
@@ -61,7 +66,9 @@ type HTTPClient struct {
 	wharfEndpointSSLHostname string
 	lastFlushAttempt         time.Time
 	lastFlushConnection      time.Time
-	waitInterval             time.Duration
+	waitIntervalSeconds      int32
+	maxBatchSize             int32
+	maxMetricLength          int32
 	numConsecutiveFailures   int
 	bootstrapRequired        bool
 	trusted                  bool
@@ -202,7 +209,9 @@ func New(opts ...ClientOptFn) Client {
 		appName:                  opt.AppName,
 		appKey:                   opt.AppKey,
 		httpClient:               httpClient,
-		waitInterval:             defaultWaitInterval,
+		waitIntervalSeconds:      defaultWaitIntervalSeconds,
+		maxBatchSize:             defaultMaxBatchSize,
+		maxMetricLength:          defaultMaxMetricLength,
 		bootstrapRequired:        true,
 		trusted:                  opt.IsTrusted,
 		lastSend:                 map[string]int64{},
@@ -271,10 +280,21 @@ func (c *HTTPClient) url() string {
 // WaitDuration returns the duration before the next batch of metrics will be accepted
 func (c *HTTPClient) WaitDuration() time.Duration {
 	d := time.Since(c.lastFlushAttempt)
-	if d < c.waitInterval {
-		return c.waitInterval - d
+	wi := time.Second * time.Duration(atomic.LoadInt32(&c.waitIntervalSeconds))
+	if d < wi {
+		return wi - d
 	}
 	return 0
+}
+
+// MaxBatchSize returns the maximum amount of metrics that may be sent per batch
+func (c *HTTPClient) MaxBatchSize() int {
+	return int(atomic.LoadInt32(&c.maxBatchSize))
+}
+
+// MaxMetricLength is the maximum length of a metric that may be sent (all labels and values combined)
+func (c *HTTPClient) MaxMetricLength() int {
+	return int(atomic.LoadInt32(&c.maxMetricLength))
 }
 
 // AddMetric adds a metric to the batch
@@ -302,13 +322,13 @@ func (c *HTTPClient) addMetricWithMSEpochTime(def *Definition, ms int64, value f
 	}
 	lfm, err := GetLFM(def, labels)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "failed to get LFM")
 	}
 
 	if !isZeroTime {
 		// ensure sufficient time between reported metric values
-		if lastSend, ok := c.lastSend[lfm]; ok && (time.Duration(ms-lastSend)*time.Millisecond) < c.waitInterval {
-			return ErrSendTooFrequent
+		if lastSend, ok := c.lastSend[lfm]; ok && (time.Duration(ms-lastSend)*time.Millisecond) < c.WaitDuration() {
+			return errors.WithStack(ErrSendTooFrequent)
 		}
 		c.lastSend[lfm] = ms
 	}
@@ -317,7 +337,11 @@ func (c *HTTPClient) addMetricWithMSEpochTime(def *Definition, ms int64, value f
 	writer.WriteUint16PrefixedString(lfm)
 	writer.Write(ms)
 	writer.Write(value)
-	return writer.Error()
+	if err := writer.Error(); err != nil {
+		log.Error("failed to write: %+v", err)
+		return errors.WithStack(ErrWriteFailure)
+	}
+	return nil
 }
 
 func (c *HTTPClient) clearBufferedMetrics() {
@@ -340,7 +364,7 @@ func (c *HTTPClient) ResetWaitTimer() {
 // Flush sends the batch of metrics to wharf
 func (c *HTTPClient) Flush() error {
 	now := time.Now()
-	if now.Sub(c.lastFlushAttempt) < c.waitInterval {
+	if now.Sub(c.lastFlushAttempt) < c.WaitDuration() {
 		return ErrFlushTooFrequent
 	}
 	c.lastFlushAttempt = now
@@ -401,7 +425,7 @@ func (c *HTTPClient) Flush() error {
 		}
 		return err
 	}
-	defer resp.Body.Close()
+	defer c.handleSonarResponse(resp.Body)
 	if resp.StatusCode != http.StatusAccepted {
 		c.numConsecutiveFailures++
 		if c.isZeroTime {
@@ -410,20 +434,33 @@ func (c *HTTPClient) Flush() error {
 		return &UnexpectedHTTPStatusError{StatusCode: resp.StatusCode}
 	}
 
-	sendInterval, err := strconv.Atoi(resp.Header.Get(pushIntervalHeaderKey))
-	if err != nil {
-		c.waitInterval = defaultWaitInterval
-	} else {
-		c.waitInterval = time.Duration(sendInterval) * time.Second
-	}
 	c.numConsecutiveFailures = 0
 	c.clearBufferedMetrics()
 	return nil
 }
 
+// handleSonarResponse reads sonar response messages and parses limits, setting them for future usages
+func (c *HTTPClient) handleSonarResponse(r io.ReadCloser) {
+	defer r.Close()
+	res, err := readBody(r)
+	if err != nil {
+		log.Error("failed to read response body of sonar message")
+	} else {
+		if res.FrequencySeconds != 0 {
+			atomic.StoreInt32(&c.waitIntervalSeconds, res.FrequencySeconds)
+		}
+		if res.MaxMetricLength != 0 {
+			atomic.StoreInt32(&c.maxMetricLength, res.MaxMetricLength)
+		}
+		if res.MaxBatchSize != 0 {
+			atomic.StoreInt32(&c.maxBatchSize, res.MaxBatchSize)
+		}
+	}
+}
+
 // GetWaitInterval returns the wait interval between metrics
 func (c *HTTPClient) GetWaitInterval() time.Duration {
-	return c.waitInterval
+	return time.Second * time.Duration(atomic.LoadInt32(&c.waitIntervalSeconds))
 }
 
 // GetDropletID returns the droplet ID
@@ -496,4 +533,17 @@ func (c *HTTPClient) httpGet(url, authToken string) (string, error) {
 		return "", err
 	}
 	return string(body), nil
+}
+
+//{"success":true,"frequency":60,"max_metrics":1000,"max_lfm":512}
+type sonarResponse struct {
+	Success          bool  `json:"success"`
+	FrequencySeconds int32 `json:"frequency"`
+	MaxBatchSize     int32 `json:"max_metrics"`
+	MaxMetricLength  int32 `json:"max_lfm"`
+}
+
+func readBody(r io.Reader) (sonarResponse, error) {
+	var res sonarResponse
+	return res, json.NewDecoder(r).Decode(&res)
 }
