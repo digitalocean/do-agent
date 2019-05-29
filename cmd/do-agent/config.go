@@ -106,6 +106,9 @@ func init() {
 		StringVar(&config.webListenAddress)
 
 	kingpin.Flag("additional-label", "key value pairs for labels to add to all metrics (ex: user_id:1234)").StringsVar(&config.additionalLabels)
+
+	// Overwrite the default disk ignore list, add dm- to ignore LVM devices
+	kingpin.CommandLine.GetFlag("collector.diskstats.ignored-devices").Default("^(dm-|ram|loop|fd|(h|s|v|xv)d[a-z]|nvme\\d+n\\d+p)\\d+$")
 }
 
 func initConfig() {

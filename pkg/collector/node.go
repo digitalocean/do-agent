@@ -16,16 +16,27 @@ var networkNameWhitelistReg = regexp.MustCompile(`^(eno|eth|ens)\d+`)
 var metricWhitelist = []string{
 	"node_network_receive_bytes_total",
 	"node_network_transmit_bytes_total",
+
 	"node_memory_memtotal_bytes",
 	"node_memory_memfree_bytes",
 	"node_memory_cached_bytes",
 	"node_memory_swapcached_bytes",
 	"node_memory_swapfree_bytes",
 	"node_memory_swaptotal_bytes",
+
 	"node_filesystem_size_bytes",
 	"node_filesystem_free_bytes",
+
 	"node_disk_read_bytes_total",
 	"node_disk_written_bytes_total",
+	"node_disk_reads_completed_total",
+	"node_disk_read_time_seconds_total",
+	"node_disk_writes_completed_total",
+	"node_disk_write_time_seconds_total",
+	"node_disk_discards_completed_total",
+	"node_disk_discarded_sectors_total",
+	"node_disk_discard_time_seconds_total",
+
 	"node_cpu_seconds_total",
 	"node_load1",
 	"node_load5",
