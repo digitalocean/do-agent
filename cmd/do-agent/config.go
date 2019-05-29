@@ -2,17 +2,15 @@ package main
 
 import (
 	"fmt"
-	"net/http"
 	"net/url"
 	"os"
 	"strings"
 	"time"
 
-	"github.com/digitalocean/go-metadata"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
 	dto "github.com/prometheus/client_model/go"
+	"github.com/prometheus/common/model"
 	"gopkg.in/alecthomas/kingpin.v2"
 
 	"github.com/digitalocean/do-agent/internal/flags"
@@ -39,6 +37,7 @@ var (
 		dbaas            string
 		webListenAddress string
 		webListen        bool
+		additionalLabels []string
 	}
 
 	// additionalParams is a list of extra command line flags to append
@@ -48,11 +47,6 @@ var (
 	// disabledCollectors is a hash used by disableCollectors to prevent
 	// duplicate entries
 	disabledCollectors = map[string]interface{}{}
-
-	kubernetesClusterUUIDUserDataPrefix = "k8saas_cluster_uuid: "
-	kubernetesClusterUUIDLabel          = "kubernetes_cluster_uuid"
-
-	errClusterUUIDNotFound = errors.New("kubernetes cluster UUID not found")
 )
 
 const (
@@ -110,6 +104,8 @@ func init() {
 	kingpin.Flag("web.listen-address", `write prometheus metrics to the specified port (ex. ":9100")`).
 		Default(defaultWebListenAddress).
 		StringVar(&config.webListenAddress)
+
+	kingpin.Flag("additional-label", "key value pairs for labels to add to all metrics (ex: user_id:1234)").StringsVar(&config.additionalLabels)
 }
 
 func initConfig() {
@@ -133,16 +129,7 @@ func checkConfig() error {
 	return nil
 }
 
-func initWriter(g gatherer) (metricWriter, throttler) {
-	if config.webListen {
-		go func() {
-			http.Handle("/", promhttp.HandlerFor(g, promhttp.HandlerOpts{}))
-			err := http.ListenAndServe(config.webListenAddress, nil)
-			if err != nil {
-				log.Fatal(err.Error())
-			}
-		}()
-	}
+func initWriter() (metricWriter, limiter) {
 	if config.stdoutOnly {
 		return writer.NewFile(os.Stdout), &constThrottler{wait: 10 * time.Second}
 	}
@@ -152,12 +139,19 @@ func initWriter(g gatherer) (metricWriter, throttler) {
 }
 
 func initDecorator() decorate.Chain {
-	return decorate.Chain{
+	chain := decorate.Chain{
 		compat.Names{},
 		compat.Disk{},
 		compat.CPU{},
 		decorate.LowercaseNames{},
 	}
+
+	// If additionalLabels provided convert into decorator
+	if len(config.additionalLabels) != 0 {
+		chain = append(chain, decorate.LabelAppender(convertToLabelPairs(config.additionalLabels)))
+	}
+
+	return chain
 }
 
 // WrappedTSClient wraps the tsClient and adds a Name method to it
@@ -185,33 +179,13 @@ func newTimeseriesClient() *WrappedTSClient {
 	return wrappedTSClient
 }
 
-// getKubernetesClusterUUID retrieves the k8s cluster UUID from the droplet metadata
-func getKubernetesClusterUUID() (string, error) {
-	client := metadata.NewClient(metadata.WithBaseURL(config.metadataURL))
-	userData, err := client.UserData()
-	if err != nil {
-		return "", fmt.Errorf("failed to get user data: %+v", err)
-	}
-	return parseKubernetesClusterUUID(userData)
-}
-
-// parseKubernetesClusterUUID parses the user data and returns the value of the kubernetes cluster UUID
-func parseKubernetesClusterUUID(userData string) (string, error) {
-	userDataSplit := strings.Split(userData, "\n")
-	for _, line := range userDataSplit {
-		if strings.HasPrefix(line, kubernetesClusterUUIDUserDataPrefix) {
-			return strings.Trim(strings.TrimPrefix(line, kubernetesClusterUUIDUserDataPrefix), "\""), nil
-		}
-	}
-	return "", errClusterUUIDNotFound
-}
-
 // initCollectors initializes the prometheus collectors. By default this
 // includes node_exporter and buildInfo for each remote target
 func initCollectors() []prometheus.Collector {
 	// buildInfo provides build information for tracking metrics internally
 	cols := []prometheus.Collector{
 		buildInfo,
+		diagnosticMetric,
 	}
 
 	if config.kubernetes != "" {
@@ -247,14 +221,7 @@ func initCollectors() []prometheus.Collector {
 
 // appendKubernetesCollectors appends a kubernetes metrics collector if it can be initialized successfully
 func appendKubernetesCollectors(cols []prometheus.Collector) []prometheus.Collector {
-	kubernetesClusterUUID, err := getKubernetesClusterUUID()
-	if err != nil {
-		log.Error("Failed to get cluster UUID when initializing DO Kubernetes metrics: %+v", err)
-		return cols
-	}
-	var kubernetesLabels []*dto.LabelPair
-	kubernetesLabels = append(kubernetesLabels, &dto.LabelPair{Name: &kubernetesClusterUUIDLabel, Value: &kubernetesClusterUUID})
-	k, err := collector.NewScraper("dokubernetes", config.kubernetes, kubernetesLabels, k8sWhitelist, collector.WithTimeout(defaultTimeout), collector.WithLogLevel(log.LevelDebug))
+	k, err := collector.NewScraper("dokubernetes", config.kubernetes, nil, k8sWhitelist, collector.WithTimeout(defaultTimeout), collector.WithLogLevel(log.LevelDebug))
 	if err != nil {
 		log.Error("Failed to initialize DO Kubernetes metrics: %+v", err)
 		return cols
@@ -283,4 +250,29 @@ func disableCollectors(names ...string) {
 // disableCollectorFlag creates the correct cli flag for the given collector name
 func disableCollectorFlag(name string) string {
 	return fmt.Sprintf("--no-collector.%s", name)
+}
+
+func convertToLabelPairs(s []string) []*dto.LabelPair {
+	l := []*dto.LabelPair{}
+	for _, lbl := range s {
+		vals := strings.SplitN(lbl, ":", 2)
+		if len(vals) != 2 { // require a key value pair
+			log.Fatal("Bad additional-label %s, must be in the format of <key>:<value>", lbl)
+		}
+
+		if !model.LabelName(vals[0]).IsValid() {
+			log.Fatal("Bad additional-label name %s", vals[0])
+		}
+
+		if !model.LabelValue(vals[1]).IsValid() {
+			log.Fatal("Bad additional-label value %s", vals[1])
+		}
+
+		l = append(l, &dto.LabelPair{
+			Name:  &vals[0],
+			Value: &vals[1],
+		})
+	}
+
+	return l
 }
