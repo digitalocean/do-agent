@@ -1,12 +1,12 @@
 #!/bin/bash
 #
 # This script is meant for quick & easy install via:
-#   curl -sSL https://agent.digitalocean.com/install.sh | sudo bash
+#   curl -sSL https://insights.nyc3.cdn.digitaloceanspaces.com/install.sh | sudo bash
 # or:
-#   wget -qO- https://agent.digitalocean.com/install.sh | sudo bash
+#   wget -qO- https://insights.nyc3.cdn.digitaloceanspaces.com/install.sh | sudo bash
 #
 # To use the BETA branch of do-agent pass the BETA=1 flag to the script
-#   curl -sSL https://agent.digitalocean.com/install.sh | sudo BETA=1 bash
+#   curl -sSL https://insights.nyc3.cdn.digitaloceanspaces.com/install.sh | sudo BETA=1 bash
 #
 
 set -ueo pipefail
