@@ -20,6 +20,8 @@ var (
 	goVersion = runtime.Version()
 )
 
+const buildInfoMetricName = "sonar_build_info"
+
 var versionTmpl = template.Must(template.New("version").Parse(`
 {{ .name }} (DigitalOcean Agent)
 
@@ -37,9 +39,9 @@ For a copy, see <https://www.apache.org/licenses/LICENSE-2.0.html>.
 
 var buildInfo = prometheus.NewGaugeVec(
 	prometheus.GaugeOpts{
-		// Namespace has to be sonar or it will get filtered
-		Namespace: "sonar",
-		Name:      "build_info",
+		// not using namespace so we can use a const field for diagnostic retrieval and filtering
+		Namespace: "",
+		Name:      buildInfoMetricName,
 		Help:      "A metric with a constant '1' value labeled by version from which the agent was built.",
 	},
 	[]string{"version", "revision"},

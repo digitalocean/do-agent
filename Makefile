@@ -25,7 +25,7 @@ git_rev      = $(shell git rev-parse --short HEAD)
 git_tag      = $(subst v,,$(shell git describe --tags --abbrev=0))
 VERSION     ?= $(git_tag)
 
-linter = docker run --rm -i -v "$(CURDIR):$(CURDIR)" -w "$(CURDIR)" -e "GOPATH" -e "GOCACHE=$(CURDIR)/target/.cache/go" \
+linter = docker run --rm -i -v "$(CURDIR):$(CURDIR)" -w "$(CURDIR)" -e "GO111MODULE=on" -e "GOFLAGS=-mod=vendor" -e "GOCACHE=$(CURDIR)/target/.cache/go" \
 	-u $(shell id -u) golangci/golangci-lint:v1.16 \
 	golangci-lint run --no-config --disable-all -E gosec -E interfacer -E vet -E deadcode -E gocyclo -E golint \
 	-E varcheck -E dupl -E ineffassign -E misspell -E unconvert -E gosec -E nakedret -E goconst -E gofmt -E unparam \

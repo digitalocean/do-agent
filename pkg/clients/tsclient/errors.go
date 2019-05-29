@@ -27,3 +27,6 @@ var ErrCircuitBreaker = fmt.Errorf("circuit breaker is open; deliberately failin
 
 // ErrLabelMissmatch happens if the number of supplied labels is incorrect
 var ErrLabelMissmatch = fmt.Errorf("unexpected number of labels")
+
+// ErrWriteFailure happens when the writer fails to write to the remote
+var ErrWriteFailure = fmt.Errorf("failed to write")
