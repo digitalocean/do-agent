@@ -7,7 +7,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/digitalocean/go-metadata"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	dto "github.com/prometheus/client_model/go"
@@ -48,11 +47,6 @@ var (
 	// disabledCollectors is a hash used by disableCollectors to prevent
 	// duplicate entries
 	disabledCollectors = map[string]interface{}{}
-
-	kubernetesClusterUUIDUserDataPrefix = "k8saas_cluster_uuid: "
-	kubernetesClusterUUIDLabel          = "kubernetes_cluster_uuid"
-
-	errClusterUUIDNotFound = errors.New("kubernetes cluster UUID not found")
 )
 
 const (
@@ -185,27 +179,6 @@ func newTimeseriesClient() *WrappedTSClient {
 	return wrappedTSClient
 }
 
-// getKubernetesClusterUUID retrieves the k8s cluster UUID from the droplet metadata
-func getKubernetesClusterUUID() (string, error) {
-	client := metadata.NewClient(metadata.WithBaseURL(config.metadataURL))
-	userData, err := client.UserData()
-	if err != nil {
-		return "", fmt.Errorf("failed to get user data: %+v", err)
-	}
-	return parseKubernetesClusterUUID(userData)
-}
-
-// parseKubernetesClusterUUID parses the user data and returns the value of the kubernetes cluster UUID
-func parseKubernetesClusterUUID(userData string) (string, error) {
-	userDataSplit := strings.Split(userData, "\n")
-	for _, line := range userDataSplit {
-		if strings.HasPrefix(line, kubernetesClusterUUIDUserDataPrefix) {
-			return strings.Trim(strings.TrimPrefix(line, kubernetesClusterUUIDUserDataPrefix), "\""), nil
-		}
-	}
-	return "", errClusterUUIDNotFound
-}
-
 // initCollectors initializes the prometheus collectors. By default this
 // includes node_exporter and buildInfo for each remote target
 func initCollectors() []prometheus.Collector {
@@ -248,14 +221,7 @@ func initCollectors() []prometheus.Collector {
 
 // appendKubernetesCollectors appends a kubernetes metrics collector if it can be initialized successfully
 func appendKubernetesCollectors(cols []prometheus.Collector) []prometheus.Collector {
-	kubernetesClusterUUID, err := getKubernetesClusterUUID()
-	if err != nil {
-		log.Error("Failed to get cluster UUID when initializing DO Kubernetes metrics: %+v", err)
-		return cols
-	}
-	var kubernetesLabels []*dto.LabelPair
-	kubernetesLabels = append(kubernetesLabels, &dto.LabelPair{Name: &kubernetesClusterUUIDLabel, Value: &kubernetesClusterUUID})
-	k, err := collector.NewScraper("dokubernetes", config.kubernetes, kubernetesLabels, k8sWhitelist, collector.WithTimeout(defaultTimeout), collector.WithLogLevel(log.LevelDebug))
+	k, err := collector.NewScraper("dokubernetes", config.kubernetes, nil, k8sWhitelist, collector.WithTimeout(defaultTimeout), collector.WithLogLevel(log.LevelDebug))
 	if err != nil {
 		log.Error("Failed to initialize DO Kubernetes metrics: %+v", err)
 		return cols

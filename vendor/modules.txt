@@ -11,8 +11,6 @@ github.com/beorn7/perks/quantile
 github.com/coreos/go-systemd/dbus
 # github.com/davecgh/go-spew v1.1.1
 github.com/davecgh/go-spew/spew
-# github.com/digitalocean/go-metadata v0.0.0-20180111002115-15bd36e5f6f7
-github.com/digitalocean/go-metadata
 # github.com/ema/qdisc v0.0.0-20180104102928-b307c22d3ce7
 github.com/ema/qdisc
 # github.com/godbus/dbus v4.1.0+incompatible
@@ -48,8 +46,8 @@ github.com/prometheus/client_golang/prometheus/internal
 # github.com/prometheus/client_model v0.0.0-20180712105110-5c3871d89910
 github.com/prometheus/client_model/go
 # github.com/prometheus/common v0.0.0-20181015124227-bcb74de08d37
-github.com/prometheus/common/expfmt
 github.com/prometheus/common/model
+github.com/prometheus/common/expfmt
 github.com/prometheus/common/internal/bitbucket.org/ww/goautoneg
 github.com/prometheus/common/log
 # github.com/prometheus/node_exporter v0.17.0

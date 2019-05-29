@@ -3,7 +3,6 @@ module github.com/digitalocean/do-agent
 go 1.12
 
 require (
-	github.com/digitalocean/go-metadata v0.0.0-20180111002115-15bd36e5f6f7
 	github.com/golang/snappy v0.0.0-20180518054509-2e65f85255db
 	github.com/mattn/go-xmlrpc v0.0.1 // indirect
 	github.com/pkg/errors v0.8.0
