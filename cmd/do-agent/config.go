@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"net/http"
 	"net/url"
 	"os"
 	"strings"
@@ -10,7 +9,6 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
 	dto "github.com/prometheus/client_model/go"
 	"github.com/prometheus/common/model"
 	"gopkg.in/alecthomas/kingpin.v2"
@@ -131,16 +129,7 @@ func checkConfig() error {
 	return nil
 }
 
-func initWriter(g gatherer) (metricWriter, throttler) {
-	if config.webListen {
-		go func() {
-			http.Handle("/", promhttp.HandlerFor(g, promhttp.HandlerOpts{}))
-			err := http.ListenAndServe(config.webListenAddress, nil)
-			if err != nil {
-				log.Fatal(err.Error())
-			}
-		}()
-	}
+func initWriter() (metricWriter, limiter) {
 	if config.stdoutOnly {
 		return writer.NewFile(os.Stdout), &constThrottler{wait: 10 * time.Second}
 	}
@@ -196,6 +185,7 @@ func initCollectors() []prometheus.Collector {
 	// buildInfo provides build information for tracking metrics internally
 	cols := []prometheus.Collector{
 		buildInfo,
+		diagnosticMetric,
 	}
 
 	if config.kubernetes != "" {
