@@ -2,7 +2,7 @@
 # vim: noexpandtab
 
 main() {
-	rnd=$[$RANDOM % 900]
+	rnd=$(( RANDOM % 900 ))
 	sleep $rnd
 	export DEBIAN_FRONTEND="noninteractive"
 	if command -v apt-get 2&>/dev/null; then
