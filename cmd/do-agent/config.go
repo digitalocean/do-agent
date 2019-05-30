@@ -24,20 +24,22 @@ import (
 
 var (
 	config struct {
-		targets          map[string]string
-		metadataURL      *url.URL
-		authURL          *url.URL
-		sonarEndpoint    string
-		stdoutOnly       bool
-		debug            bool
-		syslog           bool
-		noProcesses      bool
-		noNode           bool
-		kubernetes       string
-		dbaas            string
-		webListenAddress string
-		webListen        bool
-		additionalLabels []string
+		targets                map[string]string
+		metadataURL            *url.URL
+		authURL                *url.URL
+		sonarEndpoint          string
+		stdoutOnly             bool
+		debug                  bool
+		syslog                 bool
+		noProcesses            bool
+		noNode                 bool
+		kubernetes             string
+		dbaas                  string
+		webListenAddress       string
+		webListen              bool
+		additionalLabels       []string
+		defaultMaxBatchSize    int
+		defaultMaxMetricLength int
 	}
 
 	// additionalParams is a list of extra command line flags to append
@@ -107,6 +109,11 @@ func init() {
 
 	kingpin.Flag("additional-label", "key value pairs for labels to add to all metrics (ex: user_id:1234)").StringsVar(&config.additionalLabels)
 
+	kingpin.Flag("max-batch-size", "default max batch size for sending metrics. This will be overridden after first write").
+		IntVar(&config.defaultMaxBatchSize)
+	kingpin.Flag("max-metric-length", "default max metric length for metrics. This will be overridden after first write").
+		IntVar(&config.defaultMaxMetricLength)
+
 	// Overwrite the default disk ignore list, add dm- to ignore LVM devices
 	kingpin.CommandLine.GetFlag("collector.diskstats.ignored-devices").Default("^(dm-|ram|loop|fd|(h|s|v|xv)d[a-z]|nvme\\d+n\\d+p)\\d+$")
 }
@@ -170,6 +177,7 @@ func newTimeseriesClient() *WrappedTSClient {
 		tsclient.WithUserAgent(fmt.Sprintf("do-agent-%s", version)),
 		tsclient.WithRadarEndpoint(config.authURL.String()),
 		tsclient.WithMetadataEndpoint(config.metadataURL.String()),
+		tsclient.WithDefaultLimits(config.defaultMaxBatchSize, config.defaultMaxMetricLength),
 	}
 
 	if config.sonarEndpoint != "" {

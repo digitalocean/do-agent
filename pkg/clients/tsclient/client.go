@@ -98,6 +98,8 @@ type ClientOptions struct {
 	RadarEndpoint            string
 	Timeout                  time.Duration
 	IsTrusted                bool
+	MaxBatchSize             int
+	MaxMetricLength          int
 }
 
 // ClientOptFn allows for overriding options
@@ -159,6 +161,14 @@ func WithTrustedAppKey(appName, appKey string) ClientOptFn {
 	}
 }
 
+// WithDefaultLimits set default metric limits. These will always be overridden by the server after first write
+func WithDefaultLimits(maxBatchSize, maxMetricLength int) ClientOptFn {
+	return func(o *ClientOptions) {
+		o.MaxBatchSize = maxBatchSize
+		o.MaxMetricLength = maxMetricLength
+	}
+}
+
 // New creates a new client
 func New(opts ...ClientOptFn) Client {
 	opt := &ClientOptions{
@@ -170,6 +180,14 @@ func New(opts ...ClientOptFn) Client {
 
 	for _, fn := range opts {
 		fn(opt)
+	}
+
+	if opt.MaxMetricLength == 0 {
+		opt.MaxMetricLength = defaultMaxMetricLength
+	}
+
+	if opt.MaxBatchSize == 0 {
+		opt.MaxBatchSize = defaultMaxBatchSize
 	}
 
 	var tlsConfig tls.Config
@@ -210,8 +228,8 @@ func New(opts ...ClientOptFn) Client {
 		appKey:                   opt.AppKey,
 		httpClient:               httpClient,
 		waitIntervalSeconds:      defaultWaitIntervalSeconds,
-		maxBatchSize:             defaultMaxBatchSize,
-		maxMetricLength:          defaultMaxMetricLength,
+		maxBatchSize:             int32(opt.MaxBatchSize),
+		maxMetricLength:          int32(opt.MaxMetricLength),
 		bootstrapRequired:        true,
 		trusted:                  opt.IsTrusted,
 		lastSend:                 map[string]int64{},
@@ -444,7 +462,7 @@ func (c *HTTPClient) handleSonarResponse(r io.ReadCloser) {
 	defer r.Close()
 	res, err := readBody(r)
 	if err != nil {
-		log.Error("failed to read response body of sonar message")
+		log.Error("failed to read response body of sonar message: +%v", err)
 	} else {
 		if res.FrequencySeconds != 0 {
 			atomic.StoreInt32(&c.waitIntervalSeconds, res.FrequencySeconds)
