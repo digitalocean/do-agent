@@ -457,6 +457,45 @@ function abort() {
 	exit 1
 }
 
+function command_make_ansible() {
+	tmpf=$(mktemp)
+	list | jq -c '.droplets[] | {"name": .name,"ip": .networks.v4[0].ip_address}' > "$tmpf"
+	rpm_hosts=$(jq -r 'select(.name|test("cent|fedora")) | "\(.name) ansible_host=\(.ip) ansible_user=root"' < "$tmpf")
+	deb_hosts=$(jq -r 'select(.name|test("ubuntu|debian")) | "\(.name) ansible_host=\(.ip) ansible_user=root"' < "$tmpf")
+	upstart_hosts=$(jq -r 'select(.name|test("ubuntu-14|centos-6")) | "\(.name) ansible_host=\(.ip) ansible_user=root"' < "$tmpf")
+	systemd_hosts=$(jq -r 'select(.name|test("ubuntu-14|centos-6")|not) | "\(.name) ansible_host=\(.ip) ansible_user=root"' < "$tmpf")
+	ansible_ssh_common_args='-o "StrictHostKeyChecking no" -o "UserKnownHostsFile=/dev/null" -o "LogLevel=ERROR"'
+	cat > inventory.ini <<-EOF
+	[all]
+	${systemd_hosts}
+	${upstart_hosts}
+
+	[systemd]
+	${systemd_hosts}
+
+	[systemd:vars]
+	ansible_ssh_common_args='${ansible_ssh_common_args}'
+
+	[upstart]
+	${upstart_hosts}
+
+	[upstart:vars]
+	ansible_ssh_common_args='${ansible_ssh_common_args}'
+
+	[rpm]
+	${rpm_hosts}
+
+	[rpm:vars]
+	ansible_ssh_common_args='${ansible_ssh_common_args}'
+
+	[deb]
+	${deb_hosts}
+
+	[deb:vars]
+	ansible_ssh_common_args='${ansible_ssh_common_args}'
+	EOF
+}
+
 # never put anything below this line. This is to prevent any partial execution
 # if curl ever interrupts the download prematurely. In that case, this script
 # will not execute since this is the last line in the script.
