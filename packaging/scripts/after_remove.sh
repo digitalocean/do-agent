@@ -12,6 +12,12 @@ set -ue
 SVC_NAME=do-agent
 CRON=/etc/cron.daily/do-agent
 
+# fix an issue where this script runs on upgrades for rpm
+# see https://github.com/jordansissel/fpm/issues/1175#issuecomment-240086016
+if [ "${1:-0}" -gt 0 ]; then
+	exit 0
+fi
+
 main() {
 	if command -v systemctl >/dev/null 2>&1; then
 		echo "Configure systemd..."

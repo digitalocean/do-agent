@@ -145,7 +145,6 @@ $(base_package): $(binary)
 		--url https://github.com/digitalocean/do-agent \
 		--log info \
 		--after-install packaging/scripts/after_install.sh \
-		--before-install packaging/scripts/before_install.sh \
 		--after-remove packaging/scripts/after_remove.sh \
 		$<=/opt/digitalocean/bin/do-agent \
 		scripts/update.sh=/opt/digitalocean/do-agent/scripts/update.sh
@@ -182,6 +181,7 @@ $(rpm_package): $(base_package)
 		--conflicts do-agent \
 		--rpm-group nobody \
 		--rpm-user do-agent \
+		--rpm-posttrans packaging/scripts/after_install.sh \
 		--force \
 		-p $@ \
 		$<
