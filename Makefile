@@ -216,10 +216,16 @@ $(tar_package): $(base_package)
 	$(vault) read --field ssh-priv-key secret/agent/packager/terraform \
 		| cp /dev/stdin $@
 
+.INTERMEDIATE: sonar-agent.key
+sonar-agent.key: .vault-token
+	$(print)
+	$(mkdir)
+	$(vault) read --field gpg secret/agent/packager/key > $@
+
 .PHONY: deploy
-deploy: .id_rsa
+deploy: .id_rsa sonar-agent.key
 ifndef release
 	$(error Usage: make deploy release=(unstable|beta|stable))
 endif
-	@RSYNC_KEY_FILE=$(CURDIR)/$^ ./scripts/deploy.sh $(release)
+	@RSYNC_KEY_FILE=$(CURDIR)/.id_rsa GPG_PRIVATE_KEY=$(CURDIR)/sonar-agent.key ./scripts/deploy.sh $(release)
 
