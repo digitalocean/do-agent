@@ -227,5 +227,5 @@ deploy: .id_rsa sonar-agent.key
 ifndef release
 	$(error Usage: make deploy release=(unstable|beta|stable))
 endif
-	@RSYNC_KEY_FILE=$(CURDIR)/.id_rsa GPG_PRIVATE_KEY=$(CURDIR)/sonar-agent.key ./scripts/deploy.sh $(release)
+	@RSYNC_KEY_FILE=$(CURDIR)/.id_rsa GPG_PRIVATE_KEY_FILE=$(CURDIR)/sonar-agent.key ./scripts/deploy.sh $(release)
 
