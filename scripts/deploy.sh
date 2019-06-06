@@ -1,14 +1,21 @@
 #!/usr/bin/env bash
 set -ueo pipefail
-# set -x
 
 ME=$(basename "$0")
 DOCKER_IMAGE="docker.io/digitalocean/do-agent"
 VERSION=${VERSION:-$(cat target/VERSION || true)}
 VERSION_REGEX="[^\\d]${VERSION}[^\\d]"
 
+PROJECT_ROOT="$(git rev-parse --show-toplevel)"
+LOCAL_SPACES_DIR="$PROJECT_ROOT/remote"
+SPACES_BUCKET_NAME="${SPACES_BUCKET_NAME:-}"
+SPACES_REGION="${SPACES_REGION:-}"
+SPACES_HOST="${SPACES_REGION}.digitaloceanspaces.com"
+APT_AGENT_PACKAGING_IMAGE=docker.internal.digitalocean.com/eng-insights/agent-packager-apt:latest
+YUM_AGENT_PACKAGING_IMAGE=docker.internal.digitalocean.com/eng-insights/agent-packager-yum:latest
+
 FORCE_RELEASE=${FORCE_RELEASE:-0}
-REMOTES=${REMOTES:-docker,github,rsync}
+REMOTES=${REMOTES:-docker,github,spaces}
 STAGE=""
 
 CI_LOG_URL=""
@@ -42,17 +49,14 @@ function usage() {
 	    DOCKER_USER, DOCKER_PASSWORD  (required)
 	        Docker hub access credentials
 
-	    RSYNC_HOSTS (required)
-	        CSV list of one or more user@host pairs to rsync to
-	        for deploy rsync
-	        For example:
-	          RSYNC_HOSTS=mscott@123.456.7.89
-	          RSYNC_HOSTS=cbratton@123.456.7.89,jhalpert@dm.com
+	    SPACES_ACCESS_KEY_ID, SPACES_SECRET_ACCESS_KEY (required)
+	        DigitalOcean Spaces access credentials
 
-	    RSYNC_KEY_FILE (required)
-	        private ssh key file to use for deploy rsync
-	        For example:
-	          RSYNC_KEY_FILE=/home/abernard/.ssh/id_rsa
+	    SPACES_BUCKET_NAME, SPACES_REGION (required for spaces)
+	        DigitalOcean Spaces bucket information to sync
+	
+	    GPG_PRIVATE_KEY_FILE (required for spaces)
+	        Private GPG key to use to sign the packages for pushing to Spaces
 
 	    SLACK_WEBHOOK_URL (optional)
 	        Webhook URL to send notifications. Enables Slack
@@ -62,25 +66,25 @@ function usage() {
 	        Optionally only distribute to the provided
 	        remotes. By default deployments will deploy
 	        to the remotes supported by each deployment.
-	        
-	        For example: 
-	          unstable deploys to docker,rsync
-	          beta deploys to docker,rsync,github
-	          stable deploys to docker,rsync,github
+
+	        For example:
+	          unstable deploys to docker,spaces
+	          beta deploys to docker,spaces,github
+	          stable deploys to docker,spaces,github
 
 	COMMANDS:
 
 	    unstable
-	        Push target/ assets to rsync unstable.
+	        Push target/ assets to spaces unstable.
 	        Push to docker hub under the unstable and \$VERSION-rc tags.
 
 	    beta
-	        Push target/ assets to rsync beta.
+	        Push target/ assets to spaces beta.
 	        Docker tag \$VERSION-rc to beta.
 	        Create a github prerelease with assets.
 
 	    stable
-	        Push target/ assets to rsync stable.
+	        Push target/ assets to spaces stable.
 	        Docker tag \$VERSION-rc to \$VERSION.
 	        Remove prerelease flag from the github release.
 
@@ -94,20 +98,20 @@ function main() {
 		unstable)
 			check_version
 			check_target_files
-			deploy_rsync "do-agent-unstable"
+			deploy_spaces "do-agent-unstable"
 			docker_login && deploy_unstable_docker
 			;;
 		beta)
 			check_version
 			check_target_files
-			deploy_rsync "do-agent-beta"
+			deploy_spaces "do-agent-beta"
 			deploy_github_prerelease
 			docker_login && promote_docker "unstable" "beta"
 			;;
 		stable)
 			check_version
 			check_target_files
-			deploy_rsync "do-agent"
+			deploy_spaces "do-agent"
 			promote_github
 			docker_login && promote_stable_docker
 			;;
@@ -137,81 +141,183 @@ function force_release_enabled() {
 	return 1
 }
 
-function deploy_rsync() {
+# if a release with the VERSION tag is already published then we cannot deploy
+# this version over the previous release.
+function check_can_deploy_spaces() {
+	[ -z "${SPACES_BUCKET_NAME}" ] && abort "SPACES_BUCKET_NAME is not set"
+	[ -z "${SPACES_REGION}" ] && abort "SPACES_REGION is not set"
+	[ -z "${GPG_PRIVATE_KEY_FILE}" ] && abort "GPG_PRIVATE_KEY_FILE is not set"
+	force_release_enabled && return 0
+
 	repo=${1:-}
 	[ -z "$repo" ] && abort "Destination repository is required. Usage: ${FUNCNAME[0]} <repo>"
-	if ! remote_enabled "rsync"; then
-		echo "rsync remote is disabled via REMOTES env var (${REMOTES}), skipping..."
-		return
-	fi
 
-	announce "Deploying packages with rsync"
+	announce "Checking if we can deploy spaces"
 
-	failed=0
-	for host in $(echo "${RSYNC_HOSTS}" | tr ',' ' '); do
-		rsync_to_host "${repo}" "${host}" || failed=1
-	done
-
-	if [ "$failed" == "1" ]; then
-		abort "One or more hosts failed to sync"
-	fi
+	# if the version is already in beta then this version cannot be deployed
+	status_code=$(http_status_for "https://${SPACES_HOST}/apt/${repo}/pool/main/main/d/do-agent_${VERSION}_amd64.deb")
+	case $status_code in
+		404)
+			return 0
+			;;
+		200)
+			abort "'$VERSION' has already been deployed. Add a new git tag or use pass FORCE_RELEASE=1."
+			;;
+		*)
+			abort "Failed to check if a version already exists. Try again? Got status code '$status_code'"
+			;;
+	esac
 }
 
-function rsync_to_host() {
-	repo=${1:-} host=${2:-}
+function deploy_spaces() {
+	if ! remote_enabled "spaces"; then
+		echo "spaces remote is disabled via REMOTES env var (${REMOTES}), skipping..."
+		return
+	fi
+	repo=${1:-}
 	[ -z "$repo" ] && abort "Destination repository is required. Usage: ${FUNCNAME[0]} <repo>"
-	[ -z "$host" ] && abort "Destination host is required. Usage: ${FUNCNAME[0]} <host>"
 
-	announce "Deploying packages to ${host}"
+	check_can_deploy_spaces "${repo}"
+	pull_spaces /
+	# shellcheck disable=2064
+	trap "rm -rf ${LOCAL_SPACES_DIR}" EXIT
 
+	announce "Deploying packages to spaces"
 	target_files | grep -P '\.deb$' | while IFS= read -r file; do
-		echo "sending ${file}..."
-		rsync "$file" "${host}:/etc/repos/apt/${repo}/pool/main/main/d/do-agent/"
+		cp -Luv "$file" "${LOCAL_SPACES_DIR}/apt/${repo}/pool/main/main/d/do-agent/"
 	done
 
 	target_files | grep -P '\.rpm$' | while IFS= read -r file; do
-		dest=""
-		case "${file}" in 
-			*amd64*)
-				dest=/etc/repos/yum/${repo}/x86_64/
-			;;
-			*i386*)
-				dest=/etc/repos/yum/${repo}/i386/
-			;;
-			*)
-				echo "Skipping file '${file}' because the arch was not automatically detected" > /dev/stderr
-				continue
-			;;
-		esac
-		echo "sending ${file}..."
-		rsync "$file" "${host}:${dest}"
+		dest="${LOCAL_SPACES_DIR}/yum/${repo}/x86_64/"
+		[[ "$file" =~ "i386" ]] && \
+			dest="${LOCAL_SPACES_DIR}/yum/${repo}/i386/"
+		cp -Luv "$file" "$dest"
 	done
+
+	rebuild_apt_repository "${repo}"
+	rebuild_yum_repository "${repo}"
+
+	cp -Luv "${PROJECT_ROOT}/scripts/install.sh" "${LOCAL_SPACES_DIR}/install.sh"
+	push_spaces "/" --exclude "*" --include "install.sh"
+
+	# sync the packages first to prevent race conditions
+	push_spaces "/apt/${repo}/" --exclude "*" --include "**/*.deb"
+	push_spaces "/yum/${repo}/" --exclude "*" --include "*/*.rpm"
+
+	# then sync the metadata and everything else
+	push_spaces "/apt/${repo}/"
+	push_spaces "/yum/${repo}/"
+
+	announce "Deploy spaces completed"
+	purge_repo_cache "${repo}"
 }
 
-function rsync() {
-	sshcmd="ssh -i '${RSYNC_KEY_FILE}' -o 'StrictHostKeyChecking=no' -o 'UserKnownHostsFile=/dev/null' -o 'LogLevel=ERROR'"
-	flags="-P -v"
-	if is_enabled "${FORCE_RELEASE}" ; then
-		# the ignore-times flag will ignore timestamps and
-		# forcefully sync files even if they match on the server
-		flags="${flags} --ignore-times"
-	else
-		# the ignore-existing flag will skip copying any files
-		# that already exist on the server
-		flags="${flags} --ignore-existing"
+function rebuild_apt_repository() {
+	repo=${1:-}
+	[ -z "${repo}" ] && abort "Destination repository is required. Usage: ${FUNCNAME[0]} <repo>"
+	echo "rebuild apt packages"
+
+	repodir="${LOCAL_SPACES_DIR}/apt/${repo}"
+	if ! find "${repodir}" -type f -iname '*.deb' | grep . >/dev/null ; then
+		echo "No deb packages were found in ${repo}. Skipping..."
+		return
 	fi
 
-	# disabling shellcheck that asks ${flags} to be quoted because
-	# we intentionally want the flags to be expanded in this case
-	# shellcheck disable=SC2086
+	echo "Rebuilding ${repodir}..."
 	docker run \
-		--rm \
-		-v "${RSYNC_KEY_FILE}:${RSYNC_KEY_FILE}" \
-		-v "$PWD:$PWD" \
-		-w "$PWD" \
-		docker.io/instrumentisto/rsync-ssh@sha256:13a5f8bc29f8151ef56f0fa877054a27863d364d72c1183ca7b0411e3ae7930d \
-		rsync ${flags} -e "${sshcmd}" "$@"
+		--rm -i \
+		--net=host \
+		-v "${repodir}:/work/apt:rw" \
+		-v "${GPG_PRIVATE_KEY_FILE}:/work/sonar-agent.key:ro" \
+		-w /work \
+		"${APT_AGENT_PACKAGING_IMAGE}" \
+		|| abort "Failed to rebuild apt package indexes"
 }
+
+function rebuild_yum_repository() {
+	repo=${1:-}
+	[ -z "${repo}" ] && abort "Destination repository is required. Usage: ${FUNCNAME[0]} <repo>"
+	echo "rebuild rpm packages"
+
+	repodir="${LOCAL_SPACES_DIR}/yum/${repo}"
+	if ! find "${repodir}" -type f -iname '*.rpm' | grep . >/dev/null; then
+		echo "No rpm packages were found in ${repodir}. Skipping..."
+		return
+	fi
+
+	echo "Rebuilding ${repodir}..."
+	docker run \
+		--rm -i \
+		--net=host \
+		-v "${repodir}:/work/yum:rw" \
+		-v "${GPG_PRIVATE_KEY_FILE}:/work/sonar-agent.key:ro" \
+		-w /work \
+		"${YUM_AGENT_PACKAGING_IMAGE}" \
+		|| abort "Failed to rebuild yum package indexes"
+}
+
+# sync local cache to Spaces
+#
+# Usage: push_spaces <path> [optional aws cli args]
+#
+# Examples:
+#    # push everything
+#    push_spaces /
+#    push_spaces /apt/do-agent/pool/main --include "*" --exclude "*.txt"
+#    push_spaces / --include "*" --exclude "*.txt"
+function push_spaces() {
+	path=${1:-}
+	[ -z "${path}" ] && abort "Usage: ${FUNCNAME[0]} <path> [optional aws cli args]"
+	[[ ! "${path}" =~ ^/ ]] && abort "<path> must begin with a slash"
+
+	announce "Syncing Spaces changes to to ${path}"
+	aws s3 \
+		--endpoint-url "https://${SPACES_HOST}" \
+		sync \
+		"${LOCAL_SPACES_DIR}${path}" \
+		"s3://${SPACES_BUCKET_NAME}${path}" \
+		--delete \
+		--acl public-read \
+		"${@:2}"
+}
+
+# sync Spaces directory to local cache folder ./remote
+#
+# Usage: pull_spaces <path> [optional aws cli args]
+#
+# Examples:
+#    # pull everything
+#    pull_spaces /
+#    pull_spaces / --include "*" --exclude "*.txt"
+function pull_spaces() {
+	path=${1:-}
+	[ -z "${path}" ] && abort "Usage: ${FUNCNAME[0]} <path> [optional aws cli args]"
+	[[ ! "${path}" =~ ^/ ]] && abort "<path> must begin with a slash"
+
+	announce "Syncing Spaces to local cache"
+	aws s3 \
+		--endpoint-url "https://${SPACES_HOST}" \
+		sync \
+		"s3://${SPACES_BUCKET_NAME}${path}" \
+		"${LOCAL_SPACES_DIR}${path}" \
+		--delete \
+		"${@:2}"
+}
+
+# interact with the awscli via docker
+function aws() {
+	docker run \
+		--rm -i \
+		-e "AWS_ACCESS_KEY_ID=${SPACES_ACCESS_KEY_ID}" \
+		-e "AWS_SECRET_ACCESS_KEY=${SPACES_SECRET_ACCESS_KEY}" \
+		-e "AWS_DEFAULT_REGION=${SPACES_REGION}" \
+		-v "$PROJECT_ROOT:$PROJECT_ROOT" \
+		-w "$PROJECT_ROOT" \
+		-u "$(id -u)" \
+		mesosphere/aws-cli \
+		"$@"
+}
+
 
 function check_can_deploy_github() {
 	force_release_enabled && return 0
@@ -515,6 +621,24 @@ function remote_enabled() {
 	[[ "$REMOTES" =~ $remote ]]
 }
 
+function purge_repo_cache() {
+	repo=${1:-}
+	[ -z "$repo" ] && abort "Repo is required. Usage: ${FUNCNAME[0]} <do-agent|do-agent-unstable|do-agent-beta>"
+
+	announce "Purging CDN cache"
+
+	payload=$(cat <<-EOF
+	{"files": ["yum/${repo}/*", "apt/${repo}/*"]}
+	EOF
+	)
+
+	curl -X DELETE \
+		-D /dev/stderr \
+		-H "Content-Type: application/json" \
+		-H "Authorization: Bearer ${DO_API_TOKEN}" \
+		--data-binary "${payload}" \
+		"https://api.digitalocean.com/v2/cdn/endpoints/${DO_SPACE_ID}/cache"
+}
 
 # send a slack notification or fallback to STDERR
 # Usage: notify <success> <msg> [link]
