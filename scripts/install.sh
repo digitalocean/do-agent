@@ -56,7 +56,7 @@ function install_apt() {
 	echo "deb ${REPO_HOST}/apt/${repo} main main" > /etc/apt/sources.list.d/digitalocean-agent.list
 	echo -n "Installing gpg key..."
 	curl -sL "${REPO_GPG_KEY}" | apt-key add -
-	apt-get -qq update -o Dir::Etc::sourcelist="sources.list.d/digitalocean-agent.list"
+	apt-get -qq update -o Dir::Etc::sourcelist="sources.list.d/digitalocean-agent.list" || echo "WARNING: If you are running Ubuntu 14.04 you may need to manually update to use HTTP instead of HTTPS (sed -i 's/https/http/g' /etc/apt/sources.list.d/digitalocean-agent.list)"
 	apt-get -qq install -y do-agent
 }
 
