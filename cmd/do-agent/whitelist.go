@@ -30,4 +30,31 @@ var dbaasWhitelist = map[string]bool{
 	"postgresql_pg_stat_user_tables_n_tup_del":     true,
 	"postgresql_pg_stat_user_tables_idx_tup_fetch": true,
 	"postgresql_pg_stat_user_tables_seq_tup_read":  true,
+
+	"mysql_threads_created":   true,
+	"mysql_threads_connected": true,
+	"mysql_threads_running":   true,
+
+	"mysql_handler_read_key":      true,
+	"mysql_handler_read_first":    true,
+	"mysql_handler_read_next":     true,
+	"mysql_handler_read_prev":     true,
+	"mysql_handler_read_last":     true,
+	"mysql_handler_read_rnd":      true,
+	"mysql_handler_read_rnd_next": true,
+
+	"mysql_com_select": true,
+	"mysql_com_insert": true,
+	"mysql_com_update": true,
+	"mysql_com_delete": true,
+
+	"mysql_perf_schema_table_io_waits_total_fetch":  true,
+	"mysql_perf_schema_table_io_waits_total_insert": true,
+	"mysql_perf_schema_table_io_waits_total_update": true,
+	"mysql_perf_schema_table_io_waits_total_delete": true,
+
+	"mysql_perf_schema_table_io_waits_seconds_total_fetch":  true,
+	"mysql_perf_schema_table_io_waits_seconds_total_insert": true,
+	"mysql_perf_schema_table_io_waits_seconds_total_update": true,
+	"mysql_perf_schema_table_io_waits_seconds_total_delete": true,
 }
