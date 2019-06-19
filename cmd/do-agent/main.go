@@ -3,9 +3,10 @@ package main
 import (
 	"net/http"
 
-	"github.com/digitalocean/do-agent/internal/log"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+
+	"github.com/digitalocean/do-agent/internal/log"
 )
 
 func main() {
@@ -41,6 +42,7 @@ func main() {
 
 	w, th := initWriter()
 	d := initDecorator()
+	aggregateSpecs := initAggregatorSpecs()
 
-	run(w, th, d, reg)
+	run(w, th, d, reg, aggregateSpecs)
 }
