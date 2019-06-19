@@ -164,6 +164,23 @@ func initDecorator() decorate.Chain {
 	return chain
 }
 
+// initAggregatorSpecs initializes the field aggregation specifications.
+// The map's key is the prometheus metric name to aggregate over, and the value is the label to aggregate away.
+func initAggregatorSpecs() map[string]string {
+	if config.dbaas == "" {
+		return nil
+	}
+	aggregateSpecs := make(map[string]string)
+
+	if config.dbaas != "" {
+		for k, v := range dbaasAggregationSpec {
+			aggregateSpecs[k] = v
+		}
+	}
+
+	return aggregateSpecs
+}
+
 // WrappedTSClient wraps the tsClient and adds a Name method to it
 type WrappedTSClient struct {
 	tsclient.Client

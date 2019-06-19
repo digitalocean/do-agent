@@ -5,7 +5,7 @@ import (
 	"io"
 	"sync"
 
-	dto "github.com/prometheus/client_model/go"
+	"github.com/digitalocean/do-agent/pkg/aggregate"
 )
 
 // File writes metrics to an io.Writer
@@ -23,13 +23,11 @@ func NewFile(w io.Writer) *File {
 }
 
 // Write writes metrics to the file
-func (w *File) Write(mets []*dto.MetricFamily) error {
+func (w *File) Write(mets []aggregate.MetricWithValue) error {
 	w.m.Lock()
 	defer w.m.Unlock()
-	for _, mf := range mets {
-		for _, met := range mf.Metric {
-			fmt.Fprintf(w.w, "[%s]: %s: %s\n", mf.GetType(), mf.GetName(), met.String())
-		}
+	for _, met := range mets {
+		fmt.Fprintf(w.w, "[%s]: %v: %v\n", met.LFM["__name__"], met.LFM, met.Value)
 	}
 	return nil
 }
