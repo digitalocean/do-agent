@@ -40,6 +40,7 @@ var (
 		additionalLabels       []string
 		defaultMaxBatchSize    int
 		defaultMaxMetricLength int
+		promAddr               string
 	}
 
 	// additionalParams is a list of extra command line flags to append
@@ -98,6 +99,9 @@ func init() {
 
 	kingpin.Flag("dbaas-metrics-path", "enable DO DBAAS metrics collection (this must be a DO DBAAS metrics endpoint)").
 		StringVar(&config.dbaas)
+
+	kingpin.Flag("metrics-path", "enable metrics collection from a prometheus endpoint").
+		StringVar(&config.promAddr)
 
 	kingpin.Flag("web.listen", "enable a local endpoint for scrapeable prometheus metrics as well").
 		Default("false").
@@ -224,6 +228,15 @@ func initCollectors() []prometheus.Collector {
 		k, err := collector.NewScraper("dodbaas", config.dbaas, nil, dbaasWhitelist, collector.WithTimeout(defaultTimeout))
 		if err != nil {
 			log.Error("Failed to initialize DO DBaaS metrics collector: %+v", err)
+		} else {
+			cols = append(cols, k)
+		}
+	}
+
+	if config.promAddr != "" {
+		k, err := collector.NewScraper("prometheus", config.promAddr, nil, nil, collector.WithTimeout(defaultTimeout))
+		if err != nil {
+			log.Error("Failed to initialize generic metrics collector: %+v", err)
 		} else {
 			cols = append(cols, k)
 		}
