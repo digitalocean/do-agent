@@ -3,6 +3,7 @@ package writer
 import (
 	"fmt"
 
+	"github.com/digitalocean/do-agent/internal/log"
 	"github.com/digitalocean/do-agent/pkg/aggregate"
 	"github.com/digitalocean/do-agent/pkg/clients/tsclient"
 
@@ -16,6 +17,9 @@ var (
 	// ErrTooManyMetrics is returned when calling Write with too many metrics
 	// defined by client.MaxBatchSize
 	ErrTooManyMetrics = fmt.Errorf("too many metrics to send")
+
+	// ErrFlushFailure is returned when Flush fails for any reason
+	ErrFlushFailure = fmt.Errorf("flush failure")
 )
 
 // Sonar writes metrics to DigitalOcean sonar
@@ -56,7 +60,13 @@ func (s *Sonar) Write(mets []aggregate.MetricWithValue) error {
 		err = nil
 	}
 	s.firstWriteSent = true
-	return err
+
+	if err == nil {
+		return nil
+	}
+
+	log.Error("failed to flush: %+v", err)
+	return ErrFlushFailure
 }
 
 // Name is the name of this writer
