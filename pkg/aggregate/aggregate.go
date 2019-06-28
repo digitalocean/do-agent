@@ -16,7 +16,7 @@ type MetricWithValue struct {
 // Aggregate aggregates metric families according to the given aggregate spec.
 // A spec with key: {"metricName": "aggregateLabel"} will remove the "aggregateLabel" from all
 // "metricName" metric families
-func Aggregate(metrics []*dto.MetricFamily, aggregateSpec map[string]string) ([]MetricWithValue, error) {
+func Aggregate(metrics []*dto.MetricFamily, aggregateSpec map[string][]string) ([]MetricWithValue, error) {
 	agg := map[string]MetricWithValue{}
 	for _, mf := range metrics {
 		for _, metric := range mf.Metric {
@@ -50,10 +50,12 @@ func Aggregate(metrics []*dto.MetricFamily, aggregateSpec map[string]string) ([]
 			if err != nil {
 				return nil, errors.WithStack(err)
 			}
-			labelToRemove, ok := aggregateSpec[mf.GetName()]
+			labelsToRemove, ok := aggregateSpec[mf.GetName()]
 			if ok {
-				// if the metric family is to be aggregated, aggregate away the specified label
-				delete(lfmDelim, labelToRemove)
+				// if the metric family is to be aggregated, aggregate away the specified labels
+				for _, lbl := range labelsToRemove {
+					delete(lfmDelim, lbl)
+				}
 			}
 			key := tsclient.ConvertLFMMapToPrometheusEncodedName(lfmDelim)
 			aggregated, ok := agg[key]
