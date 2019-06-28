@@ -60,7 +60,7 @@ patch_updates() {
 
 	cat <<-EOF > "${CRON}"
 	#!/bin/sh
-	/bin/bash ${script}
+	/bin/bash ${script} >/dev/null 2>&1
 	EOF
 
 	chmod +x "${CRON}"
