@@ -40,7 +40,7 @@ type gatherer interface {
 	Gather() ([]*dto.MetricFamily, error)
 }
 
-func run(w metricWriter, l limiter, dec decorate.Decorator, g gatherer, aggregateSpec map[string]string) {
+func run(w metricWriter, l limiter, dec decorate.Decorator, g gatherer, aggregateSpec map[string][]string) {
 	exec := func() {
 		start := time.Now()
 		mfs, err := g.Gather()
