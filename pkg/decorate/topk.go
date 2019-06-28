@@ -74,6 +74,9 @@ func (m *metricHeap) Pop() interface{} {
 
 func (m *metricHeap) TopK(k uint) []*dto.Metric {
 	var topk []*dto.Metric
+	if k > uint(len(*m)) {
+		k = uint(len(*m))
+	}
 	for i := uint(0); i < k; i++ {
 		topk = append(topk, heap.Pop(m).(*dto.Metric))
 	}

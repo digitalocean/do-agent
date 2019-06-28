@@ -230,3 +230,47 @@ func TestTopKNoMatch(t *testing.T) {
 	decorator.Decorate(items)
 	require.Equal(t, final, items[0].Metric)
 }
+
+func TestTopKTooMany(t *testing.T) {
+
+	decorator := TopK{
+		K: 30, // Top 30 metrics
+		N: "sonar_*",
+	}
+
+	items := []*dto.MetricFamily{
+		{
+			Name: sPtr("sonar_cpu"),
+			Metric: []*dto.Metric{
+				{
+					Label: []*dto.LabelPair{
+						{
+							Name:  sPtr("some_name"),
+							Value: sPtr("some_value1"),
+						},
+					},
+					Counter: &dto.Counter{
+						Value: floatPtr(75.00),
+					},
+				},
+			},
+		},
+	}
+
+	final := []*dto.Metric{
+		{
+			Label: []*dto.LabelPair{
+				{
+					Name:  sPtr("some_name"),
+					Value: sPtr("some_value1"),
+				},
+			},
+			Counter: &dto.Counter{
+				Value: floatPtr(75.00),
+			},
+		},
+	}
+
+	decorator.Decorate(items)
+	require.Equal(t, final, items[0].Metric)
+}
