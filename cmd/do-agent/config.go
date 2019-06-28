@@ -15,6 +15,7 @@ import (
 
 	"github.com/digitalocean/do-agent/internal/flags"
 	"github.com/digitalocean/do-agent/internal/log"
+	"github.com/digitalocean/do-agent/internal/process"
 	"github.com/digitalocean/do-agent/pkg/clients/tsclient"
 	"github.com/digitalocean/do-agent/pkg/collector"
 	"github.com/digitalocean/do-agent/pkg/decorate"
@@ -158,6 +159,7 @@ func initDecorator() decorate.Chain {
 		compat.Disk{},
 		compat.CPU{},
 		decorate.LowercaseNames{},
+		decorate.TopK{K: 5, N: "sonar_process_*"}, // Top 5 sonar processes
 	}
 
 	// If additionalLabels provided convert into decorator
@@ -222,6 +224,11 @@ func initCollectors() []prometheus.Collector {
 
 	if config.kubernetes != "" {
 		cols = appendKubernetesCollectors(cols)
+	}
+
+	// Top process collection
+	if !config.noProcesses {
+		cols = append(cols, process.NewProcessCollector())
 	}
 
 	if config.dbaas != "" {
