@@ -18,4 +18,16 @@ var dbaasAggregationSpec = map[string]string{
 	"mysql_perf_schema_table_io_waits_seconds_total_update": "name",
 	"mysql_perf_schema_table_io_waits_seconds_total_delete": "name",
 	"mysql_perf_schema_table_io_waits_seconds_total_insert": "name",
+
+	"mysql_threads_connected": "validate_password_dictionary_file_last_parsed",
+	"mysql_threads_created":   "validate_password_dictionary_file_last_parsed",
+	"mysql_threads_running":   "validate_password_dictionary_file_last_parsed",
+
+	"mysql_handler_read_first":    "innodb_buffer_pool_load_status",
+	"mysql_handler_read_key":      "innodb_buffer_pool_load_status",
+	"mysql_handler_read_last":     "innodb_buffer_pool_load_status",
+	"mysql_handler_read_next":     "innodb_buffer_pool_load_status",
+	"mysql_handler_read_prev":     "innodb_buffer_pool_load_status",
+	"mysql_handler_read_rnd":      "innodb_buffer_pool_load_status",
+	"mysql_handler_read_rnd_next": "innodb_buffer_pool_load_status",
 }
