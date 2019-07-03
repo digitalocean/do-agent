@@ -14,11 +14,17 @@ CRON=/etc/cron.daily/do-agent
 
 # fix an issue where this script runs on upgrades for rpm
 # see https://github.com/jordansissel/fpm/issues/1175#issuecomment-240086016
-if [ "${1:-0}" -gt 0 ]; then
-	exit 0
-fi
+arg="${1:-0}"
 
 main() {
+	if echo "${arg}" | grep -qP '^\d+$' && [ "${arg}" -gt 0 ]; then
+		# rpm upgrade
+		exit 0
+	elif echo "${arg}" | grep -qP '^upgrade$'; then
+		# deb upgrade
+		exit 0
+	fi
+
 	if command -v systemctl >/dev/null 2>&1; then
 		echo "Configure systemd..."
 		clean_systemd
@@ -33,8 +39,7 @@ main() {
 }
 
 remove_cron() {
-	rm -f "${CRON}"
-	echo "cron removed"
+	rm -fv "${CRON}"
 }
 
 clean_upstart() {
