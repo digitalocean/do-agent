@@ -55,7 +55,7 @@ update_selinux() {
 
 patch_updates() {
 	# make sure we have the latest
-	[ -f "${CRON}" ] && rm -fv "${CRON}"
+	[ -f "${CRON}" ] && rm -f "${CRON}"
 	script="${INSTALL_DIR}/scripts/update.sh"
 
 	cat <<-EOF > "${CRON}"
