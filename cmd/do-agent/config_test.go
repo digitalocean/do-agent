@@ -56,3 +56,9 @@ func TestConvertLabelPairs(t *testing.T) {
 	pairs = convertToLabelPairs(nil)
 	require.Empty(t, pairs)
 }
+
+func TestInitAggregatorSpecs(t *testing.T) {
+	aggregateSpecs := initAggregatorSpecs()
+	require.Contains(t, aggregateSpecs, "sonar_cpu")
+	require.Equal(t, []string{"cpu"}, aggregateSpecs["sonar_cpu"])
+}

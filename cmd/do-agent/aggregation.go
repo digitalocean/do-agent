@@ -1,5 +1,9 @@
 package main
 
+var dropletAggregationSpec = map[string][]string{
+	"sonar_cpu": {"cpu"},
+}
+
 var dbaasAggregationSpec = map[string][]string{
 
 	"postgresql_pg_stat_user_tables_idx_scan":      {"table_name"},
