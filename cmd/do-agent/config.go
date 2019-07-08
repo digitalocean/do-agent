@@ -15,6 +15,7 @@ import (
 
 	"github.com/digitalocean/do-agent/internal/flags"
 	"github.com/digitalocean/do-agent/internal/log"
+	"github.com/digitalocean/do-agent/internal/process"
 	"github.com/digitalocean/do-agent/pkg/clients/tsclient"
 	"github.com/digitalocean/do-agent/pkg/collector"
 	"github.com/digitalocean/do-agent/pkg/decorate"
@@ -41,6 +42,7 @@ var (
 		defaultMaxBatchSize    int
 		defaultMaxMetricLength int
 		promAddr               string
+		topK                   int
 	}
 
 	// additionalParams is a list of extra command line flags to append
@@ -120,6 +122,8 @@ func init() {
 
 	// Overwrite the default disk ignore list, add dm- to ignore LVM devices
 	kingpin.CommandLine.GetFlag("collector.diskstats.ignored-devices").Default("^(dm-|ram|loop|fd|(h|s|v|xv)d[a-z]|nvme\\d+n\\d+p)\\d+$")
+
+	kingpin.Flag("process-topk", "number of top processes to scrape").Default("30").IntVar(&config.topK)
 }
 
 func initConfig() {
@@ -158,6 +162,7 @@ func initDecorator() decorate.Chain {
 		compat.Disk{},
 		compat.CPU{},
 		decorate.LowercaseNames{},
+		decorate.TopK{K: uint(config.topK), N: "sonar_process_"}, // TopK sonar processes
 	}
 
 	// If additionalLabels provided convert into decorator
@@ -222,6 +227,11 @@ func initCollectors() []prometheus.Collector {
 
 	if config.kubernetes != "" {
 		cols = appendKubernetesCollectors(cols)
+	}
+
+	// Top process collection
+	if !config.noProcesses {
+		cols = append(cols, process.NewProcessCollector())
 	}
 
 	if config.dbaas != "" {
