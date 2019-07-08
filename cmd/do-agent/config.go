@@ -176,10 +176,11 @@ func initDecorator() decorate.Chain {
 // initAggregatorSpecs initializes the field aggregation specifications.
 // The map's key is the prometheus metric name to aggregate over, and the value is the label to aggregate away.
 func initAggregatorSpecs() map[string][]string {
-	if config.dbaas == "" {
-		return nil
-	}
 	aggregateSpecs := make(map[string][]string)
+
+	for k, v := range dropletAggregationSpec {
+		aggregateSpecs[k] = append(aggregateSpecs[k], v...)
+	}
 
 	if config.dbaas != "" {
 		for k, v := range dbaasAggregationSpec {
