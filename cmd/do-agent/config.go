@@ -42,6 +42,7 @@ var (
 		defaultMaxBatchSize    int
 		defaultMaxMetricLength int
 		promAddr               string
+		topK                   int
 	}
 
 	// additionalParams is a list of extra command line flags to append
@@ -121,6 +122,8 @@ func init() {
 
 	// Overwrite the default disk ignore list, add dm- to ignore LVM devices
 	kingpin.CommandLine.GetFlag("collector.diskstats.ignored-devices").Default("^(dm-|ram|loop|fd|(h|s|v|xv)d[a-z]|nvme\\d+n\\d+p)\\d+$")
+
+	kingpin.Flag("process-topk", "number of top processes to scrape").Default("5").IntVar(&config.topK)
 }
 
 func initConfig() {
@@ -159,7 +162,7 @@ func initDecorator() decorate.Chain {
 		compat.Disk{},
 		compat.CPU{},
 		decorate.LowercaseNames{},
-		decorate.TopK{K: 5, N: "sonar_process_*"}, // Top 5 sonar processes
+		decorate.TopK{K: uint(config.topK), N: "sonar_process_*"}, // TopK sonar processes
 	}
 
 	// If additionalLabels provided convert into decorator
