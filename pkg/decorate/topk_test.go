@@ -13,7 +13,7 @@ func TestTopK(t *testing.T) {
 
 	decorator := TopK{
 		K: 2, // Top 2 metrics
-		N: "sonar_*",
+		N: "sonar_",
 	}
 
 	items := []*dto.MetricFamily{
@@ -235,7 +235,7 @@ func TestTopKTooMany(t *testing.T) {
 
 	decorator := TopK{
 		K: 30, // Top 30 metrics
-		N: "sonar_*",
+		N: "sonar_",
 	}
 
 	items := []*dto.MetricFamily{
