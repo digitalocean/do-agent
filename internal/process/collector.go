@@ -19,11 +19,6 @@ type processCollector struct {
 // the process start time.
 func NewProcessCollector() prometheus.Collector {
 	c := &processCollector{
-		cpuTotal: prometheus.NewDesc(
-			"sonar_process_cpu_seconds_total",
-			"Process user and system CPU utilization.",
-			[]string{"process", "pid"}, nil,
-		),
 		rss: prometheus.NewDesc(
 			"sonar_process_resident_memory_bytes",
 			"Resident memory size in bytes.",
@@ -43,7 +38,6 @@ func NewProcessCollector() prometheus.Collector {
 
 // Describe returns all descriptions of the collector.
 func (c *processCollector) Describe(ch chan<- *prometheus.Desc) {
-	ch <- c.cpuTotal
 	ch <- c.rss
 }
 
@@ -72,7 +66,6 @@ func (c *processCollector) processCollect(ch chan<- prometheus.Metric) {
 		name := stat.Comm
 		pid := strconv.Itoa(stat.PID)
 
-		ch <- prometheus.MustNewConstMetric(c.cpuTotal, prometheus.CounterValue, stat.CPUTime(), name, pid)
 		ch <- prometheus.MustNewConstMetric(c.rss, prometheus.GaugeValue, float64(stat.ResidentMemory()), name, pid)
 	}
 }
