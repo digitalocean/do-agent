@@ -162,7 +162,7 @@ func initDecorator() decorate.Chain {
 		compat.Disk{},
 		compat.CPU{},
 		decorate.LowercaseNames{},
-		decorate.TopK{K: uint(config.topK), N: "sonar_process_*"}, // TopK sonar processes
+		decorate.TopK{K: uint(config.topK), N: "sonar_process_"}, // TopK sonar processes
 	}
 
 	// If additionalLabels provided convert into decorator

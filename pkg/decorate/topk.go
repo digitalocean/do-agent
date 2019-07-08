@@ -2,7 +2,7 @@ package decorate
 
 import (
 	"container/heap"
-	"regexp"
+	"strings"
 
 	dto "github.com/prometheus/client_model/go"
 )
@@ -18,7 +18,7 @@ func (t TopK) Decorate(mfs []*dto.MetricFamily) {
 	var topk []*metricHeap
 	var idx []int
 	for i, fam := range mfs {
-		if match, _ := regexp.MatchString(t.N, fam.GetName()); match {
+		if strings.HasPrefix(fam.GetName(), t.N) {
 			tk := metricHeap(fam.Metric)
 			heap.Init(&tk)
 			idx = append(idx, i)
