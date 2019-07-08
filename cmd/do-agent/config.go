@@ -123,7 +123,7 @@ func init() {
 	// Overwrite the default disk ignore list, add dm- to ignore LVM devices
 	kingpin.CommandLine.GetFlag("collector.diskstats.ignored-devices").Default("^(dm-|ram|loop|fd|(h|s|v|xv)d[a-z]|nvme\\d+n\\d+p)\\d+$")
 
-	kingpin.Flag("process-topk", "number of top processes to scrape").Default("5").IntVar(&config.topK)
+	kingpin.Flag("process-topk", "number of top processes to scrape").Default("30").IntVar(&config.topK)
 }
 
 func initConfig() {
