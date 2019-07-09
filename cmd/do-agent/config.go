@@ -92,7 +92,7 @@ func init() {
 		StringVar(&config.kubernetes)
 
 	kingpin.Flag("no-collector.processes", "disable processes cpu/memory collection").
-		Default("false").
+		Default("true").
 		BoolVar(&config.noProcesses)
 
 	kingpin.Flag("no-collector.node", "disable processes node collection").
@@ -162,7 +162,10 @@ func initDecorator() decorate.Chain {
 		compat.Disk{},
 		compat.CPU{},
 		decorate.LowercaseNames{},
-		decorate.TopK{K: uint(config.topK), N: "sonar_process_"}, // TopK sonar processes
+	}
+
+	if !config.noProcesses {
+		chain = append(chain, decorate.TopK{K: uint(config.topK), N: "sonar_process_"}) // TopK sonar processes
 	}
 
 	// If additionalLabels provided convert into decorator
