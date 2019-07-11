@@ -57,4 +57,15 @@ var dbaasWhitelist = map[string]bool{
 	"mysql_perf_schema_table_io_waits_seconds_total_insert": true,
 	"mysql_perf_schema_table_io_waits_seconds_total_update": true,
 	"mysql_perf_schema_table_io_waits_seconds_total_delete": true,
+
+	"redis_total_connections_received": true,
+	"redis_rejected_connections":       true,
+	"redis_evicted_keys":               true,
+	"redis_keyspace_hits":              true,
+	"redis_keyspace_misses":            true,
+	"redis_instantaneous_ops_per_sec":  true,
+	"redis_used_memory_rss":            true,
+	"redis_used_memory":                true,
+	"redis_connected_slaves":           true,
+	"redis_clients":                    true,
 }

@@ -15,6 +15,7 @@ import (
 
 	"github.com/digitalocean/do-agent/internal/flags"
 	"github.com/digitalocean/do-agent/internal/log"
+	"github.com/digitalocean/do-agent/internal/process"
 	"github.com/digitalocean/do-agent/pkg/clients/tsclient"
 	"github.com/digitalocean/do-agent/pkg/collector"
 	"github.com/digitalocean/do-agent/pkg/decorate"
@@ -40,6 +41,8 @@ var (
 		additionalLabels       []string
 		defaultMaxBatchSize    int
 		defaultMaxMetricLength int
+		promAddr               string
+		topK                   int
 	}
 
 	// additionalParams is a list of extra command line flags to append
@@ -89,7 +92,7 @@ func init() {
 		StringVar(&config.kubernetes)
 
 	kingpin.Flag("no-collector.processes", "disable processes cpu/memory collection").
-		Default("false").
+		Default("true").
 		BoolVar(&config.noProcesses)
 
 	kingpin.Flag("no-collector.node", "disable processes node collection").
@@ -98,6 +101,9 @@ func init() {
 
 	kingpin.Flag("dbaas-metrics-path", "enable DO DBAAS metrics collection (this must be a DO DBAAS metrics endpoint)").
 		StringVar(&config.dbaas)
+
+	kingpin.Flag("metrics-path", "enable metrics collection from a prometheus endpoint").
+		StringVar(&config.promAddr)
 
 	kingpin.Flag("web.listen", "enable a local endpoint for scrapeable prometheus metrics as well").
 		Default("false").
@@ -116,6 +122,8 @@ func init() {
 
 	// Overwrite the default disk ignore list, add dm- to ignore LVM devices
 	kingpin.CommandLine.GetFlag("collector.diskstats.ignored-devices").Default("^(dm-|ram|loop|fd|(h|s|v|xv)d[a-z]|nvme\\d+n\\d+p)\\d+$")
+
+	kingpin.Flag("process-topk", "number of top processes to scrape").Default("30").IntVar(&config.topK)
 }
 
 func initConfig() {
@@ -156,12 +164,34 @@ func initDecorator() decorate.Chain {
 		decorate.LowercaseNames{},
 	}
 
+	if !config.noProcesses {
+		chain = append(chain, decorate.TopK{K: uint(config.topK), N: "sonar_process_"}) // TopK sonar processes
+	}
+
 	// If additionalLabels provided convert into decorator
 	if len(config.additionalLabels) != 0 {
 		chain = append(chain, decorate.LabelAppender(convertToLabelPairs(config.additionalLabels)))
 	}
 
 	return chain
+}
+
+// initAggregatorSpecs initializes the field aggregation specifications.
+// The map's key is the prometheus metric name to aggregate over, and the value is the label to aggregate away.
+func initAggregatorSpecs() map[string][]string {
+	aggregateSpecs := make(map[string][]string)
+
+	for k, v := range dropletAggregationSpec {
+		aggregateSpecs[k] = append(aggregateSpecs[k], v...)
+	}
+
+	if config.dbaas != "" {
+		for k, v := range dbaasAggregationSpec {
+			aggregateSpecs[k] = append(aggregateSpecs[k], v...)
+		}
+	}
+
+	return aggregateSpecs
 }
 
 // WrappedTSClient wraps the tsClient and adds a Name method to it
@@ -203,10 +233,24 @@ func initCollectors() []prometheus.Collector {
 		cols = appendKubernetesCollectors(cols)
 	}
 
+	// Top process collection
+	if !config.noProcesses {
+		cols = append(cols, process.NewProcessCollector())
+	}
+
 	if config.dbaas != "" {
 		k, err := collector.NewScraper("dodbaas", config.dbaas, nil, dbaasWhitelist, collector.WithTimeout(defaultTimeout))
 		if err != nil {
 			log.Error("Failed to initialize DO DBaaS metrics collector: %+v", err)
+		} else {
+			cols = append(cols, k)
+		}
+	}
+
+	if config.promAddr != "" {
+		k, err := collector.NewScraper("prometheus", config.promAddr, nil, nil, collector.WithTimeout(defaultTimeout))
+		if err != nil {
+			log.Error("Failed to initialize generic metrics collector: %+v", err)
 		} else {
 			cols = append(cols, k)
 		}

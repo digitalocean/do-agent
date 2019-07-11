@@ -1,13 +1,15 @@
 package main
 
 import (
-	"github.com/pkg/errors"
+	"fmt"
 	"time"
 
+	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	dto "github.com/prometheus/client_model/go"
 
 	"github.com/digitalocean/do-agent/internal/log"
+	"github.com/digitalocean/do-agent/pkg/aggregate"
 	"github.com/digitalocean/do-agent/pkg/decorate"
 )
 
@@ -16,7 +18,8 @@ const (
 )
 
 var (
-	diagnosticMetric = prometheus.NewCounterVec(prometheus.CounterOpts{
+	ErrAggregationFailed = fmt.Errorf("metric aggregation failed")
+	diagnosticMetric     = prometheus.NewCounterVec(prometheus.CounterOpts{
 		Namespace: "",
 		Name:      diagnosticMetricName,
 		Help:      "do-agent diagnostic information",
@@ -24,7 +27,7 @@ var (
 )
 
 type metricWriter interface {
-	Write(mets []*dto.MetricFamily) error
+	Write(mets []aggregate.MetricWithValue) error
 	Name() string
 }
 
@@ -37,7 +40,7 @@ type gatherer interface {
 	Gather() ([]*dto.MetricFamily, error)
 }
 
-func run(w metricWriter, l limiter, dec decorate.Decorator, g gatherer) {
+func run(w metricWriter, l limiter, dec decorate.Decorator, g gatherer, aggregateSpec map[string][]string) {
 	exec := func() {
 		start := time.Now()
 		mfs, err := g.Gather()
@@ -51,7 +54,17 @@ func run(w metricWriter, l limiter, dec decorate.Decorator, g gatherer) {
 		dec.Decorate(mfs)
 		log.Debug("stats decorated in %s", time.Since(start))
 
-		err = w.Write(mfs)
+		start = time.Now()
+		aggregated, err := aggregate.Aggregate(mfs, aggregateSpec)
+		if err != nil {
+			log.Error("failed to aggregate metrics: %v", err)
+			writeDiagnostics(w, mfs, ErrAggregationFailed)
+			return
+		}
+		log.Debug("stats aggregated in %s", time.Since(start))
+
+		start = time.Now()
+		err = w.Write(aggregated)
 		if err == nil {
 			log.Debug("stats written in %s", time.Since(start))
 			return
@@ -87,8 +100,13 @@ func writeDiagnostics(w metricWriter, mfs []*dto.MetricFamily, err error) {
 		log.Error("couldn't find any diagnostic information to send, skipping")
 		return
 	}
+	diagnostics, err := aggregate.Aggregate(diags, nil)
+	if err != nil {
+		log.Error("failed to aggregate diagnostic information: %v", err)
+		return
+	}
 
-	if err := w.Write(diags); err != nil {
+	if err := w.Write(diagnostics); err != nil {
 		log.Error("failed to write diagnostic information: %v", err)
 	}
 }
