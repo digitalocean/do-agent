@@ -3,7 +3,7 @@ FROM ubuntu:18.04
 RUN set -x && \
         apt-get -qq update && \
         apt-get install -y ca-certificates dumb-init && \
-        apt-get autoclean
+        rm -rf /var/lib/apt/lists/*
 
 ADD target/do-agent-linux-amd64 /bin/do-agent
 
