@@ -35,3 +35,17 @@ var dbaasAggregationSpec = map[string][]string{
 	"mysql_handler_read_rnd":      {"innodb_buffer_pool_load_status", "innodb_buffer_pool_dump_status"},
 	"mysql_handler_read_rnd_next": {"innodb_buffer_pool_load_status", "innodb_buffer_pool_dump_status"},
 }
+
+var k8sAggregationSpec = map[string][]string {
+
+    "kube_deployment_spec_replicas": {"deployment", "namespace"},
+    "kube_deployment_status_replicas_available": {"deployment", "namespace"},
+    "kube_deployment_status_replicas_unavailable": {"deployment", "namespace"},
+
+    "kube_daemonset_status_desired_number_scheduled": {"daemonset", "namespace"},
+    "kube_daemonset_status_number_available": {"daemonset", "namespace"},
+    "kube_daemonset_status_number_unavailable": {"daemonset", "namespace"},
+
+    "kube_statefulset_replicas": {"statefulset", "namespace"},
+    "kube_statefulset_status_replicas_ready": {"statefulset", "namespace"},
+}
