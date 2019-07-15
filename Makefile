@@ -32,19 +32,23 @@ linter = docker run --rm -i -v "$(CURDIR):$(CURDIR)" -w "$(CURDIR)" -e "GO111MOD
 	-E prealloc \
 	./...
 
+# where to mount the CURDIR in docker
+docker_dir = /home/do-agent
+
 go = docker run --rm -i \
 	-u "$(shell id -u)" \
 	-e "GOOS=$(GOOS)" \
 	-e "GOARCH=$(GOARCH)" \
 	-e "GO111MODULE=on" \
 	-e "GOFLAGS=-mod=vendor" \
-	-e "GOCACHE=$(CURDIR)/target/.cache/go" \
-	-v "$(CURDIR):$(CURDIR)" \
-	-w "$(CURDIR)" \
+	-e "GOCACHE=$(docker_dir)/target/.cache/go" \
+	-v "$(CURDIR):$(docker_dir)" \
+	-w "$(docker_dir)" \
 	golang:1.12.1 \
 	go
 
 ldflags = '\
+	-s -w \
 	-X "main.version=$(VERSION)" \
 	-X "main.revision=$(git_rev)" \
 	-X "main.buildDate=$(now)" \
