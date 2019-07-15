@@ -191,11 +191,11 @@ func initAggregatorSpecs() map[string][]string {
 		}
 	}
 
-    if config.kubernetes != "" {
+	if config.kubernetes != "" {
 		for k, v := range k8sAggregationSpec {
 			aggregateSpecs[k] = append(aggregateSpecs[k], v...)
 		}
-    }
+	}
 
 	return aggregateSpecs
 }
