@@ -9,11 +9,15 @@ Status](https://travis-ci.org/digitalocean/do-agent.svg?branch=master)](https://
 do-agent enables droplet metrics to be gathered and sent to DigitalOcean to provide resource usage graphs and alerting. 
 
 DO Agent currently supports:
-- Ubuntu 14.04+
+- Ubuntu (oldest [End Of Standard Support](https://wiki.ubuntu.com/Releases) LTS release and later)
 - Debian 8+
 - Fedora 27+
 - CentOS 6+
 - Docker (see below)
+
+Note:
+
+Although, we only officially support these distros and versions, do-agent works on most Linux distributions. Feel free to run it wherever you are successful, but any issues you encounter will not have official support from DigitalOcean
 
 ## Installation
 
