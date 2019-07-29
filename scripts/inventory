@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+set -ueo pipefail
+
+script="${PWD}/scripts/inventory.py"
+
+args=(
+	-i
+	--rm
+        -v "${PWD}:${PWD}"
+	-w "${PWD}"
+        -e "USERNAME=$(whoami)"
+	-e "AUTH_TOKEN"
+	--entrypoint "/usr/local/bin/python"
+	--network "host"
+)
+
+# only append t if there is a tty
+[ -t 1 ] && args+=(-t)
+
+docker run --rm -it \
+	"${args[@]}" \
+        docker.io/python@sha256:31727beff76ad298022e187ad63fc828a1143e7459b38629ca92e3925dfcf8e9 \
+	"${script}" "$@"
