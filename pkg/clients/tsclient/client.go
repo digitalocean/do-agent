@@ -35,6 +35,7 @@ import (
 
 const (
 	binaryContentType = "application/timeseries-binary-0"
+	jsonContentType   = "application/json"
 	userAgentHeader   = "User-Agent"
 	authKeyHeader     = "X-Auth-Key"
 	contentTypeHeader = "Content-Type"
@@ -443,7 +444,10 @@ func (c *HTTPClient) Flush() error {
 		}
 		return err
 	}
-	defer c.handleSonarResponse(resp.Body)
+	contentType := resp.Header.Get(contentTypeHeader)
+	if contentType == jsonContentType {
+		defer c.handleSonarResponse(resp.Body)
+	}
 	if resp.StatusCode != http.StatusAccepted {
 		c.numConsecutiveFailures++
 		if c.isZeroTime {
