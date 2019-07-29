@@ -159,8 +159,12 @@ $(base_package): $(binary)
 		--log info \
 		--after-install packaging/scripts/after_install.sh \
 		--after-remove packaging/scripts/after_remove.sh \
+		--config-files /etc/init/do-agent.conf \
+		--config-files /etc/systemd/system/do-agent.service \
 		$<=/opt/digitalocean/bin/do-agent \
-		scripts/update.sh=/opt/digitalocean/do-agent/scripts/update.sh
+		scripts/update.sh=/opt/digitalocean/do-agent/scripts/update.sh \
+		packaging/etc/init/do-agent.conf=/etc/init/do-agent.conf \
+		packaging/etc/systemd/system/do-agent.service=/etc/systemd/system/do-agent.service
 .INTERMEDIATE: $(base_package)
 
 deb: $(deb_package)
