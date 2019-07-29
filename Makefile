@@ -172,7 +172,6 @@ $(deb_package): $(base_package)
 		--input-type deb \
 		--force \
 		--depends cron \
-		--conflicts do-agent \
 		--deb-group nobody \
 		--deb-user do-agent \
 		-p $@ \
@@ -191,7 +190,6 @@ $(rpm_package): $(base_package)
 		--output-type rpm \
 		--input-type deb \
 		--depends cronie \
-		--conflicts do-agent \
 		--rpm-group nobody \
 		--rpm-user do-agent \
 		--rpm-posttrans packaging/scripts/after_install.sh \
