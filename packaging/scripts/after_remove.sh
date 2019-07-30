@@ -43,7 +43,6 @@ remove_cron() {
 clean_upstart() {
 	echo "Cleaning up init scripts"
 	initctl stop ${SVC_NAME} || true
-	rm -fv /etc/init/${SVC_NAME}.conf || true
 	initctl reload-configuration || true
 }
 
@@ -51,7 +50,6 @@ clean_systemd() {
 	echo "Cleaning up systemd scripts"
 	systemctl stop ${SVC_NAME} || true
 	systemctl disable ${SVC_NAME}.service || true
-	rm -fv /etc/systemd/system/${SVC_NAME}.service || true
 	systemctl daemon-reload || true
 }
 

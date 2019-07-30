@@ -25,12 +25,14 @@ main() {
 		# systemd is used, remove the upstart script
 		rm -f "${INIT_SVC_FILE}"
 		# systemctl enable --now is unsupported on older versions of debian/systemd
+		echo "enable systemd service"
 		systemctl daemon-reload
 		systemctl enable -f ${SVC_NAME}
 		systemctl restart ${SVC_NAME}
 	elif command -v initctl >/dev/null 2>&1; then
 		# upstart is used, remove the systemd script
 		rm -f "${SYSTEMD_SVC_FILE}"
+		echo "enable upstart service"
 		initctl stop ${SVC_NAME} || true
 		initctl reload-configuration
 		initctl start ${SVC_NAME}
