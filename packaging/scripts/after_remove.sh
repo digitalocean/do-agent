@@ -26,10 +26,8 @@ main() {
 	fi
 
 	if command -v systemctl >/dev/null 2>&1; then
-		echo "Configure systemd..."
 		clean_systemd
 	elif command -v initctl >/dev/null 2>&1; then
-		echo "Configure upstart..."
 		clean_upstart
 	else
 		echo "Unknown init system" > /dev/stderr
@@ -43,15 +41,17 @@ remove_cron() {
 }
 
 clean_upstart() {
+	echo "Cleaning up init scripts"
 	initctl stop ${SVC_NAME} || true
-	unlink /etc/init/${SVC_NAME}.conf || true
+	rm -fv /etc/init/${SVC_NAME}.conf || true
 	initctl reload-configuration || true
 }
 
 clean_systemd() {
+	echo "Cleaning up systemd scripts"
 	systemctl stop ${SVC_NAME} || true
 	systemctl disable ${SVC_NAME}.service || true
-	unlink /etc/systemd/system/${SVC_NAME}.service || true
+	rm -fv /etc/systemd/system/${SVC_NAME}.service || true
 	systemctl daemon-reload || true
 }
 
