@@ -9,10 +9,10 @@
 
 set -ue
 
-INSTALL_DIR=/opt/digitalocean/do-agent
 SVC_NAME=do-agent
 USERNAME=do-agent
-CRON=/etc/cron.daily/do-agent
+INSTALL_DIR=/opt/digitalocean/${SVC_NAME}
+CRON=/etc/cron.daily/${SVC_NAME}
 INIT_SVC_FILE="/etc/init/${SVC_NAME}.conf"
 SYSTEMD_SVC_FILE="/etc/systemd/system/${SVC_NAME}.service"
 
@@ -24,9 +24,18 @@ main() {
 	if command -v systemctl >/dev/null 2>&1; then
 		# systemd is used, remove the upstart script
 		rm -f "${INIT_SVC_FILE}"
+		# systemctl enable --now is unsupported on older versions of debian/systemd
+		echo "enable systemd service"
+		systemctl daemon-reload
+		systemctl enable -f ${SVC_NAME}
+		systemctl restart ${SVC_NAME}
 	elif command -v initctl >/dev/null 2>&1; then
 		# upstart is used, remove the systemd script
 		rm -f "${SYSTEMD_SVC_FILE}"
+		echo "enable upstart service"
+		initctl stop ${SVC_NAME} || true
+		initctl reload-configuration
+		initctl start ${SVC_NAME}
 	else
 		echo "Unknown init system. Exiting..." > /dev/stderr
 		exit 1
@@ -45,7 +54,7 @@ update_selinux() {
 		return
 	fi
 
-	echo "setting nis_enabled to 1 to allow do-agent to execute"
+	echo "setting nis_enabled to 1 to allow ${SVC_NAME} to execute"
 	setsebool -P nis_enabled 1 || echo "Failed" > /dev/stderr
 	systemctl daemon-reexec || true
 }
