@@ -36,6 +36,7 @@ var (
 		noNode                 bool
 		kubernetes             string
 		dbaas                  string
+		cadvisor               string
 		webListenAddress       string
 		webListen              bool
 		additionalLabels       []string
@@ -101,6 +102,9 @@ func init() {
 
 	kingpin.Flag("dbaas-metrics-path", "enable DO DBAAS metrics collection (this must be a DO DBAAS metrics endpoint)").
 		StringVar(&config.dbaas)
+
+	kingpin.Flag("cadvisor-path", "enable cadvisor collection").
+		StringVar(&config.cadvisor)
 
 	kingpin.Flag("metrics-path", "enable metrics collection from a prometheus endpoint").
 		StringVar(&config.promAddr)
@@ -248,6 +252,15 @@ func initCollectors() []prometheus.Collector {
 		k, err := collector.NewScraper("dodbaas", config.dbaas, nil, dbaasWhitelist, collector.WithTimeout(defaultTimeout))
 		if err != nil {
 			log.Error("Failed to initialize DO DBaaS metrics collector: %+v", err)
+		} else {
+			cols = append(cols, k)
+		}
+	}
+
+	if config.cadvisor != "" {
+		k, err := collector.NewScraper("cadvisor", config.cadvisor, nil, cadvisorWhitelist, collector.WithTimeout(defaultTimeout))
+		if err != nil {
+			log.Error("Failed to initialize DO cadvisor metrics collector: %+v", err)
 		} else {
 			cols = append(cols, k)
 		}

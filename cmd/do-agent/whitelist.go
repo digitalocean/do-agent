@@ -69,3 +69,14 @@ var dbaasWhitelist = map[string]bool{
 	"redis_connected_slaves":           true,
 	"redis_clients":                    true,
 }
+
+var cadvisorWhitelist = map[string]bool{
+
+	"container_cpu_load_average_10s":         true,
+	"container_cpu_user_seconds_total":       true,
+	"container_fs_writes_bytes_total":        true,
+	"container_fs_reads_bytes_total":         true,
+	"container_memory_usage_bytes":           true,
+	"container_network_receive_bytes_total":  true,
+	"container_network_transmit_bytes_total": true,
+}
