@@ -168,6 +168,17 @@ func initDecorator() decorate.Chain {
 		decorate.LowercaseNames{},
 	}
 
+	// Filter noisy cadvisor metrics, keeping only the name and image labels
+	if config.cadvisor != "" {
+		chain = append(chain, &decorate.NamespaceLabelRequired{
+			Namespace: "container",
+			Labels: map[string]bool{
+				"name":  true,
+				"image": true,
+			},
+		})
+	}
+
 	if !config.noProcesses {
 		chain = append(chain, decorate.TopK{K: uint(config.topK), N: "sonar_process_"}) // TopK sonar processes
 	}
