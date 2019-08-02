@@ -190,12 +190,7 @@ function notify() {
 	      "fields": [
 		{
 		  "title": "App",
-		  "value": "do-agent",
-		  "short": true
-		},
-		{
-		  "title": "Version",
-		  "value": "${VERSION}",
+		  "value": "do-agent-repo-sync",
 		  "short": true
 		},
 		{
@@ -221,9 +216,9 @@ function notify() {
 
 function notify_exit() {
 	if [ "${1:0}" != "0" ]; then
-		notify 0 "Sync spaces buckets failed" "${CI_LOG_URL:-}"
+		notify 0 "Sync spaces buckets failed" "${CI_LOG_URL:-}" || true
 	else
-		notify 1 "Sync spaces buckets succeeded"
+		notify 1 "Sync spaces buckets succeeded" || true
 	fi
 }
 trap 'notify_exit $?; rm -rf rclone.conf' ERR EXIT INT TERM
