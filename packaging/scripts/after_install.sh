@@ -19,7 +19,11 @@ SYSTEMD_SVC_FILE="/etc/systemd/system/${SVC_NAME}.service"
 main() {
 	update_selinux
 
-	useradd -M --system $USERNAME || true
+	# fix for IN-2630
+	# TODO remove userdel in next release
+	# temporarily remove the do-agent and recreate it with no shell
+	userdel -f do-agent || true
+	useradd -s /bin/false -M --system $USERNAME || true
 
 	if command -v systemctl >/dev/null 2>&1; then
 		# systemd is used, remove the upstart script
