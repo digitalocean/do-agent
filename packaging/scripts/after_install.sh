@@ -19,7 +19,7 @@ SYSTEMD_SVC_FILE="/etc/systemd/system/${SVC_NAME}.service"
 main() {
 	update_selinux
 
-	useradd -M --system $USERNAME || true
+	useradd -s /bin/false -M --system $USERNAME || true
 
 	if command -v systemctl >/dev/null 2>&1; then
 		# systemd is used, remove the upstart script
