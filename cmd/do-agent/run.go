@@ -14,16 +14,28 @@ import (
 )
 
 const (
-	diagnosticMetricName = "sonar_diagnostic"
+	diagnosticMetricName        = "sonar_diagnostic"
+	metricWriterDiagnosticsName = "metric_writes"
 )
 
 var (
+	//ErrAggregationFailed is the error msg for failed aggregation
 	ErrAggregationFailed = fmt.Errorf("metric aggregation failed")
-	diagnosticMetric     = prometheus.NewCounterVec(prometheus.CounterOpts{
+
+	diagnosticMetric = prometheus.NewCounterVec(prometheus.CounterOpts{
 		Namespace: "",
 		Name:      diagnosticMetricName,
 		Help:      "do-agent diagnostic information",
 	}, []string{"error"})
+
+	metricWriterDiagnostics = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Namespace: "",
+			Name:      metricWriterDiagnosticsName,
+			Help:      "Total successes and failures of metric writers",
+		},
+		[]string{"writer", "result", "reason"},
+	)
 )
 
 type metricWriter interface {

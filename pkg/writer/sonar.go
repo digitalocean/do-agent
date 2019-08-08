@@ -6,6 +6,7 @@ import (
 	"github.com/digitalocean/do-agent/internal/log"
 	"github.com/digitalocean/do-agent/pkg/aggregate"
 	"github.com/digitalocean/do-agent/pkg/clients/tsclient"
+	"github.com/prometheus/client_golang/prometheus"
 
 	"github.com/pkg/errors"
 )
@@ -26,13 +27,16 @@ var (
 type Sonar struct {
 	client         tsclient.Client
 	firstWriteSent bool
+	c              *prometheus.CounterVec
 }
 
 // NewSonar creates a new Sonar writer
-func NewSonar(client tsclient.Client) *Sonar {
+func NewSonar(client tsclient.Client, c *prometheus.CounterVec) *Sonar {
+	c = c.MustCurryWith(prometheus.Labels{"writer": "sonar"})
 	return &Sonar{
 		client:         client,
 		firstWriteSent: false,
+		c:              c,
 	}
 }
 
@@ -40,16 +44,19 @@ func NewSonar(client tsclient.Client) *Sonar {
 // before the next write
 func (s *Sonar) Write(mets []aggregate.MetricWithValue) error {
 	if len(mets) > s.client.MaxBatchSize() {
+		s.c.WithLabelValues("failure", "too many metrics").Inc()
 		return errors.Wrap(ErrTooManyMetrics, "cannot write metrics")
 	}
 
 	for _, m := range mets {
 		lfmEncoded := tsclient.ConvertLFMMapToPrometheusEncodedName(m.LFM)
 		if len(lfmEncoded) > s.client.MaxMetricLength() {
+			s.c.WithLabelValues("failure", "metric exceeds max length").Inc()
 			return errors.Wrapf(ErrMetricTooLong, "cannot send metric: %q", lfmEncoded)
 		}
 		err := s.client.AddMetric(tsclient.NewDefinitionFromMap(m.LFM), m.Value)
 		if err != nil {
+			s.c.WithLabelValues("failure", "could not add metric to batch").Inc()
 			return err
 		}
 	}
@@ -65,6 +72,7 @@ func (s *Sonar) Write(mets []aggregate.MetricWithValue) error {
 		return nil
 	}
 
+	s.c.WithLabelValues("failure", "failed to flush").Inc()
 	log.Error("failed to flush: %+v", err)
 	return ErrFlushFailure
 }
