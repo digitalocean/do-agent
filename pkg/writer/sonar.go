@@ -69,6 +69,7 @@ func (s *Sonar) Write(mets []aggregate.MetricWithValue) error {
 	s.firstWriteSent = true
 
 	if err == nil {
+		s.c.WithLabelValues("success", "").Inc()
 		return nil
 	}
 
