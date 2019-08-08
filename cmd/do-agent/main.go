@@ -31,8 +31,12 @@ func main() {
 	reg.MustRegister(cols...)
 
 	if config.webListen {
+		//Create a secondary registry for local only metrics
+		localReg := prometheus.NewRegistry()
+		localCols := append(cols, metricWriterDiagnostics)
+		localReg.MustRegister(localCols...)
 		go func() {
-			http.Handle("/", promhttp.HandlerFor(reg, promhttp.HandlerOpts{}))
+			http.Handle("/", promhttp.HandlerFor(localReg, promhttp.HandlerOpts{}))
 			err := http.ListenAndServe(config.webListenAddress, nil)
 			if err != nil {
 				log.Error("failed to init HTTP listener: %+v", err.Error())
@@ -40,7 +44,7 @@ func main() {
 		}()
 	}
 
-	w, th := initWriter()
+	w, th := initWriter(metricWriterDiagnostics)
 	d := initDecorator()
 	aggregateSpecs := initAggregatorSpecs()
 
