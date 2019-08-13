@@ -48,7 +48,7 @@ function main() {
 
 function install_apt() {
 	# forcefully remove any existing installations
-	apt-get remove -y do-agent >/dev/null 2>&1 || :
+	apt-get purge -y do-agent >/dev/null 2>&1 || :
 
 	echo "Installing apt repository..."
 	apt-get -qq update || true
