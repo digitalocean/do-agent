@@ -19,6 +19,10 @@ Note:
 
 Although, we only officially support these distros and versions, do-agent works on most Linux distributions. Feel free to run it wherever you are successful, but any issues you encounter will not have official support from DigitalOcean
 
+### Special Note For SELinux Users
+
+The do-agent install script sets the `nis_enabled` flag to 1. Without this setting the do-aegnt cannot reach the network to perform authentication or send metrics to DigitalOcean backend servers. If you reverse this action, or install the do-agent on a machine manually you will need to run `setsebool -P nis_enabled 1 && systemctl daemon-reexec` otherwise the do-agent will not operate.
+
 ## Installation
 
 To install the do-agent on new Droplets simply select the Monitoring checkbox on the Droplet create screen to get the latest stable version of do-agent. Use your OS package manager (yum/dnf/apt-get) to update and manage do-agent.
