@@ -147,13 +147,13 @@ func checkConfig() error {
 	return nil
 }
 
-func initWriter() (metricWriter, limiter) {
+func initWriter(wc *prometheus.CounterVec) (metricWriter, limiter) {
 	if config.stdoutOnly {
-		return writer.NewFile(os.Stdout), &constThrottler{wait: 10 * time.Second}
+		return writer.NewFile(os.Stdout, wc), &constThrottler{wait: 10 * time.Second}
 	}
 
 	tsc := newTimeseriesClient()
-	return writer.NewSonar(tsc), tsc
+	return writer.NewSonar(tsc, wc), tsc
 }
 
 func initDecorator() decorate.Chain {

@@ -3,7 +3,7 @@
 [![Build
 Status](https://travis-ci.org/digitalocean/do-agent.svg?branch=master)](https://travis-ci.org/digitalocean/do-agent)
 [![Go Report Card](https://goreportcard.com/badge/github.com/digitalocean/do-agent)](https://goreportcard.com/report/github.com/digitalocean/do-agent)
-[![Coverage Status](https://coveralls.io/repos/github/digitalocean/do-agent/badge.svg?branch=feat%2Fadd-coveralls-report)](https://coveralls.io/github/digitalocean/do-agent?branch=feat%2Fadd-coveralls-report)
+[![Coverage Status](https://coveralls.io/repos/github/digitalocean/do-agent/badge.svg?branch=master)](https://coveralls.io/github/digitalocean/do-agent?branch=master)
 
 ## Overview
 do-agent enables droplet metrics to be gathered and sent to DigitalOcean to provide resource usage graphs and alerting. 
