@@ -48,7 +48,7 @@ function main() {
 
 function install_apt() {
 	# forcefully remove any existing installations
-	apt-get remove -y do-agent >/dev/null 2>&1 || :
+	apt-get purge -y do-agent >/dev/null 2>&1 || :
 
 	echo "Installing apt repository..."
 	apt-get -qq update || true
@@ -96,7 +96,7 @@ function clean() {
 }
 
 function check_dist() {
-	echo -n "Verifying compatability with script..."
+	echo -n "Verifying compatibility with script..."
 	if [  -f /etc/os-release  ]; then
 		dist=$(awk -F= '$1 == "ID" {gsub("\"", ""); print$2}' /etc/os-release)
 	elif [ -f /etc/redhat-release ]; then
@@ -119,7 +119,7 @@ function check_dist() {
 
 
 function check_do() {
-	echo -n "Verifying machine compatability..."
+	echo -n "Verifying machine compatibility..."
 	# DigitalOcean embedded platform information in the DMI data.
 	read -r sys_vendor < /sys/devices/virtual/dmi/id/bios_vendor
 	if ! [ "$sys_vendor" = "DigitalOcean" ]; then
