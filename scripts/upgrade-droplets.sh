@@ -74,7 +74,7 @@ function exec_ips() {
 				-o "UserKnownHostsFile=/dev/null" \
 				-o "LogLevel=ERROR" \
 				-i "${SSH_KEY}" \
-				"root@${ip}" "${script}" 2>/dev/stdout || true
+				"${USER:-root}@${ip}" "${script}" 2>/dev/stdout || true
 		)" &
 	done
 	wait
