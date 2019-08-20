@@ -10,7 +10,7 @@ do-agent enables droplet metrics to be gathered and sent to DigitalOcean to prov
 
 DO Agent currently supports:
 - Ubuntu (oldest [End Of Standard Support](https://wiki.ubuntu.com/Releases) LTS release and later)
-- Debian 8+
+- Debian ([oldest supported](https://wiki.debian.org/LTS) LTS release and later)
 - Fedora 27+
 - CentOS 6+
 - Docker (see below)
