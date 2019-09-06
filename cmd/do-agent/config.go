@@ -88,7 +88,7 @@ func init() {
 	kingpin.Flag("syslog", "enable logging to syslog").
 		BoolVar(&config.syslog)
 
-	kingpin.Flag("k8s-metrics-path", "enable DO Kubernetes metrics collection (this must be a DOK8s metrics endpoint)").
+	kingpin.Flag("k8s-metrics-path", "enable DO Kubernetes metrics collection (this must be a DOKS metrics endpoint)").
 		StringVar(&config.kubernetes)
 
 	kingpin.Flag("no-collector.processes", "disable processes cpu/memory collection").
