@@ -13,6 +13,7 @@ DO Agent currently supports:
 - Debian ([oldest supported](https://wiki.debian.org/LTS) LTS release and later)
 - Fedora 27+
 - CentOS 6+
+- CloudLinux 6+
 - Docker (see below)
 
 Note:
