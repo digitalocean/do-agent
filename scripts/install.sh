@@ -47,6 +47,7 @@ function main() {
 }
 
 function install_apt() {
+	export DEBIAN_FRONTEND=noninteractive
 	# forcefully remove any existing installations
 	apt-get purge -y do-agent >/dev/null 2>&1 || :
 
