@@ -1,12 +1,12 @@
 #!/bin/bash
 #
 # This script is meant for quick & easy install via:
-#   curl -sSL https://insights.nyc3.cdn.digitaloceanspaces.com/install.sh | sudo bash
+#   curl -sSL https://repos.insights.digitalocean.com/install.sh | sudo bash
 # or:
-#   wget -qO- https://insights.nyc3.cdn.digitaloceanspaces.com/install.sh | sudo bash
+#   wget -qO- https://repos.insights.digitalocean.com/install.sh | sudo bash
 #
 # To use the BETA branch of do-agent pass the BETA=1 flag to the script
-#   curl -sSL https://insights.nyc3.cdn.digitaloceanspaces.com/install.sh | sudo BETA=1 bash
+#   curl -sSL https://repos.insights.digitalocean.com/install.sh | sudo BETA=1 bash
 #
 
 set -ueo pipefail
@@ -47,6 +47,7 @@ function main() {
 }
 
 function install_apt() {
+	export DEBIAN_FRONTEND=noninteractive
 	# forcefully remove any existing installations
 	apt-get purge -y do-agent >/dev/null 2>&1 || :
 

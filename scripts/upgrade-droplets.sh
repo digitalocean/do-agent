@@ -82,7 +82,7 @@ function exec_ips() {
 
 # install the latest stable version of the agent
 function command_install() {
-	exec_ips "$(list_ips)" "curl -SsL https://insights.nyc3.digitaloceanspaces.com/install.sh | sudo bash"
+	exec_ips "$(list_ips)" "curl -SsL https://repos.insights.digitalocean.com/install.sh | sudo bash"
 }
 
 # list all droplets without formatting
