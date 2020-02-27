@@ -30,15 +30,15 @@ To install the do-agent on new Droplets simply select the Monitoring checkbox on
 ## Installing via package managers
 
 ```bash
-curl -sSL https://insights.nyc3.cdn.digitaloceanspaces.com/install.sh | sudo bash
+curl -sSL https://repos.insights.digitalocean.com/install.sh | sudo bash
 # or wget
-wget -qO- https://insights.nyc3.cdn.digitaloceanspaces.com/install.sh | sudo bash
+wget -qO- https://repos.insights.digitalocean.com/install.sh | sudo bash
 ```
 
 If you prefer to inspect the script first:
 
 ```bash
-curl -L -o ./install.sh https://insights.nyc3.cdn.digitaloceanspaces.com/install.sh
+curl -L -o ./install.sh https://repos.insights.digitalocean.com/install.sh
 # inspect the file
 less ./install.sh
 # execute the file
