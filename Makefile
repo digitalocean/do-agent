@@ -45,7 +45,7 @@ go = docker run --rm -i \
 	-e "GOCACHE=$(docker_dir)/target/.cache/go" \
 	-v "$(CURDIR):$(docker_dir)" \
 	-w "$(docker_dir)" \
-	golang:1.12.1 \
+	golang:1.14.0 \
 	go
 else
 go = GOOS=$(GOOS) \
