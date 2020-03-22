@@ -21,7 +21,7 @@ Although, we only officially support these distros and versions, do-agent works 
 
 ### Special Note For SELinux Users
 
-The do-agent install script sets the `nis_enabled` flag to 1. Without this setting the do-aegnt cannot reach the network to perform authentication or send metrics to DigitalOcean backend servers. If you reverse this action, or install the do-agent on a machine manually you will need to run `setsebool -P nis_enabled 1 && systemctl daemon-reexec` otherwise the do-agent will not operate.
+The do-agent install script sets the `nis_enabled` flag to 1. Without this setting the do-agent cannot reach the network to perform authentication or send metrics to DigitalOcean backend servers. If you reverse this action, or install the do-agent on a machine manually you will need to run `setsebool -P nis_enabled 1 && systemctl daemon-reexec` otherwise the do-agent will not operate.
 
 ## Installation
 
