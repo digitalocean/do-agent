@@ -176,7 +176,7 @@ func New(opts ...ClientOptFn) Client {
 		UserAgent:        "tsclient-unknown",
 		Timeout:          10 * time.Second,
 		MetadataEndpoint: "http://169.254.169.254/metadata",
-		RadarEndpoint:    "https://sonar.digitalocean.com",
+		RadarEndpoint:    "https://169.254.169.254",
 	}
 
 	for _, fn := range opts {
@@ -289,7 +289,7 @@ func (c *HTTPClient) url() string {
 		return fmt.Sprintf("%s/v1/metrics/trusted/%s", endpoint, c.appName)
 	}
 
-	endpoint := fmt.Sprintf("https://%s.sonar.digitalocean.com", c.region)
+	endpoint := "http://169.254.169.254"
 	if len(c.wharfEndpoints) > 0 {
 		endpoint = c.wharfEndpoints[rand.Intn(len(c.wharfEndpoints))]
 	}

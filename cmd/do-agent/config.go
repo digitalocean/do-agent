@@ -56,7 +56,7 @@ var (
 
 const (
 	defaultMetadataURL      = "http://169.254.169.254/metadata"
-	defaultAuthURL          = "https://sonar.digitalocean.com"
+	defaultAuthURL          = "http://169.254.169.254"
 	defaultSonarURL         = ""
 	defaultTimeout          = 2 * time.Second
 	defaultWebListenAddress = "127.0.0.1:9100"
