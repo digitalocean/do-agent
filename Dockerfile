@@ -1,4 +1,4 @@
-FROM golang:1.12 as build
+FROM golang:1.14 as build
 ENV DOCKER_BUILD=1
 ADD . /home/do-agent
 WORKDIR /home/do-agent
