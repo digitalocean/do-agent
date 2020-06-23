@@ -39,6 +39,7 @@ const (
 	userAgentHeader   = "User-Agent"
 	authKeyHeader     = "X-Auth-Key"
 	contentTypeHeader = "Content-Type"
+	internalProxyURL  = "http://169.254.169.254"
 
 	defaultWaitIntervalSeconds = 60
 	defaultMaxBatchSize        = 1000
@@ -175,8 +176,8 @@ func New(opts ...ClientOptFn) Client {
 	opt := &ClientOptions{
 		UserAgent:        "tsclient-unknown",
 		Timeout:          10 * time.Second,
-		MetadataEndpoint: "http://169.254.169.254/metadata",
-		RadarEndpoint:    "https://sonar.digitalocean.com",
+		MetadataEndpoint: fmt.Sprintf("%s/metadata", internalProxyURL),
+		RadarEndpoint:    internalProxyURL,
 	}
 
 	for _, fn := range opts {
@@ -289,7 +290,7 @@ func (c *HTTPClient) url() string {
 		return fmt.Sprintf("%s/v1/metrics/trusted/%s", endpoint, c.appName)
 	}
 
-	endpoint := fmt.Sprintf("https://%s.sonar.digitalocean.com", c.region)
+	endpoint := internalProxyURL
 	if len(c.wharfEndpoints) > 0 {
 		endpoint = c.wharfEndpoints[rand.Intn(len(c.wharfEndpoints))]
 	}
