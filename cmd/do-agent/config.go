@@ -54,13 +54,16 @@ var (
 	disabledCollectors = map[string]interface{}{}
 )
 
+const internalProxyURL = "http://169.254.169.254"
+
 const (
-	defaultMetadataURL      = "http://169.254.169.254/metadata"
-	defaultAuthURL          = "http://169.254.169.254"
+	defaultAuthURL          = internalProxyURL
 	defaultSonarURL         = ""
 	defaultTimeout          = 2 * time.Second
 	defaultWebListenAddress = "127.0.0.1:9100"
 )
+
+var defaultMetadataURL = fmt.Sprintf("%s/metadata", internalProxyURL)
 
 func init() {
 	kingpin.CommandLine.Name = "do-agent"

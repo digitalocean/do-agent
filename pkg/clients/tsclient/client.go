@@ -39,6 +39,7 @@ const (
 	userAgentHeader   = "User-Agent"
 	authKeyHeader     = "X-Auth-Key"
 	contentTypeHeader = "Content-Type"
+	internalProxyURL  = "http://169.254.169.254"
 
 	defaultWaitIntervalSeconds = 60
 	defaultMaxBatchSize        = 1000
@@ -175,8 +176,8 @@ func New(opts ...ClientOptFn) Client {
 	opt := &ClientOptions{
 		UserAgent:        "tsclient-unknown",
 		Timeout:          10 * time.Second,
-		MetadataEndpoint: "http://169.254.169.254/metadata",
-		RadarEndpoint:    "http://169.254.169.254",
+		MetadataEndpoint: fmt.Sprintf("%s/metadata", internalProxyURL),
+		RadarEndpoint:    internalProxyURL,
 	}
 
 	for _, fn := range opts {
