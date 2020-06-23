@@ -290,7 +290,7 @@ func (c *HTTPClient) url() string {
 		return fmt.Sprintf("%s/v1/metrics/trusted/%s", endpoint, c.appName)
 	}
 
-	endpoint := "http://169.254.169.254"
+	endpoint := internalProxyURL
 	if len(c.wharfEndpoints) > 0 {
 		endpoint = c.wharfEndpoints[rand.Intn(len(c.wharfEndpoints))]
 	}
