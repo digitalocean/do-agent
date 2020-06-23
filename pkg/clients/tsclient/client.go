@@ -176,7 +176,7 @@ func New(opts ...ClientOptFn) Client {
 		UserAgent:        "tsclient-unknown",
 		Timeout:          10 * time.Second,
 		MetadataEndpoint: "http://169.254.169.254/metadata",
-		RadarEndpoint:    "https://169.254.169.254",
+		RadarEndpoint:    "http://169.254.169.254",
 	}
 
 	for _, fn := range opts {
