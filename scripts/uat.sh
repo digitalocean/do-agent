@@ -62,7 +62,7 @@ function usage() {
 	echo "Usage: $0 [command]"
 	echo
 	echo "Possible commands: "
-	grep -P '^function command_' "$0" \
+	egrep '^function command_' "$0" \
 		| sed 's,function command_,,g' \
 		| sed 's,() {,,g' \
 		| sort \
@@ -240,8 +240,8 @@ function command_version() {
 function command_create_status() {
 	list \
 		| jq -r '.droplets[] | "\(.id) [\(.name)] \(.status)"' \
-		| GREP_COLOR='1;31' grep -P --color=yes 'new|$' \
-		| GREP_COLOR='1;32' grep -P --color=yes 'active|$'
+		| GREP_COLOR='1;31' egrep --color=yes 'new|$' \
+		| GREP_COLOR='1;32' egrep --color=yes 'active|$'
 }
 
 # scp a file to every host
