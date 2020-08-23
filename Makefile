@@ -184,6 +184,9 @@ $(deb_package): $(base_package)
 # print information about the compiled deb package
 	@docker run --rm -i -v "$(CURDIR):$(CURDIR)" -w "$(CURDIR)" ubuntu:xenial /bin/bash -c 'dpkg --info $@ && dpkg -c $@'
 
+.PHONY: install_deb
+install_deb: deb
+	@dpkg -i $(deb_package)
 
 rpm: $(rpm_package)
 $(rpm_package): $(base_package)
