@@ -46,19 +46,26 @@ function main() {
 	esac
 }
 
+function wait_for_apt() {
+	while fuser /var/{lib/{dpkg,apt/lists},cache/apt/archives}/lock >/dev/null 2>&1; do
+		echo "Waiting on apt.."
+		sleep 2
+	done
+}
+
 function install_apt() {
 	export DEBIAN_FRONTEND=noninteractive
 	# forcefully remove any existing installations
-	apt-get purge -y do-agent >/dev/null 2>&1 || :
+	wait_for_apt && ( apt-get purge -y do-agent >/dev/null 2>&1 || : )
 
 	echo "Installing apt repository..."
-	apt-get -qq update || true
-	apt-get -qq install -y ca-certificates gnupg2 apt-utils apt-transport-https curl
+	wait_for_apt && ( apt-get -qq update || true )
+	wait_for_apt && apt-get -qq install -y ca-certificates gnupg2 apt-utils apt-transport-https curl
 	echo "deb ${REPO_HOST}/apt/${repo} main main" > /etc/apt/sources.list.d/digitalocean-agent.list
 	echo -n "Installing gpg key..."
 	curl -sL "${REPO_GPG_KEY}" | apt-key add -
-	apt-get -qq update -o Dir::Etc::SourceParts=/dev/null -o APT::Get::List-Cleanup=no -o Dir::Etc::SourceList="sources.list.d/digitalocean-agent.list"
-	apt-get -qq install -y do-agent
+	wait_for_apt && apt-get -qq update -o Dir::Etc::SourceParts=/dev/null -o APT::Get::List-Cleanup=no -o Dir::Etc::SourceList="sources.list.d/digitalocean-agent.list"
+	wait_for_apt && apt-get -qq install -y do-agent
 }
 
 function install_rpm() {
@@ -139,7 +146,7 @@ function check_do() {
 }
 
 function not_supported() {
-	cat <<-EOF 
+	cat <<-EOF
 
 	This script does not support the OS/Distribution on this machine.
 	If you feel that this is an error contact support@digitalocean.com
