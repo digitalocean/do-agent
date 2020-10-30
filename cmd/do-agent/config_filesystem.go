@@ -8,7 +8,7 @@ import (
 const (
 	ignoredMountPointFlag = "--collector.filesystem.ignored-mount-points"
 	ignoredFSTypesFlag    = "--collector.filesystem.ignored-fs-types"
-	ignoredMountPoints    = `^/(rootfs/)?(sys|proc|dev|host|etc|var/(lib|run)/docker/[^$]+|run/docker/[^$]+)($$|/)`
+	ignoredMountPoints    = `^/(rootfs/)?(boot|sys|proc|dev|host|etc|var/(lib|run)/docker/[^$]+|run/docker/[^$]+)($$|/)`
 )
 
 var (
