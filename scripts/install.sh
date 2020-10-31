@@ -116,8 +116,11 @@ function check_dist() {
 	dist=$(echo "${dist}" | tr '[:upper:]' '[:lower:]')
 
 	case "${dist}" in
-		debian|ubuntu|centos|cloudlinux|fedora)
+		debian|ubuntu|centos|fedora)
 			echo "OK"
+			;;
+		cloudlinux)
+			echo "WARN ${dist} is not officially supported. Attempting RPM install"
 			;;
 		*)
 			not_supported
