@@ -15,6 +15,9 @@ DO Agent currently supports:
 - CentOS 6+
 - Docker (see below)
 
+# Not officially supported
+- CloudLinux 6+
+
 Note:
 
 Although, we only officially support these distros and versions, do-agent works on most Linux distributions. Feel free to run it wherever you are successful, but any issues you encounter will not have official support from DigitalOcean

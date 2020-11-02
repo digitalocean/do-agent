@@ -37,7 +37,7 @@ function main() {
 		debian|ubuntu)
 			install_apt
 			;;
-		centos|fedora)
+		centos|cloudlinux|fedora)
 			install_rpm
 			;;
 		*)
@@ -118,6 +118,9 @@ function check_dist() {
 	case "${dist}" in
 		debian|ubuntu|centos|fedora)
 			echo "OK"
+			;;
+		cloudlinux)
+			echo "WARN ${dist} is not officially supported. Attempting RPM install"
 			;;
 		*)
 			not_supported
