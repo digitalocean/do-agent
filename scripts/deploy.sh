@@ -155,7 +155,7 @@ function check_can_deploy_spaces() {
 	announce "Checking if we can deploy spaces"
 
 	# if the version is already in beta then this version cannot be deployed
-	status_code=$(http_status_for "https://${SPACES_HOST}/apt/${repo}/pool/main/main/d/do-agent_${VERSION}_amd64.deb")
+	status_code=$(http_status_for "https://${SPACES_HOST}/${SPACES_BUCKET_NAME}/apt/${repo}/pool/main/main/d/do-agent/do-agent_${VERSION}_amd64.deb")
 	case $status_code in
 		404)
 			return 0
