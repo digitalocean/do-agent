@@ -25,6 +25,8 @@ git_rev      = $(shell git rev-parse --short HEAD)
 git_tag      = $(subst v,,$(shell git describe --tags --abbrev=0))
 VERSION     ?= $(git_tag)
 
+dockerlogin = @echo "${DOCKER_PASSWORD}" | docker login -u "${DOCKER_USERNAME}" --password-stdin
+
 linter = docker run --rm -i -v "$(CURDIR):$(CURDIR)" -w "$(CURDIR)" -e "GO111MODULE=on" -e "GOFLAGS=-mod=vendor" -e "GOCACHE=$(CURDIR)/target/.cache/go" \
 	-u $(shell id -u) golangci/golangci-lint:v1.16 \
 	golangci-lint run --no-config --disable-all -E gosec -E interfacer -E vet -E deadcode -E gocyclo -E golint \
@@ -129,8 +131,13 @@ clean:
 	@rm -rf $(out)
 .PHONY: clean
 
-ci: clean test package lint shellcheck 
+ci: login clean test package lint shellcheck
 .PHONY: ci
+
+login:
+	$(print)
+	@$(dockerlogin)
+.PHONY: login
 
 .PHONY: target/VERSION
 target/VERSION:

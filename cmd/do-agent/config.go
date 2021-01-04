@@ -123,9 +123,6 @@ func init() {
 	kingpin.Flag("max-metric-length", "default max metric length for metrics. This will be overridden after first write").
 		IntVar(&config.defaultMaxMetricLength)
 
-	// Overwrite the default disk ignore list, add dm- to ignore LVM devices
-	kingpin.CommandLine.GetFlag("collector.diskstats.ignored-devices").Default("^(dm-|ram|loop|fd|(h|s|v|xv)d[a-z]|nvme\\d+n\\d+p)\\d+$")
-
 	kingpin.Flag("process-topk", "number of top processes to scrape").Default("30").IntVar(&config.topK)
 }
 
