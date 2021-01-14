@@ -96,10 +96,10 @@ func init() {
 	kingpin.Flag("k8s-metrics-path", "enable DO Kubernetes metrics collection (this must be a DOKS metrics endpoint)").
 		StringVar(&config.kubernetes)
 
-	kingpin.Flag("bearer-token", "sets the `Authorization` header on every scrape request with the configured bearer token").
+	kingpin.Flag("bearer-token", "sets the `Authorization` header on every scrape request with the configured bearer token (mutually exclusive with `bearer-token-file`)").
 		StringVar(&config.bearerToken)
 
-	kingpin.Flag("bearer-token-file", "sets the `Authorization` header on every scrape request with the bearer token read from the configured file").
+	kingpin.Flag("bearer-token-file", "sets the `Authorization` header on every scrape request with the bearer token read from the configured file (mutually exclusive with `bearer-token`)").
 		StringVar(&config.bearerTokenFile)
 
 	kingpin.Flag("no-collector.processes", "disable processes cpu/memory collection").
@@ -152,6 +152,11 @@ func checkConfig() error {
 			return errors.Wrapf(err, "url for target %q is not valid", name)
 		}
 	}
+
+	if config.bearerTokenFile != "" && config.bearerToken != "" {
+		return errors.New("both mutually exclusive flags --bearer-token and --bearer-token-file set")
+	}
+
 	return nil
 }
 

@@ -5,19 +5,18 @@ import (
 	"compress/gzip"
 	"context"
 	"fmt"
-	"github.com/digitalocean/do-agent/pkg/clients/roundtrippers"
 	"io"
 	"net/http"
 	"strings"
 	"time"
 
+	"github.com/digitalocean/do-agent/internal/log"
+	"github.com/digitalocean/do-agent/pkg/clients"
+	"github.com/digitalocean/do-agent/pkg/clients/roundtrippers"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	dto "github.com/prometheus/client_model/go"
 	"github.com/prometheus/common/expfmt"
-
-	"github.com/digitalocean/do-agent/internal/log"
-	"github.com/digitalocean/do-agent/pkg/clients"
 )
 
 var defaultScrapeTimeout = 5 * time.Second
