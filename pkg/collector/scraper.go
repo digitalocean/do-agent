@@ -10,24 +10,40 @@ import (
 	"strings"
 	"time"
 
+	"github.com/digitalocean/do-agent/internal/log"
+	"github.com/digitalocean/do-agent/pkg/clients"
+	"github.com/digitalocean/do-agent/pkg/clients/roundtrippers"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	dto "github.com/prometheus/client_model/go"
 	"github.com/prometheus/common/expfmt"
-
-	"github.com/digitalocean/do-agent/internal/log"
-	"github.com/digitalocean/do-agent/pkg/clients"
 )
 
 var defaultScrapeTimeout = 5 * time.Second
 
 type scraperOpts struct {
-	timeout  time.Duration
-	logLevel log.Level
+	timeout         time.Duration
+	logLevel        log.Level
+	bearerToken     string
+	bearerTokenFile string
 }
 
 // Option is used to configure optional scraper options.
 type Option func(o *scraperOpts)
+
+// WithBearerToken configures a scraper to use a bearer token
+func WithBearerToken(token string) Option {
+	return func(o *scraperOpts) {
+		o.bearerToken = token
+	}
+}
+
+// WithBearerTokenFile configures a scraper to use a bearer token read from a file
+func WithBearerTokenFile(tokenFile string) Option {
+	return func(o *scraperOpts) {
+		o.bearerTokenFile = tokenFile
+	}
+}
 
 // WithTimeout configures a scraper with a timeout for scraping metrics.
 func WithTimeout(d time.Duration) Option {
@@ -54,6 +70,15 @@ func NewScraper(name, metricsEndpoint string, extraMetricLabels []*dto.LabelPair
 		opt(defOpts)
 	}
 
+	// setup http client, add auth roundtrippers
+	client := clients.NewHTTP(defOpts.timeout)
+	if defOpts.bearerTokenFile != "" {
+		client.Transport = roundtrippers.NewBearerTokenFile(defOpts.bearerTokenFile, client.Transport)
+	}
+	if defOpts.bearerToken != "" {
+		client.Transport = roundtrippers.NewBearerToken(defOpts.bearerToken, client.Transport)
+	}
+
 	metricsEndpoint = strings.TrimRight(metricsEndpoint, "/")
 	req, err := http.NewRequest("GET", metricsEndpoint, nil)
 	if err != nil {
@@ -71,7 +96,7 @@ func NewScraper(name, metricsEndpoint string, extraMetricLabels []*dto.LabelPair
 		whitelist:         whitelist,
 		timeout:           defOpts.timeout,
 		logLevel:          defOpts.logLevel,
-		client:            clients.NewHTTP(defOpts.timeout),
+		client:            client,
 		scrapeDurationDesc: prometheus.NewDesc(
 			prometheus.BuildFQName(name, "scrape", "collector_duration_seconds"),
 			fmt.Sprintf("%s: Duration of a collector scrape.", name),

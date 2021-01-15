@@ -28,6 +28,8 @@ var (
 		targets                map[string]string
 		metadataURL            *url.URL
 		authURL                *url.URL
+		bearerToken            string
+		bearerTokenFile        string
 		sonarEndpoint          string
 		stdoutOnly             bool
 		debug                  bool
@@ -94,6 +96,12 @@ func init() {
 	kingpin.Flag("k8s-metrics-path", "enable DO Kubernetes metrics collection (this must be a DOKS metrics endpoint)").
 		StringVar(&config.kubernetes)
 
+	kingpin.Flag("bearer-token", "sets the `Authorization` header on every scrape request with the configured bearer token (mutually exclusive with `bearer-token-file`)").
+		StringVar(&config.bearerToken)
+
+	kingpin.Flag("bearer-token-file", "sets the `Authorization` header on every scrape request with the bearer token read from the configured file (mutually exclusive with `bearer-token`)").
+		StringVar(&config.bearerTokenFile)
+
 	kingpin.Flag("no-collector.processes", "disable processes cpu/memory collection").
 		Default("true").
 		BoolVar(&config.noProcesses)
@@ -144,6 +152,11 @@ func checkConfig() error {
 			return errors.Wrapf(err, "url for target %q is not valid", name)
 		}
 	}
+
+	if config.bearerTokenFile != "" && config.bearerToken != "" {
+		return errors.New("both mutually exclusive flags --bearer-token and --bearer-token-file set")
+	}
+
 	return nil
 }
 
@@ -282,7 +295,20 @@ func initCollectors() []prometheus.Collector {
 
 // appendKubernetesCollectors appends a kubernetes metrics collector if it can be initialized successfully
 func appendKubernetesCollectors(cols []prometheus.Collector) []prometheus.Collector {
-	k, err := collector.NewScraper("dokubernetes", config.kubernetes, nil, k8sWhitelist, collector.WithTimeout(defaultTimeout), collector.WithLogLevel(log.LevelDebug))
+	opts := []collector.Option{
+		collector.WithTimeout(defaultTimeout),
+		collector.WithLogLevel(log.LevelDebug),
+	}
+
+	if config.bearerToken != "" {
+		opts = append(opts, collector.WithBearerToken(config.bearerToken))
+	}
+
+	if config.bearerTokenFile != "" {
+		opts = append(opts, collector.WithBearerTokenFile(config.bearerTokenFile))
+	}
+
+	k, err := collector.NewScraper("dokubernetes", config.kubernetes, nil, k8sWhitelist, opts...)
 	if err != nil {
 		log.Error("Failed to initialize DO Kubernetes metrics: %+v", err)
 		return cols
