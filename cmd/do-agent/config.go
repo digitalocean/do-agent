@@ -45,6 +45,7 @@ var (
 		defaultMaxMetricLength int
 		promAddr               string
 		topK                   int
+		scrapeTimeout          time.Duration
 	}
 
 	// additionalParams is a list of extra command line flags to append
@@ -61,7 +62,6 @@ const internalProxyURL = "http://169.254.169.254"
 const (
 	defaultAuthURL          = internalProxyURL
 	defaultSonarURL         = ""
-	defaultTimeout          = 2 * time.Second
 	defaultWebListenAddress = "127.0.0.1:9100"
 )
 
@@ -132,6 +132,11 @@ func init() {
 		IntVar(&config.defaultMaxMetricLength)
 
 	kingpin.Flag("process-topk", "number of top processes to scrape").Default("30").IntVar(&config.topK)
+
+	kingpin.Flag("scrape-timeout", "timeout for scraping metrics").
+		Default("10s").
+		DurationVar(&config.scrapeTimeout)
+
 }
 
 func initConfig() {
@@ -258,7 +263,7 @@ func initCollectors() []prometheus.Collector {
 	}
 
 	if config.dbaas != "" {
-		k, err := collector.NewScraper("dodbaas", config.dbaas, nil, dbaasWhitelist, collector.WithTimeout(defaultTimeout))
+		k, err := collector.NewScraper("dodbaas", config.dbaas, nil, dbaasWhitelist, collector.WithTimeout(config.scrapeTimeout))
 		if err != nil {
 			log.Error("Failed to initialize DO DBaaS metrics collector: %+v", err)
 		} else {
@@ -267,7 +272,7 @@ func initCollectors() []prometheus.Collector {
 	}
 
 	if config.promAddr != "" {
-		k, err := collector.NewScraper("prometheus", config.promAddr, nil, nil, collector.WithTimeout(defaultTimeout))
+		k, err := collector.NewScraper("prometheus", config.promAddr, nil, nil, collector.WithTimeout(config.scrapeTimeout))
 		if err != nil {
 			log.Error("Failed to initialize generic metrics collector: %+v", err)
 		} else {
@@ -296,7 +301,7 @@ func initCollectors() []prometheus.Collector {
 // appendKubernetesCollectors appends a kubernetes metrics collector if it can be initialized successfully
 func appendKubernetesCollectors(cols []prometheus.Collector) []prometheus.Collector {
 	opts := []collector.Option{
-		collector.WithTimeout(defaultTimeout),
+		collector.WithTimeout(config.scrapeTimeout),
 		collector.WithLogLevel(log.LevelDebug),
 	}
 
