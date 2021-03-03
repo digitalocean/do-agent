@@ -368,7 +368,6 @@ function check_can_promote_github() {
 	force_release_enabled && return 0
 	announce "Checking the state of Github release $VERSION"
 	github_curl \
-		--fail \
 		-D /dev/stderr \
 		"$(github_release_url)" \
 		| jq -r '. | select(.prerelease == true) | "Found Release: \(.url)"' \
@@ -385,7 +384,6 @@ function promote_github() {
 
 	announce "Removing prerelease flag from '$VERSION' on Github"
 	github_curl \
-		--fail \
 		-i \
 		-X PATCH \
 		--data-binary '{"prerelease":false}' \
@@ -470,7 +468,6 @@ function github_asset_upload_url() {
 # get the base release url for VERSION
 function github_release_url() {
 	github_curl \
-		--fail \
 		"https://api.github.com/repos/digitalocean/do-agent/releases/tags/$VERSION" \
 		| jq -r '.url' \
 		| grep .
@@ -575,7 +572,6 @@ function quiet_docker_pull() {
 function github_curl() {
 	# if user and token are empty then bash will exit because of unbound vars
 	curl -SsL \
-		--fail \
 		-u "${GITHUB_AUTH_USER}:${GITHUB_AUTH_TOKEN}" \
 		"$@"
 }
@@ -632,12 +628,14 @@ function purge_repo_cache() {
 	EOF
 	)
 
-	curl -X DELETE \
+	curl -V -X DELETE \
 		-D /dev/stderr \
 		-H "Content-Type: application/json" \
 		-H "Authorization: Bearer ${DO_API_TOKEN}" \
 		--data-binary "${payload}" \
 		"https://api.digitalocean.com/v2/cdn/endpoints/${DO_SPACE_ID}/cache"
+
+	announce "Cache Purge Complete"
 }
 
 # send a slack notification or fallback to STDERR
