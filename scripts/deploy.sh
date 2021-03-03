@@ -388,7 +388,7 @@ function promote_github() {
 		-X PATCH \
 		--data-binary '{"prerelease":false}' \
 		"$(github_release_url)" \
-		| grep 'HTTP/1.1'
+		| grep 'HTTP/'
 }
 
 function check_can_promote_docker() {
@@ -441,7 +441,7 @@ function promote_docker() {
 function http_status_for() {
 	url=${1:-}
 	[ -z "$url" ] && abort "Usage: ${FUNCNAME[0]} <url>"
-	curl -LISsL "$url" | grep 'HTTP/1.1' | awk '{ print $2 }'
+	curl -LISsL "$url" | grep 'HTTP/' | awk '{ print $2 }'
 }
 
 # print the content type header for the provided file
