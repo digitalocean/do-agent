@@ -628,7 +628,7 @@ function purge_repo_cache() {
 	EOF
 	)
 
-	curl -V -X DELETE \
+	curl -v -X DELETE \
 		-D /dev/stderr \
 		-H "Content-Type: application/json" \
 		-H "Authorization: Bearer ${DO_API_TOKEN}" \
