@@ -19,6 +19,7 @@ var metricWhitelist = []string{
 	"node_network_transmit_bytes_total",
 
 	"node_memory_memtotal_bytes",
+	"node_memory_memavailable_bytes",
 	"node_memory_memfree_bytes",
 	"node_memory_cached_bytes",
 	"node_memory_swapcached_bytes",
