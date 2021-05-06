@@ -14,6 +14,7 @@ var nameConversions = map[string]string{
 	"node_memory_memtotal_bytes":           "sonar_memory_total",
 	"node_memory_memfree_bytes":            "sonar_memory_free",
 	"node_memory_cached_bytes":             "sonar_memory_cached",
+	"node_memory_memavailable_bytes":       "sonar_memory_available",
 	"node_memory_swapcached_bytes":         "sonar_memory_swap_cached",
 	"node_memory_swapfree_bytes":           "sonar_memory_swap_free",
 	"node_memory_swaptotal_bytes":          "sonar_memory_swap_total",
