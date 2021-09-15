@@ -134,7 +134,7 @@ func init() {
 	kingpin.Flag("process-topk", "number of top processes to scrape").Default("30").IntVar(&config.topK)
 
 	kingpin.Flag("scrape-timeout", "timeout for scraping metrics").
-		Default("10s").
+		Default("30s").
 		DurationVar(&config.scrapeTimeout)
 
 }
