@@ -167,4 +167,5 @@ function abort() {
 }
 
 
-# leave this last to prevent any part
+# leave this last to prevent any partial execution
+main
