@@ -37,7 +37,7 @@ function main() {
 		debian|ubuntu)
 			install_apt
 			;;
-		centos|cloudlinux|fedora|almalinux)
+		centos|cloudlinux|fedora|almalinux|rocky)
 			install_rpm
 			;;
 		*)
@@ -116,7 +116,7 @@ function check_dist() {
 	dist=$(echo "${dist}" | tr '[:upper:]' '[:lower:]')
 
 	case "${dist}" in
-		debian|ubuntu|centos|fedora)
+		debian|ubuntu|centos|fedora|rocky)
 			echo "OK"
 			;;
 		cloudlinux|almalinux)
