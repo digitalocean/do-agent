@@ -571,7 +571,7 @@ function quiet_docker_pull() {
 # call CURL with github authentication
 function github_curl() {
 	# if user and token are empty then bash will exit because of unbound vars
-	curl -SsL \
+	curl -SL \
 		-u "${GITHUB_AUTH_USER}:${GITHUB_AUTH_TOKEN}" \
 		"$@"
 }
