@@ -11,9 +11,6 @@ var k8sWhitelist = map[string]bool{
 
 	"kube_statefulset_replicas":              true,
 	"kube_statefulset_status_replicas_ready": true,
-
-	"kube_node_status_allocatable": true,
-	"kube_node_status_capacity":    true,
 }
 
 var dbaasWhitelist = map[string]bool{
