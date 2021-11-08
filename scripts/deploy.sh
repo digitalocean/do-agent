@@ -490,7 +490,8 @@ function rm_old_assets() {
 # create a github release for VERSION
 function create_github_release() {
 	announce "Checking for existing Github release"
-	if github_release_url >/dev/null; then
+	release_url=$(github_release_url)
+	if [ "$release_url" != "null" ]; then
 		echo "Github release exists $VERSION"
 		# we cannot upload the same asset twice so we have to delete
 		# the old assets before we can commense with uploads
@@ -571,7 +572,7 @@ function quiet_docker_pull() {
 # call CURL with github authentication
 function github_curl() {
 	# if user and token are empty then bash will exit because of unbound vars
-	curl -SL \
+	curl -sSL \
 		-u "${GITHUB_AUTH_USER}:${GITHUB_AUTH_TOKEN}" \
 		"$@"
 }
