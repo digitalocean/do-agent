@@ -34,13 +34,13 @@ func SetLevel(l Level) {
 
 // InitSyslog initializes logging to syslog
 func InitSyslog() (err error) {
-	dl, err := syslog.NewLogger(syslog.LOG_NOTICE, syslogFlags)
+	dl, err := syslog.NewLogger(syslog.LOG_NOTICE|syslog.LOG_SYSLOG, syslogFlags)
 	if err != nil {
 		return fmt.Errorf("InitSyslog failed to initialize debug logger: %+v", err)
 	}
 	debuglog = dl
 
-	el, err := syslog.NewLogger(syslog.LOG_ERR, syslogFlags)
+	el, err := syslog.NewLogger(syslog.LOG_ERR|syslog.LOG_SYSLOG, syslogFlags)
 	if err != nil {
 		return fmt.Errorf("InitSyslog failed to initialize error logger: %+v", err)
 	}
