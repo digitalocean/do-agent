@@ -12,7 +12,7 @@ SPACES_BUCKET_NAME="${SPACES_BUCKET_NAME:-}"
 SPACES_REGION="${SPACES_REGION:-}"
 SPACES_HOST="${SPACES_REGION}.digitaloceanspaces.com"
 APT_AGENT_PACKAGING_IMAGE=docker.internal.digitalocean.com/eng-insights/agent-packager-apt:latest
-YUM_AGENT_PACKAGING_IMAGE=docker.internal.digitalocean.com/eng-insights/agent-packager-yum:latest
+YUM_AGENT_PACKAGING_IMAGE=docker.internal.digitalocean.com/eng-insights/agent-packager-yum:3cb22c8
 
 FORCE_RELEASE=${FORCE_RELEASE:-0}
 REMOTES=${REMOTES:-docker,github,spaces}
@@ -25,9 +25,9 @@ CI_LOG_URL=""
 function usage() {
 	cat <<-EOF
 	NAME:
-	
+
 	  $ME
-	
+
 	SYNOPSIS:
 
 	  $ME <cmd>
@@ -38,7 +38,7 @@ function usage() {
 	    to Github, docker.io, and apt/yum repositories.
 
 	ENVIRONMENT:
-		
+
 	    VERSION (required)
 	        The version to publish
 	        Example: 1.0.9
@@ -54,7 +54,7 @@ function usage() {
 
 	    SPACES_BUCKET_NAME, SPACES_REGION (required for spaces)
 	        DigitalOcean Spaces bucket information to sync
-	
+
 	    GPG_PRIVATE_KEY_FILE (required for spaces)
 	        Private GPG key to use to sign the packages for pushing to Spaces
 
