@@ -34,6 +34,13 @@ var dbaasAggregationSpec = map[string][]string{
 	"mysql_handler_read_prev":     {"innodb_buffer_pool_load_status", "innodb_buffer_pool_dump_status"},
 	"mysql_handler_read_rnd":      {"innodb_buffer_pool_load_status", "innodb_buffer_pool_dump_status"},
 	"mysql_handler_read_rnd_next": {"innodb_buffer_pool_load_status", "innodb_buffer_pool_dump_status"},
+
+	"kafka_log_Log_Size_Value":                                        {"partition"},
+	"kafka_server_BrokerTopicMetrics_BytesInPerSec_Count":             {"topic"},
+	"kafka_server_BrokerTopicMetrics_BytesOutPerSec_Count":            {"topic"},
+	"kafka_server_BrokerTopicMetrics_MessagesInPerSec_Count":          {"topic"},
+	"kafka_server_BrokerTopicMetrics_ReplicationBytesInPerSec_Count":  {"topic"},
+	"kafka_server_BrokerTopicMetrics_ReplicationBytesOutPerSec_Count": {"topic"},
 }
 
 var k8sAggregationSpec = map[string][]string{

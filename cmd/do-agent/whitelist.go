@@ -21,12 +21,15 @@ var dbaasWhitelist = map[string]bool{
 	"postgresql_pg_stat_database_deadlocks":        true,
 	"postgresql_pg_stat_replication_bytes_diff":    true,
 	"postgresql_pg_stat_user_tables_idx_scan":      true,
+	"postgresql_pg_stat_user_tables_seq_scan":      true,
 	"postgresql_pg_stat_user_tables_n_tup_ins":     true,
 	"postgresql_pg_stat_user_tables_n_tup_upd":     true,
-	"postgresql_pg_stat_user_tables_seq_scan":      true,
 	"postgresql_pg_stat_user_tables_n_tup_del":     true,
 	"postgresql_pg_stat_user_tables_idx_tup_fetch": true,
 	"postgresql_pg_stat_user_tables_seq_tup_read":  true,
+	"postgresql_pg_stat_database_xact_commit":      true,
+	"postgresql_pg_stat_database_xact_rollback":    true,
+	"postgresql_database_size_database_size ":      true,
 
 	"mysql_threads_created":   true,
 	"mysql_threads_connected": true,
@@ -55,6 +58,14 @@ var dbaasWhitelist = map[string]bool{
 	"mysql_perf_schema_table_io_waits_seconds_total_update": true,
 	"mysql_perf_schema_table_io_waits_seconds_total_delete": true,
 
+	"mysql_innodb_buffer_pool_reads":         true,
+	"mysql_innodb_buffer_pool_read_requests": true,
+	"mysql_innodb_data_written":              true,
+
+	"mysql_questions":                true,
+	"mysql_slow_queries":             true,
+	"mysql_global_connection_memory": true,
+
 	"redis_total_connections_received": true,
 	"redis_rejected_connections":       true,
 	"redis_evicted_keys":               true,
@@ -65,4 +76,28 @@ var dbaasWhitelist = map[string]bool{
 	"redis_used_memory":                true,
 	"redis_connected_slaves":           true,
 	"redis_clients":                    true,
+	"redis_total_commands_processed":   true,
+	"redis_uptime":                     true,
+	"redis_replication_lag":            true,
+	"redis_replication_offset":         true,
+
+	"kafka_log_Log_Size_Value": true,
+
+	"kafka_server_BrokerTopicMetrics_BytesInPerSec_Count":             true,
+	"kafka_server_BrokerTopicMetrics_BytesOutPerSec_Count":            true,
+	"kafka_server_BrokerTopicMetrics_MessagesInPerSec_Count":          true,
+	"kafka_server_BrokerTopicMetrics_ReplicationBytesInPerSec_Count":  true,
+	"kafka_server_BrokerTopicMetrics_ReplicationBytesOutPerSec_Count": true,
+	"kafka_server_KafkaServer_linux_disk_read_bytes_Value":            true,
+	"kafka_server_KafkaServer_linux_disk_write_bytes_Value":           true,
+	"kafka_server_ReplicaManager_UnderReplicatedPartitions_Value":     true,
+
+	"kafka_network_RequestMetrics_RequestsPerSec_Count":    true,
+	"kafka_network_RequestChannel_ResponseQueueSize_Value": true,
+	"kafka_network_RequestMetrics_TotalTimeMs_Count":       true,
+
+	"kafka_controller_KafkaController_ActiveControllerCount_Value":          true,
+	"kafka_controller_KafkaController_OfflinePartitionsCount_Value":         true,
+	"kafka_controller_KafkaController_PreferredReplicaImbalanceCount_Value": true,
+	"kafka_controller_ControllerStats_LeaderElectionRateAndTimeMs_Count":    true,
 }
