@@ -29,7 +29,7 @@ var dbaasWhitelist = map[string]bool{
 	"postgresql_pg_stat_user_tables_seq_tup_read":  true,
 	"postgresql_pg_stat_database_xact_commit":      true,
 	"postgresql_pg_stat_database_xact_rollback":    true,
-	"postgresql_database_size_database_size ":      true,
+	"postgresql_database_size_database_size":       true,
 
 	"mysql_threads_created":   true,
 	"mysql_threads_connected": true,
