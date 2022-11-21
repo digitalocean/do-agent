@@ -245,7 +245,7 @@ $(tar_package): $(base_package)
 sonar-agent.key: .vault-token
 	$(print)
 	$(mkdir)
-	$(vault) read --field gpg secret/agent/packager/key > $@
+	$(vault) read --field gpg secret/agent/packager/key_current > $@
 
 .PHONY: deploy
 deploy: .id_rsa sonar-agent.key
