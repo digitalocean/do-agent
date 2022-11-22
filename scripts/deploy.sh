@@ -11,8 +11,8 @@ LOCAL_SPACES_DIR="$PROJECT_ROOT/remote"
 SPACES_BUCKET_NAME="${SPACES_BUCKET_NAME:-}"
 SPACES_REGION="${SPACES_REGION:-}"
 SPACES_HOST="${SPACES_REGION}.digitaloceanspaces.com"
-APT_AGENT_PACKAGING_IMAGE=docker.internal.digitalocean.com/eng-insights/agent-packager-apt:1548623
-YUM_AGENT_PACKAGING_IMAGE=docker.internal.digitalocean.com/eng-insights/agent-packager-yum:1548623
+APT_AGENT_PACKAGING_IMAGE=docker.internal.digitalocean.com/eng-insights/agent-packager-apt:dcc9481
+YUM_AGENT_PACKAGING_IMAGE=docker.internal.digitalocean.com/eng-insights/agent-packager-yum:dcc9481
 
 FORCE_RELEASE=${FORCE_RELEASE:-0}
 REMOTES=${REMOTES:-docker,github,spaces}
