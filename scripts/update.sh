@@ -15,6 +15,7 @@ main() {
 		apt-get -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" -qq install -y --only-upgrade do-agent
 	elif command -v yum 2&>/dev/null; then
 		rpm --import "${REPO_GPG_KEY_CURRENT}"
+		sed -i 's/gpgkey=https:\/\/repos.insights.digitalocean.com\/sonar-agent.asc/gpgkey=https:\/\/repos.insights.digitalocean.com\/sonar-agent-current.asc/' /etc/yum.repos.d/digitalocean-agent.repo
 		yum -q -y --disablerepo="*" --enablerepo="digitalocean-agent" makecache
 		yum -q -y update do-agent
 	fi
