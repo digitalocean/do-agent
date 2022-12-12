@@ -2,8 +2,8 @@ package roundtrippers
 
 import (
 	"fmt"
-	"io/ioutil"
 	"net/http"
+	"os"
 	"strings"
 )
 
@@ -14,7 +14,7 @@ type bearerTokenFileRoundTripper struct {
 
 // RoundTrip implements http.RoundTripper's interface
 func (rt *bearerTokenFileRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
-	t, err := ioutil.ReadFile(rt.tokenFile)
+	t, err := os.ReadFile(rt.tokenFile)
 	if err != nil {
 		return nil, fmt.Errorf("unable to read bearer token file %s: %s", rt.tokenFile, err)
 	}

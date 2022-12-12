@@ -8,7 +8,6 @@ server.
 Wharf responds with a rate-limit value which the client must wait that many seconds
 or longer before submitting the next batch of metrics -- this is exposed via the WaitDuration()
 method.
-
 */
 package tsclient
 
@@ -19,7 +18,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"math/rand"
 	"net"
 	"net/http"
@@ -551,14 +549,14 @@ func (c *HTTPClient) httpGet(url, authToken string) (string, error) {
 		return "", &UnexpectedHTTPStatusError{StatusCode: resp.StatusCode}
 	}
 
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return "", err
 	}
 	return string(body), nil
 }
 
-//{"success":true,"frequency":60,"max_metrics":1000,"max_lfm":512}
+// {"success":true,"frequency":60,"max_metrics":1000,"max_lfm":512}
 type sonarResponse struct {
 	Success          bool  `json:"success"`
 	FrequencySeconds int32 `json:"frequency"`

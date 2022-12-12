@@ -1,0 +1,22 @@
+name: Go
+on:
+  push:
+    tags:
+    branches:
+      - master
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Build
+        run: make build
+      - name: Test
+        run: make test
+      - name: Shellcheck
+        run: make shell
+      - name: Lint
+        run: make lint
+
