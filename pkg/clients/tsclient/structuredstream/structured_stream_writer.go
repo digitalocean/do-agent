@@ -48,7 +48,7 @@ func (s *Writer) WriteUint16PrefixedString(x string) {
 
 // WriteUnixTime64UTC writes a time as unix epoch in UTC; sub-second accuracy is truncated
 func (s *Writer) WriteUnixTime64UTC(x time.Time) {
-	s.Write(int64(x.UTC().Unix()))
+	s.Write(x.UTC().Unix())
 }
 
 // Error returns any errors the occurred since the writer was first constructed

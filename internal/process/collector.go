@@ -10,7 +10,6 @@ import (
 
 type processCollector struct {
 	collectFn func(chan<- prometheus.Metric)
-	cpuTotal  *prometheus.Desc
 	rss       *prometheus.Desc
 }
 
@@ -58,7 +57,7 @@ func (c *processCollector) processCollect(ch chan<- prometheus.Metric) {
 	}
 
 	for _, proc := range procs {
-		stat, err := proc.NewStat()
+		stat, err := proc.Stat()
 		if err != nil {
 			return
 		}

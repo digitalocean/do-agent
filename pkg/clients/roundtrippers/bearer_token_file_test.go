@@ -32,9 +32,7 @@ func Test_bearerTokenFileRoundTripper_RoundTrip_Happy_Path(t *testing.T) {
 func Test_bearerTokenFileRoundTripper_RoundTrip_Missing_File(t *testing.T) {
 	rt := NewBearerTokenFile(invalidTokenPath, http.DefaultTransport)
 
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		return
-	}))
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
 	defer ts.Close()
 
 	_, err := rt.RoundTrip(httptest.NewRequest(http.MethodGet, ts.URL, nil))

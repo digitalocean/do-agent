@@ -1,0 +1,27 @@
+run:
+  skip-files:
+    - ".*_test.go"
+
+linters:
+  disable-all: true
+  enable:
+    - dupl
+    - goconst
+    - gocyclo
+    - gofmt
+    - gosec
+    - ineffassign
+    - misspell
+    - nakedret
+    - prealloc
+    - revive
+    - unconvert
+    - unparam
+    - unused
+    - vet
+    - gosec
+
+issues:
+  exclude:
+    - G404
+    - G114
