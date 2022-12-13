@@ -17,7 +17,6 @@ BETA=${BETA:-0}
 
 REPO_HOST=https://repos.insights.digitalocean.com
 REPO_GPG_KEY=${REPO_HOST}/sonar-agent.asc
-REPO_GPG_KEY_CURRENT=${REPO_HOST}/sonar-agent-current.asc
 
 repo="do-agent"
 [ "${UNSTABLE}" != 0 ] && repo="do-agent-unstable"
@@ -66,7 +65,6 @@ function install_apt() {
 	echo "deb ${REPO_HOST}/apt/${repo} main main" > /etc/apt/sources.list.d/digitalocean-agent.list
 	echo -n "Installing gpg key..."
 	curl -sL "${REPO_GPG_KEY}" | apt-key add -
-	curl -sL "${REPO_GPG_KEY_CURRENT}" | apt-key add -
 	wait_for_apt && apt-get -qq update -o Dir::Etc::SourceParts=/dev/null -o APT::Get::List-Cleanup=no -o Dir::Etc::SourceList="sources.list.d/digitalocean-agent.list"
 	wait_for_apt && apt-get -qq install -y do-agent
 }
@@ -91,8 +89,6 @@ function install_rpm() {
 	sslcacert=/etc/pki/tls/certs/ca-bundle.crt
 	metadata_expire=300
 	EOF
-
-	rpm --import "${REPO_GPG_KEY_CURRENT}"
 
 	yum --disablerepo="*" --enablerepo="digitalocean-agent" makecache
 	yum install -y do-agent
