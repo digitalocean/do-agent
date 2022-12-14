@@ -3,17 +3,32 @@
 GOOS       ?= linux
 GOARCH     ?= amd64
 
+############
+## macros ##
+############
+now          = $(shell date -u)
+go_version   = $(shell sed -En 's/^go[[:space:]]+([[:digit:].]+)$$/\1/p' go.mod)
+git_rev      = $(shell git rev-parse --short HEAD)
+git_tag      = $(subst v,,$(shell git describe --tags --abbrev=0))
+VERSION     ?= $(git_tag)
+print        = @printf "\n:::::::::::::::: [$(shell date -u) | $(VERSION)] $@ ::::::::::::::::\n"
+
+###########
+## paths ##
+###########
 out           := target
 package_dir   := $(out)/pkg
 cache         := $(out)/.cache
 docker_dir    := /home/do-agent
+project       := $(notdir $(CURDIR))#project name
+binary        := $(out)/$(project)-$(GOOS)-$(GOARCH)
+gofiles       := $(shell find -type f -iname '*.go' ! -path './vendor/*')
 shellscripts  := $(shell find -type f -iname '*.sh' ! -path './repos/*' ! -path './vendor/*' ! -path './.git/*')
-go_version    := $(shell sed -En 's/^go[[:space:]]+([[:digit:].]+)$$/\1/p' go.mod)
-print         = @printf "\n:::::::::::::::: [$(shell date -u)] $@ ::::::::::::::::\n"
+vendorgofiles := $(shell find -type f -iname '*.go' -path './vendor/*')
 
-go = \
-	docker run --rm -i \
-	-u "$(shell id -u):$(shell id -g)" \
+ifneq ($(DOCKER_BUILD),1)
+go = docker run --rm -i \
+	-u "$(shell id -u)" \
 	-e "GOOS=$(GOOS)" \
 	-e "GOARCH=$(GOARCH)" \
 	-e "GO111MODULE=on" \
@@ -23,6 +38,21 @@ go = \
 	-w "$(docker_dir)" \
 	golang:$(go_version) \
 	go
+else
+go = GOOS=$(GOOS) \
+	GOARCH=$(GOARCH) \
+	GO111MODULE=on \
+	GOFLAGS=-mod=vendor \
+	GOCACHE=$(docker_dir)/target/.cache/go \
+	$(shell which go)
+endif
+
+ldflags = '\
+	-s -w \
+	-X "main.version=$(VERSION)" \
+	-X "main.revision=$(git_rev)" \
+	-X "main.buildDate=$(now)" \
+'
 
 shellcheck = \
 	docker run --rm -i \
@@ -39,6 +69,9 @@ linter = \
 	-v "$(CURDIR):$(docker_dir)" \
 	golangci/golangci-lint:v1.50.1
 
+#############
+## targets ##
+#############
 clean:
 	$(print)
 	rm -rf ./target
@@ -47,9 +80,10 @@ test:
 	$(print)
 	$(go) test -v ./...
 
-build:
+build: $(binary)
+$(binary): $(gofiles) $(vendorgofiles)
 	$(print)
-	$(go) build -v ./...
+	$(go) build -ldflags $(ldflags) -o "$(docker_dir)/$@" ./cmd/$(project)
 
 shell:
 	$(print)
