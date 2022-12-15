@@ -25,6 +25,18 @@ main() {
 	userdel -f do-agent || true
 	useradd -s /bin/false -M --system $USERNAME || true
 
+	# TODO remove this if in next release
+	# temporarily download keys in a GPG keyring for debian based systems.
+	if command -v apt-get >/dev/null 2>&1; then
+		REPO_HOST=https://repos.insights.digitalocean.com
+		REPO_GPG_KEY=${REPO_HOST}/sonar-agent.asc
+		deb_list=/etc/apt/sources.list.d/digitalocean-agent.list
+		deb_keyfile=/usr/share/keyrings/digitalocean-agent-keyring.gpg
+		repo="do-agent"
+		echo "deb [signed-by=${deb_keyfile}] ${REPO_HOST}/apt/${repo} main main" >"${deb_list}" || true
+		curl -sL "${REPO_GPG_KEY}" | gpg --dearmor >"${deb_keyfile}" || true
+	fi
+
 	if command -v systemctl >/dev/null 2>&1; then
 		# systemd is used, remove the upstart script
 		rm -f "${INIT_SVC_FILE}"
