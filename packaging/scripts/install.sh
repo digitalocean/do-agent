@@ -24,6 +24,7 @@ repo="do-agent"
 
 dist="unknown"
 deb_list=/etc/apt/sources.list.d/digitalocean-agent.list
+deb_keyfile=/usr/share/keyrings/digitalocean-agent-keyring.gpg
 rpm_repo=/etc/yum.repos.d/digitalocean-agent.repo
 
 function main() {
@@ -62,9 +63,9 @@ function install_apt() {
 	echo "Installing apt repository..."
 	wait_for_apt && ( apt-get -qq update || true )
 	wait_for_apt && apt-get -qq install -y ca-certificates gnupg2 apt-utils apt-transport-https curl
-	echo "deb ${REPO_HOST}/apt/${repo} main main" > /etc/apt/sources.list.d/digitalocean-agent.list
+	echo "deb [signed-by=${deb_keyfile}] ${REPO_HOST}/apt/${repo} main main" >"${deb_list}"
 	echo -n "Installing gpg key..."
-	curl -sL "${REPO_GPG_KEY}" | apt-key add -
+	curl -sL "${REPO_GPG_KEY}" | gpg --dearmor >"${deb_keyfile}"
 	wait_for_apt && apt-get -qq update -o Dir::Etc::SourceParts=/dev/null -o APT::Get::List-Cleanup=no -o Dir::Etc::SourceList="sources.list.d/digitalocean-agent.list"
 	wait_for_apt && apt-get -qq install -y do-agent
 }
