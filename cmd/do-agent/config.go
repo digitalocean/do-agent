@@ -103,7 +103,7 @@ func init() {
 		StringVar(&config.bearerTokenFile)
 
 	kingpin.Flag("no-collector.processes", "disable processes cpu/memory collection").
-		Default("true").
+		Default("false").
 		BoolVar(&config.noProcesses)
 
 	kingpin.Flag("no-collector.node", "disable processes node collection").
