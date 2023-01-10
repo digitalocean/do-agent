@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"hash/fnv"
 	"net/url"
 	"os"
 	"strings"
@@ -63,6 +64,8 @@ const (
 	defaultAuthURL          = internalProxyURL
 	defaultSonarURL         = ""
 	defaultWebListenAddress = "127.0.0.1:9100"
+
+	processScrapingDropletPct = 10
 )
 
 var defaultMetadataURL = fmt.Sprintf("%s/metadata", internalProxyURL)
@@ -163,6 +166,24 @@ func checkConfig() error {
 	}
 
 	return nil
+}
+
+func toggleGradualRollouts() {
+	hostname, err := os.Hostname()
+	if err != nil {
+		return
+	}
+
+	hash := fnv.New64a()
+	_, err = hash.Write([]byte(hostname))
+	if err != nil {
+		return
+	}
+
+	if hash.Sum64()%100 <= processScrapingDropletPct {
+		log.Debug("Enabling process scraping")
+		config.noProcesses = false
+	}
 }
 
 func initWriter(wc *prometheus.CounterVec) (metricWriter, limiter) {

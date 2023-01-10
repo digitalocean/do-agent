@@ -26,6 +26,7 @@ func main() {
 		log.Fatal("configuration failure: %+v", err)
 	}
 
+	toggleGradualRollouts()
 	cols := initCollectors()
 	reg := prometheus.NewRegistry()
 	reg.MustRegister(cols...)
