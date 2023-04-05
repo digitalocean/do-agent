@@ -41,7 +41,7 @@ require (
 	go.uber.org/multierr v1.5.0 // indirect
 	golang.org/x/net v0.0.0-20201021035429-f5854403a974 // indirect
 	golang.org/x/sync v0.0.0-20201020160332-67f06af15bc9 // indirect
-	golang.org/x/sys v0.0.0-20200930185726-fdedc70b468f // indirect
+	golang.org/x/sys v0.1.0 // indirect
 	google.golang.org/protobuf v1.22.0 // indirect
 	gopkg.in/yaml.v2 v2.3.0 // indirect
 )
