@@ -65,7 +65,7 @@ const (
 	defaultSonarURL         = ""
 	defaultWebListenAddress = "127.0.0.1:9100"
 
-	processScrapingDropletPct = 10
+	processScrapingDropletPct = 50
 )
 
 var defaultMetadataURL = fmt.Sprintf("%s/metadata", internalProxyURL)
