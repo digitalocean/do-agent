@@ -117,7 +117,7 @@ func init() {
 	kingpin.Flag("dbaas-metrics-path", "enable DO DBAAS metrics collection (this must be a DO DBAAS metrics endpoint)").
 		StringVar(&config.dbaas)
 
-	kingpin.Flag("mongodb-metrics-path", "enable mongodb metrics collection").
+	kingpin.Flag("mongodb-metrics-path", "enable DO DBAAS MongoDB metrics collection (this must be a DO DBAAS metrics endpoint)").
 		StringVar(&config.mongodb)
 
 	kingpin.Flag("metrics-path", "enable metrics collection from a prometheus endpoint").
