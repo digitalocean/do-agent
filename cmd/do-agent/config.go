@@ -234,6 +234,13 @@ func initAggregatorSpecs() map[string][]string {
 		}
 	}
 
+	if config.mongodb != "" {
+		for k, v := range mongoAggregationSpec {
+			aggregateSpecs[k] = append(aggregateSpecs[k], v...)
+		}
+
+	}
+
 	if config.kubernetes != "" {
 		for k, v := range k8sAggregationSpec {
 			aggregateSpecs[k] = append(aggregateSpecs[k], v...)
@@ -291,6 +298,15 @@ func initCollectors() []prometheus.Collector {
 		k, err := collector.NewScraper("dodbaas", config.dbaas, nil, dbaasWhitelist, collector.WithTimeout(config.scrapeTimeout))
 		if err != nil {
 			log.Error("Failed to initialize DO DBaaS metrics collector: %+v", err)
+		} else {
+			cols = append(cols, k)
+		}
+	}
+
+	if config.mongodb != "" {
+		k, err := collector.NewScraper("mongodb", config.mongodb, nil, dbaasWhitelist, collector.WithTimeout(config.scrapeTimeout))
+		if err != nil {
+			log.Error("Failed to initialize DO DBaaS MongoDB metrics collector: %+v", err)
 		} else {
 			cols = append(cols, k)
 		}
