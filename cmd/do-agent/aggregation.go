@@ -56,3 +56,7 @@ var k8sAggregationSpec = map[string][]string{
 	"kube_statefulset_replicas":              {"statefulset", "namespace"},
 	"kube_statefulset_status_replicas_ready": {"statefulset", "namespace"},
 }
+
+var mongoAggregationSpec = map[string][]string{
+	"mongodb_data_usage_percentage": {"cluster_uuid"},
+}
