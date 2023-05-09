@@ -58,5 +58,5 @@ var k8sAggregationSpec = map[string][]string{
 }
 
 var mongoAggregationSpec = map[string][]string{
-	"mongodb_data_usage_percentage": {"cluster_uuid"},
+	"mongoagent_data_usage_percentage": {"cluster_uuid"},
 }
