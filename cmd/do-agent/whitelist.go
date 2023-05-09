@@ -31,7 +31,7 @@ var dbaasWhitelist = map[string]bool{
 	"postgresql_pg_stat_database_xact_rollback":    true,
 	"postgresql_database_size_database_size":       true,
 
-	"mongodb_data_usage_percentage": true,
+	"mongoagent_data_usage_percentage": true,
 
 	"mysql_threads_created":   true,
 	"mysql_threads_connected": true,
