@@ -105,6 +105,7 @@ var dbaasWhitelist = map[string]bool{
 	"kafka_network_RequestChannel_ResponseQueueSize_Value": true,
 	"kafka_network_RequestMetrics_TotalTimeMs_Count":       true,
 
+	"kafka_controller_KafkaController_ActiveBrokerCount_Value":              true,
 	"kafka_controller_KafkaController_ActiveControllerCount_Value":          true,
 	"kafka_controller_KafkaController_OfflinePartitionsCount_Value":         true,
 	"kafka_controller_KafkaController_PreferredReplicaImbalanceCount_Value": true,
