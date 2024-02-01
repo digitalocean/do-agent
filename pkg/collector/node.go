@@ -5,7 +5,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/go-kit/kit/log"
+	"github.com/digitalocean/do-agent/internal/log"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	dto "github.com/prometheus/client_model/go"
@@ -47,7 +47,7 @@ var metricWhitelist = []string{
 
 // NewNodeCollector creates a new prometheus NodeCollector
 func NewNodeCollector() (*NodeCollector, error) {
-	c, err := collector.NewNodeCollector(log.NewNopLogger())
+	c, err := collector.NewNodeCollector(log.GetCollectorLogger())
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create NodeCollector")
 	}

@@ -5,6 +5,10 @@ import (
 	"log"
 	"log/syslog"
 	"os"
+	"regexp"
+	"strings"
+
+	kitlog "github.com/go-kit/kit/log"
 )
 
 // Level is a log level such a Debug or Error
@@ -24,8 +28,29 @@ var (
 	debuglog = log.New(os.Stdout, "DEBUG: ", normalFlags)
 	errlog   = log.New(os.Stderr, "ERROR: ", normalFlags)
 
+	kitlogLogger  = kitlog.NewNopLogger()
+	kitlogTrimmer = regexp.MustCompile("level=[a-zA-Z]+")
+	kitlogDebug   = kitlog.NewLogfmtLogger(CollectorWriter{debuglog, kitlogTrimmer})
+
 	level = LevelError
 )
+
+// CollectorWriter implements io.Writer.
+type CollectorWriter struct {
+	stdlog       *log.Logger
+	trimmerRegex *regexp.Regexp
+}
+
+// Write implements io.Writer.
+func (w CollectorWriter) Write(p []byte) (int, error) {
+	out := strings.TrimSpace(string(w.trimmerRegex.ReplaceAll(p, []byte{})))
+	// Adjust the calldepth to account for the kitlog frames
+	err := w.stdlog.Output(5, out)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "ERROR writing log output: %+v", err)
+	}
+	return len(p), nil
+}
 
 // SetLevel sets the log level
 func SetLevel(l Level) {
@@ -73,4 +98,11 @@ func Fatal(msg string, params ...interface{}) {
 		fmt.Fprintf(os.Stderr, "ERROR writing log output: %+v", err)
 	}
 	os.Exit(1)
+}
+
+func GetCollectorLogger() kitlog.Logger {
+	if level > LevelDebug {
+		return kitlogLogger
+	}
+	return kitlogDebug
 }
