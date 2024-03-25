@@ -26,7 +26,7 @@ require (
 	github.com/ema/qdisc v0.0.0-20190904071900-b82c76788043 // indirect
 	github.com/go-logfmt/logfmt v0.5.0 // indirect
 	github.com/godbus/dbus v0.0.0-20190402143921-271e53dc4968 // indirect
-	github.com/golang/protobuf v1.4.3 // indirect
+	github.com/golang/protobuf v1.5.0 // indirect
 	github.com/hodgesds/perf-utils v0.0.8 // indirect
 	github.com/lufia/iostat v1.1.0 // indirect
 	github.com/mattn/go-xmlrpc v0.0.3 // indirect
@@ -42,7 +42,7 @@ require (
 	golang.org/x/net v0.7.0 // indirect
 	golang.org/x/sync v0.0.0-20201207232520-09787c993a3a // indirect
 	golang.org/x/sys v0.5.0 // indirect
-	google.golang.org/protobuf v1.26.0-rc.1 // indirect
+	google.golang.org/protobuf v1.33.0 // indirect
 	gopkg.in/yaml.v2 v2.3.0 // indirect
 )
 
