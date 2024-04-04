@@ -64,9 +64,10 @@ var dbaasWhitelist = map[string]bool{
 	"mysql_innodb_buffer_pool_read_requests": true,
 	"mysql_innodb_data_written":              true,
 
-	"mysql_questions":                true,
-	"mysql_slow_queries":             true,
-	"mysql_global_connection_memory": true,
+	"mysql_questions":                   true,
+	"mysql_slow_queries":                true,
+	"mysql_global_connection_memory":    true,
+	"mysql_slave_seconds_behind_master": true,
 
 	"redis_total_connections_received": true,
 	"redis_rejected_connections":       true,
