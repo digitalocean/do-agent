@@ -41,6 +41,41 @@ var dbaasAggregationSpec = map[string][]string{
 	"kafka_server_brokertopicmetrics_messagesinpersec_count":          {"topic"},
 	"kafka_server_brokertopicmetrics_replicationbytesinpersec_count":  {"topic"},
 	"kafka_server_brokertopicmetrics_replicationbytesoutpersec_count": {"topic"},
+
+	"opensearch_cluster_health_active_shards":         {"name"},
+	"opensearch_cluster_health_relocating_shards":     {"name"},
+	"opensearch_cluster_health_unassigned_shards":     {"name"},
+	"opensearch_cluster_health_number_of_nodes":       {"name"},
+	"opensearch_cluster_health_active_primary_shards": {"name"},
+
+	"opensearch_clusterstats_indices_count":               {"cluster_name"},
+	"opensearch_clusterstats_indices_store_size_in_bytes": {"cluster_name"},
+	"opensearch_clusterstats_indices_docs_count":          {"cluster_name"},
+	"opensearch_clusterstats_indices_docs_deleted":        {"cluster_name"},
+
+	"opensearch_indices_search_scroll_total":           {"node_host", "node_attribute_zone", "cluster_name"},
+	"opensearch_indices_search_scroll_time_in_millis":  {"node_host", "node_attribute_zone", "cluster_name"},
+	"opensearch_indices_search_query_total":            {"node_host", "node_attribute_zone", "cluster_name"},
+	"opensearch_indices_search_query_time_in_millis":   {"node_host", "node_attribute_zone", "cluster_name"},
+	"opensearch_indices_indexing_index_total":          {"node_host", "node_attribute_zone", "cluster_name"},
+	"opensearch_indices_indexing_index_time_in_millis": {"node_host", "node_attribute_zone", "cluster_name"},
+	"opensearch_indices_merges_total":                  {"node_host", "node_attribute_zone", "cluster_name"},
+	"opensearch_indices_merges_total_time_in_millis":   {"node_host", "node_attribute_zone", "cluster_name"},
+	"opensearch_indices_refresh_total":                 {"node_host", "node_attribute_zone", "cluster_name"},
+	"opensearch_indices_refresh_total_time_in_millis":  {"node_host", "node_attribute_zone", "cluster_name"},
+	"opensearch_indices_search_fetch_total":            {"node_host", "node_attribute_zone", "cluster_name"},
+	"opensearch_indices_search_fetch_time_in_millis":   {"node_host", "node_attribute_zone", "cluster_name"},
+	"opensearch_indices_search_suggest_total":          {"node_host", "node_attribute_zone", "cluster_name"},
+	"opensearch_indices_search_suggest_time_in_millis": {"node_host", "node_attribute_zone", "cluster_name"},
+	"opensearch_indices_query_cache_cache_size":        {"node_host", "node_attribute_zone", "cluster_name"},
+	"opensearch_indices_query_cache_hit_count":         {"node_host", "node_attribute_zone", "cluster_name"},
+	"opensearch_indices_query_cache_miss_count":        {"node_host", "node_attribute_zone", "cluster_name"},
+	"opensearch_indices_query_cache_evictions":         {"node_host", "node_attribute_zone", "cluster_name"},
+
+	"opensearch_jvm_mem_heap_used_in_bytes": {"node_host", "node_attribute_zone", "cluster_name"},
+	"opensearch_jvm_threads_count":          {"node_host", "node_attribute_zone", "cluster_name"},
+
+	"opensearch_http_total_opened": {"node_host", "node_attribute_zone", "cluster_name"},
 }
 
 var k8sAggregationSpec = map[string][]string{
