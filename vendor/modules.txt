@@ -114,8 +114,8 @@ go.uber.org/atomic
 # go.uber.org/multierr v1.5.0
 ## explicit; go 1.12
 go.uber.org/multierr
-# golang.org/x/net v0.7.0
-## explicit; go 1.17
+# golang.org/x/net v0.23.0
+## explicit; go 1.18
 golang.org/x/net/bpf
 golang.org/x/net/internal/iana
 golang.org/x/net/internal/socket
@@ -123,9 +123,8 @@ golang.org/x/net/ipv4
 # golang.org/x/sync v0.0.0-20201207232520-09787c993a3a
 ## explicit
 golang.org/x/sync/errgroup
-# golang.org/x/sys v0.5.0
-## explicit; go 1.17
-golang.org/x/sys/internal/unsafeheader
+# golang.org/x/sys v0.18.0
+## explicit; go 1.18
 golang.org/x/sys/unix
 golang.org/x/sys/windows
 # google.golang.org/protobuf v1.26.0-rc.1
