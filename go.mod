@@ -11,7 +11,7 @@ require (
 	github.com/prometheus/common v0.26.0
 	github.com/prometheus/node_exporter v1.0.1
 	github.com/prometheus/procfs v0.6.0
-	github.com/stretchr/testify v1.4.0
+	github.com/stretchr/testify v1.9.0
 	gopkg.in/alecthomas/kingpin.v2 v2.2.6
 )
 
@@ -43,7 +43,7 @@ require (
 	golang.org/x/sync v0.0.0-20201207232520-09787c993a3a // indirect
 	golang.org/x/sys v0.5.0 // indirect
 	google.golang.org/protobuf v1.26.0-rc.1 // indirect
-	gopkg.in/yaml.v2 v2.3.0 // indirect
+	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 
 replace github.com/gogo/protobuf => github.com/gogo/protobuf v1.3.2
