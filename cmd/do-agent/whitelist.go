@@ -64,9 +64,10 @@ var dbaasWhitelist = map[string]bool{
 	"mysql_innodb_buffer_pool_read_requests": true,
 	"mysql_innodb_data_written":              true,
 
-	"mysql_questions":                true,
-	"mysql_slow_queries":             true,
-	"mysql_global_connection_memory": true,
+	"mysql_questions":                   true,
+	"mysql_slow_queries":                true,
+	"mysql_global_connection_memory":    true,
+	"mysql_slave_seconds_behind_master": true,
 
 	"redis_total_connections_received": true,
 	"redis_rejected_connections":       true,
@@ -110,4 +111,39 @@ var dbaasWhitelist = map[string]bool{
 	"kafka_controller_KafkaController_OfflinePartitionsCount_Value":         true,
 	"kafka_controller_KafkaController_PreferredReplicaImbalanceCount_Value": true,
 	"kafka_controller_ControllerStats_LeaderElectionRateAndTimeMs_Count":    true,
+
+	"opensearch_cluster_health_number_of_nodes":       true,
+	"opensearch_cluster_health_active_shards":         true,
+	"opensearch_cluster_health_relocating_shards":     true,
+	"opensearch_cluster_health_unassigned_shards":     true,
+	"opensearch_cluster_health_active_primary_shards": true,
+
+	"opensearch_clusterstats_indices_count":               true,
+	"opensearch_clusterstats_indices_store_size_in_bytes": true,
+	"opensearch_clusterstats_indices_docs_count":          true,
+	"opensearch_clusterstats_indices_docs_deleted":        true,
+
+	"opensearch_indices_search_scroll_total":           true,
+	"opensearch_indices_search_scroll_time_in_millis":  true,
+	"opensearch_indices_search_query_total":            true,
+	"opensearch_indices_search_query_time_in_millis":   true,
+	"opensearch_indices_indexing_index_total":          true,
+	"opensearch_indices_indexing_index_time_in_millis": true,
+	"opensearch_indices_merges_total":                  true,
+	"opensearch_indices_merges_total_time_in_millis":   true,
+	"opensearch_indices_refresh_total":                 true,
+	"opensearch_indices_refresh_total_time_in_millis":  true,
+	"opensearch_indices_search_fetch_total":            true,
+	"opensearch_indices_search_fetch_time_in_millis":   true,
+	"opensearch_indices_search_suggest_total":          true,
+	"opensearch_indices_search_suggest_time_in_millis": true,
+	"opensearch_indices_query_cache_cache_size":        true,
+	"opensearch_indices_query_cache_hit_count":         true,
+	"opensearch_indices_query_cache_miss_count":        true,
+	"opensearch_indices_query_cache_evictions":         true,
+
+	"opensearch_jvm_mem_heap_used_in_bytes": true,
+	"opensearch_jvm_threads_count":          true,
+
+	"opensearch_http_total_opened": true,
 }
