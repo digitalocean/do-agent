@@ -104,8 +104,8 @@ github.com/siebenmann/go-kstat
 # github.com/soundcloud/go-runit v0.0.0-20150630195641-06ad41a06c4a
 ## explicit
 github.com/soundcloud/go-runit/runit
-# github.com/stretchr/testify v1.4.0
-## explicit
+# github.com/stretchr/testify v1.9.0
+## explicit; go 1.17
 github.com/stretchr/testify/assert
 github.com/stretchr/testify/require
 # go.uber.org/atomic v1.6.0
@@ -161,7 +161,7 @@ google.golang.org/protobuf/types/known/timestamppb
 # gopkg.in/alecthomas/kingpin.v2 v2.2.6
 ## explicit
 gopkg.in/alecthomas/kingpin.v2
-# gopkg.in/yaml.v2 v2.3.0
+# gopkg.in/yaml.v3 v3.0.1
 ## explicit
-gopkg.in/yaml.v2
+gopkg.in/yaml.v3
 # github.com/gogo/protobuf => github.com/gogo/protobuf v1.3.2
