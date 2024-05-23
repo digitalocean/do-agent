@@ -67,7 +67,7 @@ linter = \
 	-e "GO111MODULE=on" \
 	-e "GOFLAGS=-mod=vendor" \
 	-v "$(CURDIR):$(docker_dir)" \
-	golangci/golangci-lint:v1.50.1
+	golangci/golangci-lint:v1.58.2
 
 #############
 ## targets ##

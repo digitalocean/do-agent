@@ -51,7 +51,7 @@ func init() {
 	buildInfo.Set(1)
 	kingpin.VersionFlag = kingpin.Flag("version", "Show the application version information").
 		Short('v').
-		PreAction(func(c *kingpin.ParseContext) error {
+		PreAction(func(_ *kingpin.ParseContext) error {
 			err := versionTmpl.Execute(os.Stdout, map[string]string{
 				"name":      "do-agent",
 				"version":   version,
