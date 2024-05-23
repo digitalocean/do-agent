@@ -14,7 +14,8 @@
 package btrfs
 
 import (
-	"io/ioutil"
+	"bufio"
+	"fmt"
 	"os"
 	"path"
 	"path/filepath"
@@ -80,7 +81,7 @@ func (fs FS) Stats() ([]*Stats, error) {
 	return stats, nil
 }
 
-// GetStats collects all Btrfs statistics from sysfs
+// GetStats collects all Btrfs statistics from sysfs.
 func GetStats(uuidPath string) (*Stats, error) {
 	r := &reader{path: uuidPath}
 	s := r.readFilesystemStats()
@@ -122,7 +123,7 @@ func (r *reader) readValue(n string) (v uint64) {
 
 // listFiles returns a list of files for a directory of the reader.
 func (r *reader) listFiles(p string) []string {
-	files, err := ioutil.ReadDir(path.Join(r.path, p))
+	files, err := os.ReadDir(path.Join(r.path, p))
 	if err != nil {
 		r.err = err
 		return nil
@@ -162,9 +163,9 @@ func (r *reader) readAllocationStats(d string) (a *AllocationStats) {
 	return
 }
 
-// readLayouts reads all Btrfs layout statistics for the current path
+// readLayouts reads all Btrfs layout statistics for the current path.
 func (r *reader) readLayouts() map[string]*LayoutUsage {
-	files, err := ioutil.ReadDir(r.path)
+	files, err := os.ReadDir(r.path)
 	if err != nil {
 		r.err = err
 		return nil
@@ -208,7 +209,7 @@ func (r *reader) calcRatio(p string) float64 {
 
 // readDeviceInfo returns the information for all devices associated with this filesystem.
 func (r *reader) readDeviceInfo(d string) map[string]*Device {
-	devs := r.listFiles("devices")
+	devs := r.listFiles(d)
 	info := make(map[string]*Device, len(devs))
 	for _, n := range devs {
 		info[n] = &Device{
@@ -246,6 +247,62 @@ func (r *reader) readFilesystemStats() (s *Stats) {
 			Metadata:          r.readAllocationStats("allocation/metadata"),
 			System:            r.readAllocationStats("allocation/system"),
 		},
+
+		// Read commit stats data
+		CommitStats: r.readCommitStats("commit_stats"),
 	}
 	return
+}
+
+// readCommitStats returns the commit_stats information for commit stats metrics.
+func (r *reader) readCommitStats(p string) CommitStats {
+	stats := CommitStats{}
+
+	f, err := os.Open(path.Join(r.path, p))
+	if err != nil {
+		// if commit_stats not found. maybe btrfs version < 6.0
+		if !os.IsNotExist(err) {
+			r.err = err
+		}
+		return stats
+	}
+	defer f.Close()
+
+	scanner := bufio.NewScanner(f)
+
+	for scanner.Scan() {
+		line := scanner.Text()
+		parts := strings.Fields(scanner.Text())
+		// require  <key> <value>
+		if len(parts) != 2 {
+			r.err = fmt.Errorf("invalid commit_stats line %q", line)
+			return stats
+		}
+
+		value, err := strconv.ParseUint(parts[1], 10, 64)
+		if err != nil {
+			r.err = fmt.Errorf("error parsing commit_stats line: %w", err)
+			return stats
+		}
+
+		switch metricName := parts[0]; metricName {
+		case "commits":
+			stats.Commits = value
+		case "last_commit_ms":
+			stats.LastCommitMs = value
+		case "max_commit_ms":
+			stats.MaxCommitMs = value
+		case "total_commit_ms":
+			stats.TotalCommitMs = value
+		default:
+			continue
+		}
+	}
+
+	if err := scanner.Err(); err != nil {
+		r.err = fmt.Errorf("error scanning commit_stats file: %w", err)
+		return stats
+	}
+
+	return stats
 }

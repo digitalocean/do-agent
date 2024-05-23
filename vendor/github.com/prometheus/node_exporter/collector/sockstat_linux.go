@@ -11,16 +11,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+//go:build !nosockstat
 // +build !nosockstat
 
 package collector
 
 import (
+	"errors"
 	"fmt"
 	"os"
 
-	"github.com/go-kit/kit/log"
-	"github.com/go-kit/kit/log/level"
+	"github.com/go-kit/log"
+	"github.com/go-kit/log/level"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/procfs"
 )
@@ -55,7 +57,7 @@ func (c *sockStatCollector) Update(ch chan<- prometheus.Metric) error {
 	stat4, err := fs.NetSockstat()
 	switch {
 	case err == nil:
-	case os.IsNotExist(err):
+	case errors.Is(err, os.ErrNotExist):
 		level.Debug(c.logger).Log("msg", "IPv4 sockstat statistics not found, skipping")
 	default:
 		return fmt.Errorf("failed to get IPv4 sockstat data: %w", err)
@@ -64,7 +66,7 @@ func (c *sockStatCollector) Update(ch chan<- prometheus.Metric) error {
 	stat6, err := fs.NetSockstat6()
 	switch {
 	case err == nil:
-	case os.IsNotExist(err):
+	case errors.Is(err, os.ErrNotExist):
 		level.Debug(c.logger).Log("msg", "IPv6 sockstat statistics not found, skipping")
 	default:
 		return fmt.Errorf("failed to get IPv6 sockstat data: %w", err)

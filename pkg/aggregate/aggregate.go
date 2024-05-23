@@ -1,7 +1,6 @@
 package aggregate
 
 import (
-	"github.com/pkg/errors"
 	dto "github.com/prometheus/client_model/go"
 
 	"github.com/digitalocean/do-agent/pkg/clients/tsclient"
@@ -44,11 +43,11 @@ func Aggregate(metrics []*dto.MetricFamily, aggregateSpec map[string][]string) (
 			def := tsclient.NewDefinition(*mf.Name, tsclient.WithCommonLabels(labels))
 			lfm, err := tsclient.GetLFM(def, tslbls)
 			if err != nil {
-				return nil, errors.WithStack(err)
+				return nil, err
 			}
 			lfmDelim, err := tsclient.ParseMetricDelimited(lfm)
 			if err != nil {
-				return nil, errors.WithStack(err)
+				return nil, err
 			}
 			labelsToRemove, ok := aggregateSpec[mf.GetName()]
 			if ok {

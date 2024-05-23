@@ -7,8 +7,6 @@ import (
 	"github.com/digitalocean/do-agent/pkg/aggregate"
 	"github.com/digitalocean/do-agent/pkg/clients/tsclient"
 	"github.com/prometheus/client_golang/prometheus"
-
-	"github.com/pkg/errors"
 )
 
 var (
@@ -45,14 +43,14 @@ func NewSonar(client tsclient.Client, c *prometheus.CounterVec) *Sonar {
 func (s *Sonar) Write(mets []aggregate.MetricWithValue) error {
 	if len(mets) > s.client.MaxBatchSize() {
 		s.c.WithLabelValues("failure", "too many metrics").Inc()
-		return errors.Wrap(ErrTooManyMetrics, "cannot write metrics")
+		return fmt.Errorf("cannot write metrics: %w", ErrTooManyMetrics)
 	}
 
 	for _, m := range mets {
 		lfmEncoded := tsclient.ConvertLFMMapToPrometheusEncodedName(m.LFM)
 		if len(lfmEncoded) > s.client.MaxMetricLength() {
 			s.c.WithLabelValues("failure", "metric exceeds max length").Inc()
-			return errors.Wrapf(ErrMetricTooLong, "cannot send metric: %q", lfmEncoded)
+			return fmt.Errorf("cannot send metric %q: %w", lfmEncoded, ErrMetricTooLong)
 		}
 		err := s.client.AddMetric(tsclient.NewDefinitionFromMap(m.LFM), m.Value)
 		if err != nil {

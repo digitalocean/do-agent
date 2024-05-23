@@ -11,8 +11,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// +build openbsd
-// +build !nomeminfo
+//go:build !nomeminfo && !amd64
+// +build !nomeminfo,!amd64
 
 package collector
 
@@ -62,7 +62,7 @@ func (c *meminfoCollector) getMemInfo() (map[string]float64, error) {
 	}
 
 	if _, err := C.sysctl_bcstats(&bcstats); err != nil {
-		return nil, fmt.Errorf("sysctl CTL_VFS VFS_GENERIC VFS_BCACHESTAT failed: %v", err)
+		return nil, fmt.Errorf("sysctl CTL_VFS VFS_GENERIC VFS_BCACHESTAT failed: %w", err)
 	}
 
 	ps := float64(uvmexp.pagesize)

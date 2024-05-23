@@ -11,6 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+//go:build !noloadavg
 // +build !noloadavg
 
 package collector
@@ -19,7 +20,7 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/siebenmann/go-kstat"
+	"github.com/illumos/go-kstat"
 )
 
 // #include <sys/param.h>

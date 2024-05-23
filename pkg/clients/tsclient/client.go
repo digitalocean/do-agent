@@ -25,7 +25,6 @@ import (
 	"time"
 
 	"github.com/golang/snappy"
-	"github.com/pkg/errors"
 
 	"github.com/digitalocean/do-agent/internal/log"
 	"github.com/digitalocean/do-agent/pkg/clients/tsclient/structuredstream"
@@ -340,13 +339,13 @@ func (c *HTTPClient) addMetricWithMSEpochTime(def *Definition, ms int64, value f
 	}
 	lfm, err := GetLFM(def, labels)
 	if err != nil {
-		return errors.Wrap(err, "failed to get LFM")
+		return fmt.Errorf("failed to get LFM: %w", err)
 	}
 
 	if !isZeroTime {
 		// ensure sufficient time between reported metric values
 		if lastSend, ok := c.lastSend[lfm]; ok && (time.Duration(ms-lastSend)*time.Millisecond) < c.WaitDuration() {
-			return errors.WithStack(ErrSendTooFrequent)
+			return ErrSendTooFrequent
 		}
 		c.lastSend[lfm] = ms
 	}
@@ -357,7 +356,7 @@ func (c *HTTPClient) addMetricWithMSEpochTime(def *Definition, ms int64, value f
 	writer.Write(value)
 	if err := writer.Error(); err != nil {
 		log.Error("failed to write: %+v", err)
-		return errors.WithStack(ErrWriteFailure)
+		return ErrWriteFailure
 	}
 	return nil
 }

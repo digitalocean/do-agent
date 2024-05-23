@@ -1,3 +1,4 @@
+//go:build linux
 // +build linux
 
 package perf
@@ -41,10 +42,10 @@ var (
 func TraceFSMount() (string, error) {
 	mounts, err := GetFSMount(TraceFS)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("Failed to get tracefs mount: %s", err.Error())
 	}
 	if len(mounts) == 0 {
-		return "", ErrNoMount
+		return "", fmt.Errorf("Mount for tracefs not mounted")
 	}
 	return mounts[0], nil
 }
@@ -53,10 +54,10 @@ func TraceFSMount() (string, error) {
 func DebugFSMount() (string, error) {
 	mounts, err := GetFSMount(DebugFS)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("Failed to find debugfs mount: %q", err)
 	}
 	if len(mounts) == 0 {
-		return "", ErrNoMount
+		return "", fmt.Errorf("Mount for debugfs not mounted")
 	}
 	return mounts[0], nil
 }
@@ -66,7 +67,7 @@ func GetFSMount(mountType string) ([]string, error) {
 	mounts := []string{}
 	file, err := os.Open(ProcMounts)
 	if err != nil {
-		return mounts, err
+		return mounts, fmt.Errorf("Failed to find mount type %s: %q", mountType, err)
 	}
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {

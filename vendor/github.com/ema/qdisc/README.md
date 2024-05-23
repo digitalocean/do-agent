@@ -1,7 +1,7 @@
-qdisc [![Build Status](https://travis-ci.org/ema/qdisc.svg?branch=master)](https://travis-ci.org/ema/qdisc)
+qdisc [![Build Status](https://github.com/ema/qdisc/actions/workflows/makefile.yml/badge.svg)](https://github.com/ema/qdisc/actions/)
 =====
 
-Package `qdisc` allows to get queuing discipline information via netlink,
+Package `qdisc` allows getting queuing discipline information via netlink,
 similarly to what `tc -s qdisc show` does.
 
 Example usage

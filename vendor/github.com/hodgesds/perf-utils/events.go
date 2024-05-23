@@ -1,3 +1,4 @@
+//go:build linux
 // +build linux
 
 package perf
@@ -20,13 +21,16 @@ const (
 // corresponding list of available events.
 func AvailableEvents() (map[string][]string, error) {
 	events := map[string][]string{}
-	// BUG(hodgesds): this should ideally check mounts for debugfs
-	rawEvents, err := fileToStrings(TracingDir + "/available_events")
-	// Events are colon delimited by type so parse the type and add sub
-	// events appropriately.
+	tracefsMount, err := TraceFSMount()
 	if err != nil {
 		return events, err
 	}
+	rawEvents, err := fileToStrings(tracefsMount + "/available_events")
+	if err != nil {
+		return events, err
+	}
+	// Events are colon delimited by type so parse the type and add sub
+	// events appropriately.
 	for _, rawEvent := range rawEvents {
 		splits := strings.Split(rawEvent, ":")
 		if len(splits) <= 1 {
@@ -45,13 +49,16 @@ func AvailableEvents() (map[string][]string, error) {
 // AvailableSubsystems returns a slice of available subsystems.
 func AvailableSubsystems() ([]string, error) {
 	subsystems := []string{}
-	// BUG(hodgesds): this should ideally check mounts for debugfs
-	rawEvents, err := fileToStrings(TracingDir + "/available_events")
-	// Events are colon delimited by type so parse the type and add sub
-	// events appropriately.
+	tracefsMount, err := TraceFSMount()
 	if err != nil {
 		return subsystems, err
 	}
+	rawEvents, err := fileToStrings(tracefsMount + "/available_events")
+	if err != nil {
+		return subsystems, err
+	}
+	// Events are colon delimited by type so parse the type and add sub
+	// events appropriately.
 	for _, rawEvent := range rawEvents {
 		splits := strings.Split(rawEvent, ":")
 		if len(splits) <= 1 {
@@ -64,21 +71,33 @@ func AvailableSubsystems() ([]string, error) {
 
 // AvailableTracers returns the list of available tracers.
 func AvailableTracers() ([]string, error) {
-	return fileToStrings(TracingDir + "/available_tracers")
+	tracefsMount, err := TraceFSMount()
+	if err != nil {
+		return []string{}, err
+	}
+	return fileToStrings(tracefsMount + "/available_tracers")
 }
 
 // CurrentTracer returns the current tracer.
 func CurrentTracer() (string, error) {
-	res, err := fileToStrings(TracingDir + "/current_tracer")
+	tracefsMount, err := TraceFSMount()
+	if err != nil {
+		return "", err
+	}
+	res, err := fileToStrings(tracefsMount + "/current_tracer")
 	return res[0], err
 }
 
 // GetTracepointConfig is used to get the configuration for a trace event.
 func GetTracepointConfig(subsystem, event string) (uint64, error) {
-	res, err := fileToStrings(
-		TracingDir + fmt.Sprintf("/events/%s/%s/id", subsystem, event))
+	tracefsMount, err := TraceFSMount()
 	if err != nil {
 		return 0, err
+	}
+	res, err := fileToStrings(
+		tracefsMount + fmt.Sprintf("/events/%s/%s/id", subsystem, event))
+	if err != nil {
+		return 0, fmt.Errorf("Failed to get tracepoint config for %s:%s: %q", subsystem, event, err)
 	}
 	return strconv.ParseUint(res[0], 10, 64)
 }
@@ -112,7 +131,7 @@ func ProfileTracepoint(subsystem, event string, pid, cpu int, opts ...int) (BPFP
 		eventOps,
 	)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("Failed to open perf event for PerfEventAttr %+v: %q", eventAttr, err)
 	}
 
 	return &profiler{

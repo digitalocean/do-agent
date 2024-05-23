@@ -11,6 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+//go:build !nocpu
 // +build !nocpu
 
 package collector
@@ -19,16 +20,28 @@ import (
 	"strconv"
 	"unsafe"
 
-	"github.com/go-kit/kit/log"
+	"github.com/go-kit/log"
 	"github.com/prometheus/client_golang/prometheus"
 	"golang.org/x/sys/unix"
 )
 
-/*
-#include <sys/param.h>
-#include <sys/sched.h>
-*/
-import "C"
+const (
+	CP_USER = iota
+	CP_NICE
+	CP_SYS
+	CP_SPIN
+	CP_INTR
+	CP_IDLE
+	CPUSTATES
+)
+const (
+	CP_USER_O63 = iota
+	CP_NICE_O63
+	CP_SYS_O63
+	CP_INTR_O63
+	CP_IDLE_O63
+	CPUSTATES_O63
+)
 
 type cpuCollector struct {
 	cpu    typedDesc
@@ -51,32 +64,41 @@ func (c *cpuCollector) Update(ch chan<- prometheus.Metric) (err error) {
 	if err != nil {
 		return err
 	}
-	clock := *(*C.struct_clockinfo)(unsafe.Pointer(&clockb[0]))
-	hz := float64(clock.stathz)
+	clock := *(*unix.Clockinfo)(unsafe.Pointer(&clockb[0]))
+	hz := float64(clock.Stathz)
 
 	ncpus, err := unix.SysctlUint32("hw.ncpu")
 	if err != nil {
 		return err
 	}
 
-	var cpTime [][C.CPUSTATES]C.int64_t
+	var cpTime [][CPUSTATES]uint64
 	for i := 0; i < int(ncpus); i++ {
 		cpb, err := unix.SysctlRaw("kern.cp_time2", i)
 		if err != nil && err != unix.ENODEV {
 			return err
 		}
 		if err != unix.ENODEV {
-			cpTime = append(cpTime, *(*[C.CPUSTATES]C.int64_t)(unsafe.Pointer(&cpb[0])))
+			var times [CPUSTATES]uint64
+			for n := 0; n < len(cpb); n += 8 {
+				times[n/8] = *(*uint64)(unsafe.Pointer(&cpb[n]))
+			}
+			if len(cpb)/8 == CPUSTATES_O63 {
+				copy(times[CP_INTR:], times[CP_INTR_O63:])
+				times[CP_SPIN] = 0
+			}
+			cpTime = append(cpTime, times)
 		}
 	}
 
 	for cpu, time := range cpTime {
 		lcpu := strconv.Itoa(cpu)
-		ch <- c.cpu.mustNewConstMetric(float64(time[C.CP_USER])/hz, lcpu, "user")
-		ch <- c.cpu.mustNewConstMetric(float64(time[C.CP_NICE])/hz, lcpu, "nice")
-		ch <- c.cpu.mustNewConstMetric(float64(time[C.CP_SYS])/hz, lcpu, "system")
-		ch <- c.cpu.mustNewConstMetric(float64(time[C.CP_INTR])/hz, lcpu, "interrupt")
-		ch <- c.cpu.mustNewConstMetric(float64(time[C.CP_IDLE])/hz, lcpu, "idle")
+		ch <- c.cpu.mustNewConstMetric(float64(time[CP_USER])/hz, lcpu, "user")
+		ch <- c.cpu.mustNewConstMetric(float64(time[CP_NICE])/hz, lcpu, "nice")
+		ch <- c.cpu.mustNewConstMetric(float64(time[CP_SYS])/hz, lcpu, "system")
+		ch <- c.cpu.mustNewConstMetric(float64(time[CP_SPIN])/hz, lcpu, "spin")
+		ch <- c.cpu.mustNewConstMetric(float64(time[CP_INTR])/hz, lcpu, "interrupt")
+		ch <- c.cpu.mustNewConstMetric(float64(time[CP_IDLE])/hz, lcpu, "idle")
 	}
 	return err
 }

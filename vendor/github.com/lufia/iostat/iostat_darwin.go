@@ -1,3 +1,4 @@
+//go:build darwin
 // +build darwin
 
 package iostat
@@ -8,18 +9,23 @@ package iostat
 // #include "iostat_darwin.h"
 import "C"
 import (
+	"fmt"
 	"time"
 )
 
-// ReadDriveStats returns statictics of each of the drives.
+// ReadDriveStats returns statistics of each of the drives.
 func ReadDriveStats() ([]*DriveStats, error) {
 	var buf [C.NDRIVE]C.DriveStats
-	n, err := C.readdrivestat(&buf[0], C.int(len(buf)))
+	_n, err := C.lufia_iostat_v1_readdrivestat(&buf[0], C.int(len(buf)))
 	if err != nil {
 		return nil, err
 	}
+	n := int(_n)
+	if n < 0 {
+		return nil, fmt.Errorf("native function call (`readdrivestat`) failed with an error code: %d", n)
+	}
 	stats := make([]*DriveStats, n)
-	for i := 0; i < int(n); i++ {
+	for i := 0; i < n; i++ {
 		stats[i] = &DriveStats{
 			Name:           C.GoString(&buf[i].name[0]),
 			Size:           int64(buf[i].size),
@@ -44,7 +50,7 @@ func ReadDriveStats() ([]*DriveStats, error) {
 // ReadCPUStats returns statistics of CPU usage.
 func ReadCPUStats() (*CPUStats, error) {
 	var cpu C.CPUStats
-	_, err := C.readcpustat(&cpu)
+	_, err := C.lufia_iostat_v1_readcpustat(&cpu)
 	if err != nil {
 		return nil, err
 	}

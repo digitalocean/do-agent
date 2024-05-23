@@ -1,117 +1,190 @@
+//go:build linux
 // +build linux
 
 package perf
 
 import (
+	"sync"
+
 	"go.uber.org/multierr"
 	"golang.org/x/sys/unix"
 )
 
+type SoftwareProfilerType int
+
+const (
+	AllSoftwareProfilers  SoftwareProfilerType = 0
+	CpuClockProfiler      SoftwareProfilerType = 1 << iota
+	TaskClockProfiler     SoftwareProfilerType = 1 << iota
+	PageFaultProfiler     SoftwareProfilerType = 1 << iota
+	ContextSwitchProfiler SoftwareProfilerType = 1 << iota
+	CpuMigrationProfiler  SoftwareProfilerType = 1 << iota
+	MinorFaultProfiler    SoftwareProfilerType = 1 << iota
+	MajorFaultProfiler    SoftwareProfilerType = 1 << iota
+	AlignFaultProfiler    SoftwareProfilerType = 1 << iota
+	EmuFaultProfiler      SoftwareProfilerType = 1 << iota
+)
+
 type softwareProfiler struct {
 	// map of perf counter type to file descriptor
-	profilers map[int]Profiler
+	profilers   map[int]Profiler
+	profilersMu sync.RWMutex
 }
 
 // NewSoftwareProfiler returns a new software profiler.
-func NewSoftwareProfiler(pid, cpu int, opts ...int) SoftwareProfiler {
+func NewSoftwareProfiler(pid, cpu int, profilerSet SoftwareProfilerType, opts ...int) (SoftwareProfiler, error) {
+	var e error
 	profilers := map[int]Profiler{}
 
-	cpuClockProfiler, err := NewCPUClockProfiler(pid, cpu, opts...)
-	if err == nil {
-		profilers[unix.PERF_COUNT_SW_CPU_CLOCK] = cpuClockProfiler
+	if profilerSet&CpuClockProfiler > 0 || profilerSet == AllSoftwareProfilers {
+		cpuClockProfiler, err := NewCPUClockProfiler(pid, cpu, opts...)
+		if err != nil {
+			e = multierr.Append(e, err)
+		} else {
+			profilers[unix.PERF_COUNT_SW_CPU_CLOCK] = cpuClockProfiler
+		}
 	}
 
-	taskClockProfiler, err := NewTaskClockProfiler(pid, cpu, opts...)
-	if err == nil {
-		profilers[unix.PERF_COUNT_SW_TASK_CLOCK] = taskClockProfiler
+	if profilerSet&TaskClockProfiler > 0 || profilerSet == AllSoftwareProfilers {
+		taskClockProfiler, err := NewTaskClockProfiler(pid, cpu, opts...)
+		if err != nil {
+			e = multierr.Append(e, err)
+		} else {
+			profilers[unix.PERF_COUNT_SW_TASK_CLOCK] = taskClockProfiler
+		}
 	}
 
-	pageFaultProfiler, err := NewPageFaultProfiler(pid, cpu, opts...)
-	if err == nil {
-		profilers[unix.PERF_COUNT_SW_PAGE_FAULTS] = pageFaultProfiler
+	if profilerSet&PageFaultProfiler > 0 || profilerSet == AllSoftwareProfilers {
+		pageFaultProfiler, err := NewPageFaultProfiler(pid, cpu, opts...)
+		if err != nil {
+			e = multierr.Append(e, err)
+		} else {
+			profilers[unix.PERF_COUNT_SW_PAGE_FAULTS] = pageFaultProfiler
+		}
 	}
 
-	ctxSwitchesProfiler, err := NewCtxSwitchesProfiler(pid, cpu, opts...)
-	if err == nil {
-		profilers[unix.PERF_COUNT_SW_CONTEXT_SWITCHES] = ctxSwitchesProfiler
+	if profilerSet&ContextSwitchProfiler > 0 || profilerSet == AllSoftwareProfilers {
+		ctxSwitchesProfiler, err := NewCtxSwitchesProfiler(pid, cpu, opts...)
+		if err != nil {
+			e = multierr.Append(e, err)
+		} else {
+			profilers[unix.PERF_COUNT_SW_CONTEXT_SWITCHES] = ctxSwitchesProfiler
+		}
 	}
 
-	cpuMigrationsProfiler, err := NewCPUMigrationsProfiler(pid, cpu, opts...)
-	if err == nil {
-		profilers[unix.PERF_COUNT_SW_CPU_MIGRATIONS] = cpuMigrationsProfiler
+	if profilerSet&CpuMigrationProfiler > 0 || profilerSet == AllSoftwareProfilers {
+		cpuMigrationsProfiler, err := NewCPUMigrationsProfiler(pid, cpu, opts...)
+		if err != nil {
+			e = multierr.Append(e, err)
+		} else {
+			profilers[unix.PERF_COUNT_SW_CPU_MIGRATIONS] = cpuMigrationsProfiler
+		}
 	}
 
-	minorFaultProfiler, err := NewMinorFaultsProfiler(pid, cpu, opts...)
-	if err == nil {
-		profilers[unix.PERF_COUNT_SW_PAGE_FAULTS_MIN] = minorFaultProfiler
+	if profilerSet&MinorFaultProfiler > 0 || profilerSet == AllSoftwareProfilers {
+		minorFaultProfiler, err := NewMinorFaultsProfiler(pid, cpu, opts...)
+		if err != nil {
+			e = multierr.Append(e, err)
+		} else {
+			profilers[unix.PERF_COUNT_SW_PAGE_FAULTS_MIN] = minorFaultProfiler
+		}
 	}
 
-	majorFaultProfiler, err := NewMajorFaultsProfiler(pid, cpu, opts...)
-	if err == nil {
-		profilers[unix.PERF_COUNT_SW_PAGE_FAULTS_MAJ] = majorFaultProfiler
+	if profilerSet&MajorFaultProfiler > 0 || profilerSet == AllSoftwareProfilers {
+		majorFaultProfiler, err := NewMajorFaultsProfiler(pid, cpu, opts...)
+		if err != nil {
+			e = multierr.Append(e, err)
+		} else {
+			profilers[unix.PERF_COUNT_SW_PAGE_FAULTS_MAJ] = majorFaultProfiler
+		}
 	}
 
-	alignFaultsFrontProfiler, err := NewAlignFaultsProfiler(pid, cpu, opts...)
-	if err == nil {
-		profilers[unix.PERF_COUNT_SW_ALIGNMENT_FAULTS] = alignFaultsFrontProfiler
+	if profilerSet&AlignFaultProfiler > 0 || profilerSet == AllSoftwareProfilers {
+		alignFaultsFrontProfiler, err := NewAlignFaultsProfiler(pid, cpu, opts...)
+		if err != nil {
+			e = multierr.Append(e, err)
+		} else {
+			profilers[unix.PERF_COUNT_SW_ALIGNMENT_FAULTS] = alignFaultsFrontProfiler
+		}
 	}
 
-	emuFaultProfiler, err := NewEmulationFaultsProfiler(pid, cpu, opts...)
-	if err == nil {
-		profilers[unix.PERF_COUNT_SW_EMULATION_FAULTS] = emuFaultProfiler
+	if profilerSet&EmuFaultProfiler > 0 || profilerSet == AllSoftwareProfilers {
+		emuFaultProfiler, err := NewEmulationFaultsProfiler(pid, cpu, opts...)
+		if err != nil {
+			e = multierr.Append(e, err)
+		} else {
+			profilers[unix.PERF_COUNT_SW_EMULATION_FAULTS] = emuFaultProfiler
+		}
 	}
 
 	return &softwareProfiler{
 		profilers: profilers,
-	}
+	}, e
+}
+
+// HasProfilers returns if there are any configured profilers.
+func (p *softwareProfiler) HasProfilers() bool {
+	p.profilersMu.RLock()
+	defer p.profilersMu.RUnlock()
+	return len(p.profilers) >= 0
 }
 
 // Start is used to start the SoftwareProfiler.
 func (p *softwareProfiler) Start() error {
-	if len(p.profilers) == 0 {
+	if !p.HasProfilers() {
 		return ErrNoProfiler
 	}
 	var err error
+	p.profilersMu.RLock()
 	for _, profiler := range p.profilers {
 		err = multierr.Append(err, profiler.Start())
 	}
+	p.profilersMu.RUnlock()
 	return err
 }
 
 // Reset is used to reset the SoftwareProfiler.
 func (p *softwareProfiler) Reset() error {
 	var err error
+	p.profilersMu.RLock()
 	for _, profiler := range p.profilers {
 		err = multierr.Append(err, profiler.Reset())
 	}
+	p.profilersMu.RUnlock()
 	return err
 }
 
 // Stop is used to reset the SoftwareProfiler.
 func (p *softwareProfiler) Stop() error {
 	var err error
+	p.profilersMu.RLock()
 	for _, profiler := range p.profilers {
 		err = multierr.Append(err, profiler.Stop())
 	}
+	p.profilersMu.RUnlock()
 	return err
 }
 
 // Close is used to reset the SoftwareProfiler.
 func (p *softwareProfiler) Close() error {
 	var err error
+	p.profilersMu.RLock()
 	for _, profiler := range p.profilers {
 		err = multierr.Append(err, profiler.Close())
 	}
+	p.profilersMu.RUnlock()
 	return err
 }
 
 // Profile is used to read the SoftwareProfiler SoftwareProfile it returns an
 // error only if all profiles fail.
-func (p *softwareProfiler) Profile() (*SoftwareProfile, error) {
+func (p *softwareProfiler) Profile(swProfile *SoftwareProfile) error {
 	var err error
-	swProfile := &SoftwareProfile{}
+	swProfile.Reset()
+	p.profilersMu.RLock()
 	for profilerType, profiler := range p.profilers {
-		profileVal, err2 := profiler.Profile()
+		profileVal := ProfileValuePool.Get().(*ProfileValue)
+		err2 := profiler.Profile(profileVal)
 		err = multierr.Append(err, err2)
 		if err2 == nil {
 			if swProfile.TimeEnabled == nil {
@@ -143,9 +216,6 @@ func (p *softwareProfiler) Profile() (*SoftwareProfile, error) {
 			}
 		}
 	}
-	if len(multierr.Errors(err)) == len(p.profilers) {
-		return nil, err
-	}
-
-	return swProfile, nil
+	p.profilersMu.RUnlock()
+	return nil
 }

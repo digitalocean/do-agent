@@ -20,10 +20,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/go-kit/kit/log"
-	"github.com/go-kit/kit/log/level"
+	"github.com/alecthomas/kingpin/v2"
+	"github.com/go-kit/log"
+	"github.com/go-kit/log/level"
 	"github.com/prometheus/client_golang/prometheus"
-	kingpin "gopkg.in/alecthomas/kingpin.v2"
 )
 
 // Namespace defines the common namespace to be used by all metrics.
@@ -50,9 +50,11 @@ const (
 )
 
 var (
-	factories        = make(map[string]func(logger log.Logger) (Collector, error))
-	collectorState   = make(map[string]*bool)
-	forcedCollectors = map[string]bool{} // collectors which have been explicitly enabled or disabled
+	factories              = make(map[string]func(logger log.Logger) (Collector, error))
+	initiatedCollectorsMtx = sync.Mutex{}
+	initiatedCollectors    = make(map[string]Collector)
+	collectorState         = make(map[string]*bool)
+	forcedCollectors       = map[string]bool{} // collectors which have been explicitly enabled or disabled
 )
 
 func registerCollector(collector string, isDefaultEnabled bool, factory func(logger log.Logger) (Collector, error)) {
@@ -115,15 +117,21 @@ func NewNodeCollector(logger log.Logger, filters ...string) (*NodeCollector, err
 		f[filter] = true
 	}
 	collectors := make(map[string]Collector)
+	initiatedCollectorsMtx.Lock()
+	defer initiatedCollectorsMtx.Unlock()
 	for key, enabled := range collectorState {
-		if *enabled {
+		if !*enabled || (len(f) > 0 && !f[key]) {
+			continue
+		}
+		if collector, ok := initiatedCollectors[key]; ok {
+			collectors[key] = collector
+		} else {
 			collector, err := factories[key](log.With(logger, "collector", key))
 			if err != nil {
 				return nil, err
 			}
-			if len(f) == 0 || f[key] {
-				collectors[key] = collector
-			}
+			collectors[key] = collector
+			initiatedCollectors[key] = collector
 		}
 	}
 	return &NodeCollector{Collectors: collectors, logger: logger}, nil
@@ -189,4 +197,50 @@ var ErrNoData = errors.New("collector returned no data")
 
 func IsNoDataError(err error) bool {
 	return err == ErrNoData
+}
+
+// pushMetric helps construct and convert a variety of value types into Prometheus float64 metrics.
+func pushMetric(ch chan<- prometheus.Metric, fieldDesc *prometheus.Desc, name string, value interface{}, valueType prometheus.ValueType, labelValues ...string) {
+	var fVal float64
+	switch val := value.(type) {
+	case uint8:
+		fVal = float64(val)
+	case uint16:
+		fVal = float64(val)
+	case uint32:
+		fVal = float64(val)
+	case uint64:
+		fVal = float64(val)
+	case int64:
+		fVal = float64(val)
+	case *uint8:
+		if val == nil {
+			return
+		}
+		fVal = float64(*val)
+	case *uint16:
+		if val == nil {
+			return
+		}
+		fVal = float64(*val)
+	case *uint32:
+		if val == nil {
+			return
+		}
+		fVal = float64(*val)
+	case *uint64:
+		if val == nil {
+			return
+		}
+		fVal = float64(*val)
+	case *int64:
+		if val == nil {
+			return
+		}
+		fVal = float64(*val)
+	default:
+		return
+	}
+
+	ch <- prometheus.MustNewConstMetric(fieldDesc, valueType, fVal, labelValues...)
 }

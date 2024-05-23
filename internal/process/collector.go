@@ -35,7 +35,7 @@ func NewProcessCollector() prometheus.Collector {
 		c.collectFn = c.processCollect
 	} else {
 		// nop
-		c.collectFn = func(ch chan<- prometheus.Metric) {}
+		c.collectFn = func(_ chan<- prometheus.Metric) {}
 	}
 
 	return c

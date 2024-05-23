@@ -67,7 +67,7 @@ linter = \
 	-e "GO111MODULE=on" \
 	-e "GOFLAGS=-mod=vendor" \
 	-v "$(CURDIR):$(docker_dir)" \
-	golangci/golangci-lint:v1.50.1
+	golangci/golangci-lint:v1.58.2
 
 #############
 ## targets ##
@@ -83,7 +83,7 @@ test:
 build: $(binary)
 $(binary): $(gofiles) $(vendorgofiles)
 	$(print)
-	$(go) build -ldflags $(ldflags) -o "$(docker_dir)/$@" ./cmd/$(project)
+	$(go) build -buildvcs=false -ldflags $(ldflags) -o "$(docker_dir)/$@" ./cmd/$(project)
 
 shell:
 	$(print)

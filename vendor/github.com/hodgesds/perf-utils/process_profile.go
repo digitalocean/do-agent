@@ -1,3 +1,4 @@
+//go:build linux
 // +build linux
 
 package perf
@@ -5,6 +6,7 @@ package perf
 import (
 	"encoding/binary"
 	"fmt"
+	"sync"
 	"syscall"
 	"unsafe"
 
@@ -22,6 +24,19 @@ const (
 var (
 	// ErrNoProfiler is returned when no profiler is available for profiling.
 	ErrNoProfiler = fmt.Errorf("No profiler available")
+
+	bufPool = sync.Pool{
+		New: func() interface{} {
+			return make([]byte, 24, 24)
+		},
+	}
+
+	// ProfileValuePool is a sync.Pool of ProfileValue structs.
+	ProfileValuePool = sync.Pool{
+		New: func() interface{} {
+			return &ProfileValue{}
+		},
+	}
 )
 
 // Profiler is a profiler.
@@ -30,7 +45,7 @@ type Profiler interface {
 	Reset() error
 	Stop() error
 	Close() error
-	Profile() (*ProfileValue, error)
+	Profile(*ProfileValue) error
 }
 
 // HardwareProfiler is a hardware profiler.
@@ -39,7 +54,8 @@ type HardwareProfiler interface {
 	Reset() error
 	Stop() error
 	Close() error
-	Profile() (*HardwareProfile, error)
+	Profile(*HardwareProfile) error
+	HasProfilers() bool
 }
 
 // HardwareProfile is returned by a HardwareProfiler. Depending on kernel
@@ -59,13 +75,30 @@ type HardwareProfile struct {
 	TimeRunning           *uint64 `json:"time_running,omitempty"`
 }
 
+// Reset sets all values to defaults and will nil any pointers.
+func (p *HardwareProfile) Reset() {
+	p.CPUCycles = nil
+	p.Instructions = nil
+	p.CacheRefs = nil
+	p.CacheMisses = nil
+	p.BranchInstr = nil
+	p.BranchMisses = nil
+	p.BusCycles = nil
+	p.StalledCyclesFrontend = nil
+	p.StalledCyclesBackend = nil
+	p.RefCPUCycles = nil
+	p.TimeEnabled = nil
+	p.TimeRunning = nil
+}
+
 // SoftwareProfiler is a software profiler.
 type SoftwareProfiler interface {
 	Start() error
 	Reset() error
 	Stop() error
 	Close() error
-	Profile() (*SoftwareProfile, error)
+	Profile(*SoftwareProfile) error
+	HasProfilers() bool
 }
 
 // SoftwareProfile is returned by a SoftwareProfiler.
@@ -83,13 +116,29 @@ type SoftwareProfile struct {
 	TimeRunning     *uint64 `json:"time_running,omitempty"`
 }
 
+// Reset sets all values to defaults and will nil any pointers.
+func (p *SoftwareProfile) Reset() {
+	p.CPUClock = nil
+	p.TaskClock = nil
+	p.PageFaults = nil
+	p.ContextSwitches = nil
+	p.CPUMigrations = nil
+	p.MinorPageFaults = nil
+	p.MajorPageFaults = nil
+	p.AlignmentFaults = nil
+	p.EmulationFaults = nil
+	p.TimeEnabled = nil
+	p.TimeRunning = nil
+}
+
 // CacheProfiler is a cache profiler.
 type CacheProfiler interface {
 	Start() error
 	Reset() error
 	Stop() error
 	Close() error
-	Profile() (*CacheProfile, error)
+	Profile(*CacheProfile) error
+	HasProfilers() bool
 }
 
 // CacheProfile is returned by a CacheProfiler.
@@ -116,6 +165,32 @@ type CacheProfile struct {
 	NodeWriteMiss      *uint64 `json:"node_write_miss,omitempty"`
 	TimeEnabled        *uint64 `json:"time_enabled,omitempty"`
 	TimeRunning        *uint64 `json:"time_running,omitempty"`
+}
+
+// Reset sets all values to defaults and will nil any pointers.
+func (p *CacheProfile) Reset() {
+	p.L1DataReadHit = nil
+	p.L1DataReadMiss = nil
+	p.L1DataWriteHit = nil
+	p.L1InstrReadMiss = nil
+	p.LastLevelReadHit = nil
+	p.LastLevelReadMiss = nil
+	p.LastLevelWriteHit = nil
+	p.LastLevelWriteMiss = nil
+	p.DataTLBReadHit = nil
+	p.DataTLBReadMiss = nil
+	p.DataTLBWriteHit = nil
+	p.DataTLBWriteMiss = nil
+	p.InstrTLBReadHit = nil
+	p.InstrTLBReadMiss = nil
+	p.BPUReadHit = nil
+	p.BPUReadMiss = nil
+	p.NodeReadHit = nil
+	p.NodeReadMiss = nil
+	p.NodeWriteHit = nil
+	p.NodeWriteMiss = nil
+	p.TimeEnabled = nil
+	p.TimeRunning = nil
 }
 
 // ProfileValue is a value returned by a profiler.
@@ -152,7 +227,7 @@ func NewProfiler(profilerType uint32, config uint64, pid, cpu int, opts ...int) 
 		eventOps,
 	)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("Failed to open perf event for PerfEventAttr %+v: %q", eventAttr, err)
 	}
 
 	return &profiler{
@@ -474,7 +549,7 @@ func (p *profiler) Stop() error {
 }
 
 // Profile returns the current Profile.
-func (p *profiler) Profile() (*ProfileValue, error) {
+func (p *profiler) Profile(val *ProfileValue) error {
 	// The underlying struct that gets read from the profiler looks like:
 	/*
 		     struct read_format {
@@ -488,17 +563,19 @@ func (p *profiler) Profile() (*ProfileValue, error) {
 	// read 24 bytes since PERF_FORMAT_TOTAL_TIME_ENABLED and
 	// PERF_FORMAT_TOTAL_TIME_RUNNING are always set.
 	// XXX: allow profile ids?
-	buf := make([]byte, 24, 24)
+	buf := bufPool.Get().([]byte)
 	_, err := syscall.Read(p.fd, buf)
 	if err != nil {
-		return nil, err
+		zero(buf)
+		bufPool.Put(buf)
+		return err
 	}
-
-	return &ProfileValue{
-		Value:       binary.LittleEndian.Uint64(buf[0:8]),
-		TimeEnabled: binary.LittleEndian.Uint64(buf[8:16]),
-		TimeRunning: binary.LittleEndian.Uint64(buf[16:24]),
-	}, nil
+	val.Value = binary.LittleEndian.Uint64(buf[0:8])
+	val.TimeEnabled = binary.LittleEndian.Uint64(buf[8:16])
+	val.TimeRunning = binary.LittleEndian.Uint64(buf[16:24])
+	zero(buf)
+	bufPool.Put(buf)
+	return nil
 }
 
 // Close is used to close the perf context.

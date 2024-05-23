@@ -11,18 +11,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// +build linux
+//go:build !noinfiniband
 // +build !noinfiniband
 
 package collector
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"strconv"
 
-	"github.com/go-kit/kit/log"
-	"github.com/go-kit/kit/log/level"
+	"github.com/go-kit/log"
+	"github.com/go-kit/log/level"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/procfs/sysfs"
 )
@@ -59,8 +60,10 @@ func NewInfiniBandCollector(logger log.Logger) (Collector, error) {
 		"legacy_unicast_packets_transmitted_total":   "Number of unicast packets transmitted",
 		"legacy_data_transmitted_bytes_total":        "Number of data octets transmitted on all links",
 		"legacy_packets_transmitted_total":           "Number of data packets received on all links",
+		"excessive_buffer_overrun_errors_total":      "Number of times that OverrunErrors consecutive flow control update periods occurred, each having at least one overrun error.",
 		"link_downed_total":                          "Number of times the link failed to recover from an error state and went down",
 		"link_error_recovery_total":                  "Number of times the link successfully recovered from an error state",
+		"local_link_integrity_errors_total":          "Number of times that the count of local physical errors exceeded the threshold specified by LocalPhyErrors.",
 		"multicast_packets_received_total":           "Number of multicast packets received (including errors)",
 		"multicast_packets_transmitted_total":        "Number of multicast packets transmitted (including errors)",
 		"physical_state_id":                          "Physical state of the InfiniBand port (0: no change, 1: sleep, 2: polling, 3: disable, 4: shift, 5: link up, 6: link error recover, 7: phytest)",
@@ -78,6 +81,10 @@ func NewInfiniBandCollector(logger log.Logger) (Collector, error) {
 		"state_id":                                   "State of the InfiniBand port (0: no change, 1: down, 2: init, 3: armed, 4: active, 5: act defer)",
 		"unicast_packets_received_total":             "Number of unicast packets received (including errors)",
 		"unicast_packets_transmitted_total":          "Number of unicast packets transmitted (including errors)",
+		"port_receive_remote_physical_errors_total":  "Number of packets marked with the EBP (End of Bad Packet) delimiter received on the port.",
+		"port_receive_switch_relay_errors_total":     "Number of packets that could not be forwarded by the switch.",
+		"symbol_error_total":                         "Number of minor link errors detected on one or more physical lanes.",
+		"vl15_dropped_total":                         "Number of incoming VL15 packets dropped due to resource limitations.",
 	}
 
 	i.metricDescs = make(map[string]*prometheus.Desc)
@@ -108,11 +115,11 @@ func (c *infinibandCollector) pushCounter(ch chan<- prometheus.Metric, name stri
 func (c *infinibandCollector) Update(ch chan<- prometheus.Metric) error {
 	devices, err := c.fs.InfiniBandClass()
 	if err != nil {
-		if os.IsNotExist(err) {
+		if errors.Is(err, os.ErrNotExist) {
 			level.Debug(c.logger).Log("msg", "infiniband statistics not found, skipping")
 			return ErrNoData
 		}
-		return fmt.Errorf("error obtaining InfiniBand class info: %s", err)
+		return fmt.Errorf("error obtaining InfiniBand class info: %w", err)
 	}
 
 	for _, device := range devices {
@@ -140,8 +147,10 @@ func (c *infinibandCollector) Update(ch chan<- prometheus.Metric) error {
 			c.pushCounter(ch, "legacy_unicast_packets_transmitted_total", port.Counters.LegacyPortUnicastXmitPackets, port.Name, portStr)
 			c.pushCounter(ch, "legacy_data_transmitted_bytes_total", port.Counters.LegacyPortXmitData64, port.Name, portStr)
 			c.pushCounter(ch, "legacy_packets_transmitted_total", port.Counters.LegacyPortXmitPackets64, port.Name, portStr)
+			c.pushCounter(ch, "excessive_buffer_overrun_errors_total", port.Counters.ExcessiveBufferOverrunErrors, port.Name, portStr)
 			c.pushCounter(ch, "link_downed_total", port.Counters.LinkDowned, port.Name, portStr)
 			c.pushCounter(ch, "link_error_recovery_total", port.Counters.LinkErrorRecovery, port.Name, portStr)
+			c.pushCounter(ch, "local_link_integrity_errors_total", port.Counters.LocalLinkIntegrityErrors, port.Name, portStr)
 			c.pushCounter(ch, "multicast_packets_received_total", port.Counters.MulticastRcvPackets, port.Name, portStr)
 			c.pushCounter(ch, "multicast_packets_transmitted_total", port.Counters.MulticastXmitPackets, port.Name, portStr)
 			c.pushCounter(ch, "port_constraint_errors_received_total", port.Counters.PortRcvConstraintErrors, port.Name, portStr)
@@ -156,6 +165,10 @@ func (c *infinibandCollector) Update(ch chan<- prometheus.Metric) error {
 			c.pushCounter(ch, "port_transmit_wait_total", port.Counters.PortXmitWait, port.Name, portStr)
 			c.pushCounter(ch, "unicast_packets_received_total", port.Counters.UnicastRcvPackets, port.Name, portStr)
 			c.pushCounter(ch, "unicast_packets_transmitted_total", port.Counters.UnicastXmitPackets, port.Name, portStr)
+			c.pushCounter(ch, "port_receive_remote_physical_errors_total", port.Counters.PortRcvRemotePhysicalErrors, port.Name, portStr)
+			c.pushCounter(ch, "port_receive_switch_relay_errors_total", port.Counters.PortRcvSwitchRelayErrors, port.Name, portStr)
+			c.pushCounter(ch, "symbol_error_total", port.Counters.SymbolError, port.Name, portStr)
+			c.pushCounter(ch, "vl15_dropped_total", port.Counters.VL15Dropped, port.Name, portStr)
 		}
 	}
 

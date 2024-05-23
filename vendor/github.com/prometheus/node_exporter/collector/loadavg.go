@@ -11,6 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+//go:build (darwin || dragonfly || freebsd || linux || netbsd || openbsd || solaris) && !noloadavg
 // +build darwin dragonfly freebsd linux netbsd openbsd solaris
 // +build !noloadavg
 
@@ -19,8 +20,8 @@ package collector
 import (
 	"fmt"
 
-	"github.com/go-kit/kit/log"
-	"github.com/go-kit/kit/log/level"
+	"github.com/go-kit/log"
+	"github.com/go-kit/log/level"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -48,7 +49,7 @@ func NewLoadavgCollector(logger log.Logger) (Collector, error) {
 func (c *loadavgCollector) Update(ch chan<- prometheus.Metric) error {
 	loads, err := getLoad()
 	if err != nil {
-		return fmt.Errorf("couldn't get load: %s", err)
+		return fmt.Errorf("couldn't get load: %w", err)
 	}
 	for i, load := range loads {
 		level.Debug(c.logger).Log("msg", "return load", "index", i, "load", load)

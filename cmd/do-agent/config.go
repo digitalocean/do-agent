@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"hash/fnv"
 	"net/url"
@@ -8,11 +9,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/pkg/errors"
+	"github.com/alecthomas/kingpin/v2"
 	"github.com/prometheus/client_golang/prometheus"
 	dto "github.com/prometheus/client_model/go"
 	"github.com/prometheus/common/model"
-	"gopkg.in/alecthomas/kingpin.v2"
 
 	"github.com/digitalocean/do-agent/internal/flags"
 	"github.com/digitalocean/do-agent/internal/log"
@@ -161,7 +161,7 @@ func checkConfig() error {
 	var err error
 	for name, uri := range config.targets {
 		if _, err = url.Parse(uri); err != nil {
-			return errors.Wrapf(err, "url for target %q is not valid", name)
+			return fmt.Errorf("url for target %q is not valid: %w", name, err)
 		}
 	}
 
