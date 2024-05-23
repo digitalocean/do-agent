@@ -11,13 +11,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+//go:build linux
 // +build linux
 
 package sysfs
 
 import (
 	"fmt"
-	"io/ioutil"
+	"os"
 	"path/filepath"
 
 	"github.com/prometheus/procfs/internal/util"
@@ -43,7 +44,7 @@ type NVMeClass map[string]NVMeDevice
 func (fs FS) NVMeClass() (NVMeClass, error) {
 	path := fs.sys.Path(nvmeClassPath)
 
-	dirs, err := ioutil.ReadDir(path)
+	dirs, err := os.ReadDir(path)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list NVMe devices at %q: %w", path, err)
 	}

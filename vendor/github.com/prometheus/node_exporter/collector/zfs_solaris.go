@@ -11,7 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// +build solaris
+//go:build !nozfs
 // +build !nozfs
 
 package collector
@@ -19,9 +19,9 @@ package collector
 import (
 	"strings"
 
-	"github.com/go-kit/kit/log"
+	"github.com/go-kit/log"
+	"github.com/illumos/go-kstat"
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/siebenmann/go-kstat"
 )
 
 type zfsCollector struct {
@@ -299,6 +299,9 @@ func (c *zfsCollector) updateZfsFetchStats(ch chan<- prometheus.Metric) error {
 	defer tok.Close()
 
 	ksZFSInfo, err := tok.Lookup("zfs", 0, "zfetchstats")
+	if err != nil {
+		return err
+	}
 
 	for k, v := range map[string]*prometheus.Desc{
 		"hits":   c.zfetchstatsHits,

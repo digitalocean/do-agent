@@ -1,3 +1,4 @@
+//go:build linux
 // +build linux
 
 package perf
@@ -5,6 +6,7 @@ package perf
 import (
 	"encoding/binary"
 	"fmt"
+	"sync"
 	"syscall"
 
 	"go.uber.org/multierr"
@@ -28,12 +30,15 @@ type GroupProfiler interface {
 	Reset() error
 	Stop() error
 	Close() error
-	Profile() (*GroupProfileValue, error)
+	HasProfilers() bool
+	Profile(*GroupProfileValue) error
 }
 
 // groupProfiler implements the GroupProfiler interface.
 type groupProfiler struct {
-	fds []int // leader is always element 0
+	fds         []int // leader is always element 0
+	profilersMu sync.RWMutex
+	bufPool     sync.Pool
 }
 
 // NewGroupProfiler returns a GroupProfiler.
@@ -59,7 +64,7 @@ func NewGroupProfiler(pid, cpu, opts int, eventAttrs ...unix.PerfEventAttr) (Gro
 				opts,
 			)
 			if err != nil {
-				return nil, err
+				return nil, fmt.Errorf("Failed to open perf event with PerfEventAttr %+v %q", eventAttr, err)
 			}
 			fds[i] = fd
 			continue
@@ -77,6 +82,7 @@ func NewGroupProfiler(pid, cpu, opts int, eventAttrs ...unix.PerfEventAttr) (Gro
 			opts,
 		)
 		if err != nil {
+			err = fmt.Errorf("Failed to open perf event with PerfEventAtter %+v: %q", eventAttr, err)
 			// cleanup any old Fds
 			for ii, fd2 := range fds {
 				if ii == i {
@@ -89,49 +95,72 @@ func NewGroupProfiler(pid, cpu, opts int, eventAttrs ...unix.PerfEventAttr) (Gro
 		fds[i] = fd
 	}
 
+	bufPool = sync.Pool{
+		New: func() interface{} {
+			return make([]byte, 24+8*len(fds))
+		},
+	}
+
 	return &groupProfiler{
-		fds: fds,
-	}, nil
+		fds:     fds,
+		bufPool: bufPool}, nil
+}
+
+// HasProfilers returns if there are any configured profilers.
+func (p *groupProfiler) HasProfilers() bool {
+	p.profilersMu.RLock()
+	defer p.profilersMu.RUnlock()
+	return len(p.fds) >= 0
 }
 
 // Start is used to start the GroupProfiler.
 func (p *groupProfiler) Start() error {
-	if len(p.fds) == 0 {
+	if !p.HasProfilers() {
 		return ErrNoLeader
 	}
-	return unix.IoctlSetInt(p.fds[0], unix.PERF_EVENT_IOC_ENABLE, 0)
+	p.profilersMu.RLock()
+	defer p.profilersMu.RUnlock()
+	return unix.IoctlSetInt(p.fds[0], unix.PERF_EVENT_IOC_ENABLE, unix.PERF_IOC_FLAG_GROUP)
 }
 
 // Reset is used to reset the GroupProfiler.
 func (p *groupProfiler) Reset() error {
-	if len(p.fds) == 0 {
+	if !p.HasProfilers() {
 		return ErrNoLeader
 	}
-	return unix.IoctlSetInt(p.fds[0], unix.PERF_EVENT_IOC_RESET, 0)
+	p.profilersMu.RLock()
+	defer p.profilersMu.RUnlock()
+	return unix.IoctlSetInt(p.fds[0], unix.PERF_EVENT_IOC_RESET, unix.PERF_IOC_FLAG_GROUP)
 }
 
 // Stop is used to stop the GroupProfiler.
 func (p *groupProfiler) Stop() error {
-	if len(p.fds) == 0 {
+	if !p.HasProfilers() {
 		return ErrNoLeader
 	}
-	return unix.IoctlSetInt(p.fds[0], unix.PERF_EVENT_IOC_DISABLE, 0)
+	p.profilersMu.RLock()
+	defer p.profilersMu.RUnlock()
+	return unix.IoctlSetInt(p.fds[0], unix.PERF_EVENT_IOC_DISABLE, unix.PERF_IOC_FLAG_GROUP)
 }
 
 // Close is used to close the GroupProfiler.
 func (p *groupProfiler) Close() error {
 	var err error
+	p.profilersMu.RLock()
 	for _, fd := range p.fds {
 		err = multierr.Append(err, unix.Close(fd))
 	}
+	p.profilersMu.RUnlock()
 	return err
 }
 
 // Profile is used to return the GroupProfileValue of the GroupProfiler.
-func (p *groupProfiler) Profile() (*GroupProfileValue, error) {
+func (p *groupProfiler) Profile(val *GroupProfileValue) error {
+	p.profilersMu.RLock()
+	defer p.profilersMu.RUnlock()
 	nEvents := len(p.fds)
 	if nEvents == 0 {
-		return nil, ErrNoLeader
+		return ErrNoLeader
 	}
 
 	// read format of the raw event looks like this:
@@ -147,24 +176,25 @@ func (p *groupProfiler) Profile() (*GroupProfileValue, error) {
 		     };
 	*/
 
-	buf := make([]byte, 24+8*nEvents)
+	buf := p.bufPool.Get().([]byte)
 	_, err := syscall.Read(p.fds[0], buf)
 	if err != nil {
-		return nil, err
+		zero(buf)
+		p.bufPool.Put(buf)
+		return err
 	}
 
-	val := &GroupProfileValue{
-		Events:      binary.LittleEndian.Uint64(buf[0:8]),
-		TimeEnabled: binary.LittleEndian.Uint64(buf[8:16]),
-		TimeRunning: binary.LittleEndian.Uint64(buf[16:24]),
-		Values:      make([]uint64, len(p.fds)),
-	}
+	val.Events = binary.LittleEndian.Uint64(buf[0:8])
+	val.TimeEnabled = binary.LittleEndian.Uint64(buf[8:16])
+	val.TimeRunning = binary.LittleEndian.Uint64(buf[16:24])
+	val.Values = make([]uint64, len(p.fds))
 
 	offset := 24
 	for i := range p.fds {
 		val.Values[i] = binary.LittleEndian.Uint64(buf[offset : offset+8])
 		offset += 8
 	}
-
-	return val, nil
+	zero(buf)
+	p.bufPool.Put(buf)
+	return nil
 }

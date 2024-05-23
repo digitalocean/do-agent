@@ -11,7 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// +build solaris
+//go:build !nocpu
 // +build !nocpu
 
 package collector
@@ -20,18 +20,16 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/go-kit/kit/log"
+	"github.com/go-kit/log"
+	"github.com/illumos/go-kstat"
 	"github.com/prometheus/client_golang/prometheus"
-	kstat "github.com/siebenmann/go-kstat"
 )
 
 // #include <unistd.h>
 import "C"
 
 type cpuFreqCollector struct {
-	cpuFreq    *prometheus.Desc
-	cpuFreqMax *prometheus.Desc
-	logger     log.Logger
+	logger log.Logger
 }
 
 func init() {
@@ -40,16 +38,6 @@ func init() {
 
 func NewCpuFreqCollector(logger log.Logger) (Collector, error) {
 	return &cpuFreqCollector{
-		cpuFreq: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, cpuCollectorSubsystem, "frequency_hertz"),
-			"Current cpu thread frequency in hertz.",
-			[]string{"cpu"}, nil,
-		),
-		cpuFreqMax: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, cpuCollectorSubsystem, "frequency_max_hertz"),
-			"Maximum cpu thread frequency in hertz.",
-			[]string{"cpu"}, nil,
-		),
 		logger: logger,
 	}, nil
 }
@@ -81,14 +69,14 @@ func (c *cpuFreqCollector) Update(ch chan<- prometheus.Metric) error {
 
 		lcpu := strconv.Itoa(cpu)
 		ch <- prometheus.MustNewConstMetric(
-			c.cpuFreq,
+			cpuFreqHertzDesc,
 			prometheus.GaugeValue,
 			float64(cpuFreqV.UintVal),
 			lcpu,
 		)
 		// Multiply by 1e+6 to convert MHz to Hz.
 		ch <- prometheus.MustNewConstMetric(
-			c.cpuFreqMax,
+			cpuFreqMaxDesc,
 			prometheus.GaugeValue,
 			float64(cpuFreqMaxV.IntVal)*1e+6,
 			lcpu,

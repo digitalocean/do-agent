@@ -11,6 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+//go:build !nodiskstats
 // +build !nodiskstats
 
 package collector
@@ -18,10 +19,12 @@ package collector
 import (
 	"fmt"
 
-	"github.com/go-kit/kit/log"
+	"github.com/go-kit/log"
 	"github.com/lufia/iostat"
 	"github.com/prometheus/client_golang/prometheus"
 )
+
+const diskstatsDefaultIgnoredDevices = ""
 
 type typedDescFunc struct {
 	typedDesc
@@ -29,8 +32,10 @@ type typedDescFunc struct {
 }
 
 type diskstatsCollector struct {
-	descs  []typedDescFunc
-	logger log.Logger
+	descs []typedDescFunc
+
+	deviceFilter deviceFilter
+	logger       log.Logger
 }
 
 func init() {
@@ -40,6 +45,11 @@ func init() {
 // NewDiskstatsCollector returns a new Collector exposing disk device stats.
 func NewDiskstatsCollector(logger log.Logger) (Collector, error) {
 	var diskLabelNames = []string{"device"}
+
+	deviceFilter, err := newDiskstatsDeviceFilter(logger)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse device filter flags: %w", err)
+	}
 
 	return &diskstatsCollector{
 		descs: []typedDescFunc{
@@ -182,17 +192,22 @@ func NewDiskstatsCollector(logger log.Logger) (Collector, error) {
 				},
 			},
 		},
-		logger: logger,
+
+		deviceFilter: deviceFilter,
+		logger:       logger,
 	}, nil
 }
 
 func (c *diskstatsCollector) Update(ch chan<- prometheus.Metric) error {
 	diskStats, err := iostat.ReadDriveStats()
 	if err != nil {
-		return fmt.Errorf("couldn't get diskstats: %s", err)
+		return fmt.Errorf("couldn't get diskstats: %w", err)
 	}
 
 	for _, stats := range diskStats {
+		if c.deviceFilter.ignored(stats.Name) {
+			continue
+		}
 		for _, desc := range c.descs {
 			v := desc.value(stats)
 			ch <- desc.mustNewConstMetric(v, stats.Name)

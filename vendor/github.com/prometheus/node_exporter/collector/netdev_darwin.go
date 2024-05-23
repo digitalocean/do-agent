@@ -11,6 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+//go:build !nonetdev
 // +build !nonetdev
 
 package collector
@@ -20,16 +21,14 @@ import (
 	"encoding/binary"
 	"fmt"
 	"net"
-	"regexp"
-	"strconv"
 
-	"github.com/go-kit/kit/log"
-	"github.com/go-kit/kit/log/level"
+	"github.com/go-kit/log"
+	"github.com/go-kit/log/level"
 	"golang.org/x/sys/unix"
 )
 
-func getNetDevStats(ignore *regexp.Regexp, accept *regexp.Regexp, logger log.Logger) (map[string]map[string]string, error) {
-	netDev := map[string]map[string]string{}
+func getNetDevStats(filter *deviceFilter, logger log.Logger) (netDevStats, error) {
+	netDev := netDevStats{}
 
 	ifs, err := net.Interfaces()
 	if err != nil {
@@ -37,31 +36,30 @@ func getNetDevStats(ignore *regexp.Regexp, accept *regexp.Regexp, logger log.Log
 	}
 
 	for _, iface := range ifs {
+		if filter.ignored(iface.Name) {
+			level.Debug(logger).Log("msg", "Ignoring device", "device", iface.Name)
+			continue
+		}
+
 		ifaceData, err := getIfaceData(iface.Index)
 		if err != nil {
 			level.Debug(logger).Log("msg", "failed to load data for interface", "device", iface.Name, "err", err)
 			continue
 		}
 
-		if ignore != nil && ignore.MatchString(iface.Name) {
-			level.Debug(logger).Log("msg", "Ignoring device", "device", iface.Name)
-			continue
+		netDev[iface.Name] = map[string]uint64{
+			"receive_packets":    ifaceData.Data.Ipackets,
+			"transmit_packets":   ifaceData.Data.Opackets,
+			"receive_bytes":      ifaceData.Data.Ibytes,
+			"transmit_bytes":     ifaceData.Data.Obytes,
+			"receive_errors":     ifaceData.Data.Ierrors,
+			"transmit_errors":    ifaceData.Data.Oerrors,
+			"receive_dropped":    ifaceData.Data.Iqdrops,
+			"receive_multicast":  ifaceData.Data.Imcasts,
+			"transmit_multicast": ifaceData.Data.Omcasts,
+			"collisions":         ifaceData.Data.Collisions,
+			"noproto":            ifaceData.Data.Noproto,
 		}
-		if accept != nil && !accept.MatchString(iface.Name) {
-			level.Debug(logger).Log("msg", "Ignoring device", "device", iface.Name)
-			continue
-		}
-
-		devStats := map[string]string{}
-		devStats["receive_packets"] = strconv.FormatUint(ifaceData.Data.Ipackets, 10)
-		devStats["transmit_packets"] = strconv.FormatUint(ifaceData.Data.Opackets, 10)
-		devStats["receive_errs"] = strconv.FormatUint(ifaceData.Data.Ierrors, 10)
-		devStats["transmit_errs"] = strconv.FormatUint(ifaceData.Data.Oerrors, 10)
-		devStats["receive_bytes"] = strconv.FormatUint(ifaceData.Data.Ibytes, 10)
-		devStats["transmit_bytes"] = strconv.FormatUint(ifaceData.Data.Obytes, 10)
-		devStats["receive_multicast"] = strconv.FormatUint(ifaceData.Data.Imcasts, 10)
-		devStats["transmit_multicast"] = strconv.FormatUint(ifaceData.Data.Omcasts, 10)
-		netDev[iface.Name] = devStats
 	}
 
 	return netDev, nil
@@ -92,6 +90,7 @@ type ifMsghdr2 struct {
 	Data      ifData64
 }
 
+// https://github.com/apple/darwin-xnu/blob/main/bsd/net/if_var.h#L199-L231
 type ifData64 struct {
 	Type       uint8
 	Typelen    uint8

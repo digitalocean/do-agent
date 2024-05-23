@@ -11,6 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+//go:build !nointerrupts
 // +build !nointerrupts
 
 package collector
@@ -34,13 +35,13 @@ var (
 func (c *interruptsCollector) Update(ch chan<- prometheus.Metric) (err error) {
 	interrupts, err := getInterrupts()
 	if err != nil {
-		return fmt.Errorf("couldn't get interrupts: %s", err)
+		return fmt.Errorf("couldn't get interrupts: %w", err)
 	}
 	for name, interrupt := range interrupts {
 		for cpuNo, value := range interrupt.values {
 			fv, err := strconv.ParseFloat(value, 64)
 			if err != nil {
-				return fmt.Errorf("invalid value %s in interrupts: %s", value, err)
+				return fmt.Errorf("invalid value %s in interrupts: %w", value, err)
 			}
 			ch <- c.desc.mustNewConstMetric(fv, strconv.Itoa(cpuNo), name, interrupt.info, interrupt.devices)
 		}
@@ -76,22 +77,29 @@ func parseInterrupts(r io.Reader) (map[string]interrupt, error) {
 	cpuNum := len(strings.Fields(scanner.Text())) // one header per cpu
 
 	for scanner.Scan() {
-		parts := strings.Fields(scanner.Text())
-		if len(parts) < cpuNum+2 { // irq + one column per cpu + details,
-			continue // we ignore ERR and MIS for now
-		}
-		intName := parts[0][:len(parts[0])-1] // remove trailing :
-		intr := interrupt{
-			values: parts[1 : cpuNum+1],
-		}
+		// On aarch64 there can be zero space between the name/label
+		// and the values, so we need to split on `:` before using
+		// strings.Fields() to split on fields.
+		group := strings.SplitN(scanner.Text(), ":", 2)
+		if len(group) > 1 {
+			parts := strings.Fields(group[1])
 
-		if _, err := strconv.Atoi(intName); err == nil { // numeral interrupt
-			intr.info = parts[cpuNum+1]
-			intr.devices = strings.Join(parts[cpuNum+2:], " ")
-		} else {
-			intr.info = strings.Join(parts[cpuNum+1:], " ")
+			if len(parts) < cpuNum+1 { // irq + one column per cpu + details,
+				continue // we ignore ERR and MIS for now
+			}
+			intName := strings.TrimLeft(group[0], " ")
+			intr := interrupt{
+				values: parts[0:cpuNum],
+			}
+
+			if _, err := strconv.Atoi(intName); err == nil { // numeral interrupt
+				intr.info = parts[cpuNum]
+				intr.devices = strings.Join(parts[cpuNum+1:], " ")
+			} else {
+				intr.info = strings.Join(parts[cpuNum:], " ")
+			}
+			interrupts[intName] = intr
 		}
-		interrupts[intName] = intr
 	}
 
 	return interrupts, scanner.Err()

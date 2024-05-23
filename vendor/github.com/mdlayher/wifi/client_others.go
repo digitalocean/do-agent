@@ -1,33 +1,26 @@
-//+build !linux
+//go:build !linux
+// +build !linux
 
 package wifi
 
-var _ osClient = &client{}
+import (
+	"fmt"
+	"runtime"
+)
+
+// errUnimplemented is returned by all functions on platforms that
+// do not have package wifi implemented.
+var errUnimplemented = fmt.Errorf("wifi: not implemented on %s", runtime.GOOS)
 
 // A conn is the no-op implementation of a netlink sockets connection.
 type client struct{}
 
-// newClient always returns an error.
-func newClient() (*client, error) {
-	return nil, errUnimplemented
-}
+func newClient() (*client, error) { return nil, errUnimplemented }
 
-// Close always returns an error.
-func (c *client) Close() error {
-	return errUnimplemented
-}
-
-// Interfaces always returns an error.
-func (c *client) Interfaces() ([]*Interface, error) {
-	return nil, errUnimplemented
-}
-
-// BSS always returns an error.
-func (c *client) BSS(ifi *Interface) (*BSS, error) {
-	return nil, errUnimplemented
-}
-
-// StationInfo always returns an error.
-func (c *client) StationInfo(ifi *Interface) ([]*StationInfo, error) {
-	return nil, errUnimplemented
-}
+func (*client) Close() error                                     { return errUnimplemented }
+func (*client) Interfaces() ([]*Interface, error)                { return nil, errUnimplemented }
+func (*client) BSS(_ *Interface) (*BSS, error)                   { return nil, errUnimplemented }
+func (*client) StationInfo(_ *Interface) ([]*StationInfo, error) { return nil, errUnimplemented }
+func (*client) Connect(_ *Interface, _ string) error             { return errUnimplemented }
+func (*client) Disconnect(_ *Interface) error                    { return errUnimplemented }
+func (*client) ConnectWPAPSK(_ *Interface, _, _ string) error    { return errUnimplemented }

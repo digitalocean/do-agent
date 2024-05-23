@@ -11,32 +11,42 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+//go:build !noqdisc
 // +build !noqdisc
 
 package collector
 
 import (
 	"encoding/json"
-	"io/ioutil"
+	"fmt"
+	"os"
 	"path/filepath"
 
+	"github.com/alecthomas/kingpin/v2"
 	"github.com/ema/qdisc"
-	"github.com/go-kit/kit/log"
+	"github.com/go-kit/log"
+	"github.com/go-kit/log/level"
 	"github.com/prometheus/client_golang/prometheus"
-	"gopkg.in/alecthomas/kingpin.v2"
 )
 
 type qdiscStatCollector struct {
-	bytes      typedDesc
-	packets    typedDesc
-	drops      typedDesc
-	requeues   typedDesc
-	overlimits typedDesc
-	logger     log.Logger
+	logger       log.Logger
+	deviceFilter deviceFilter
+	bytes        typedDesc
+	packets      typedDesc
+	drops        typedDesc
+	requeues     typedDesc
+	overlimits   typedDesc
+	qlength      typedDesc
+	backlog      typedDesc
 }
 
 var (
-	collectorQdisc = kingpin.Flag("collector.qdisc.fixtures", "test fixtures to use for qdisc collector end-to-end testing").Default("").String()
+	collectorQdisc                 = kingpin.Flag("collector.qdisc.fixtures", "test fixtures to use for qdisc collector end-to-end testing").Default("").String()
+	collectorQdiscDeviceInclude    = kingpin.Flag("collector.qdisc.device-include", "Regexp of qdisc devices to include (mutually exclusive to device-exclude).").String()
+	oldCollectorQdiskDeviceInclude = kingpin.Flag("collector.qdisk.device-include", "DEPRECATED: Use collector.qdisc.device-include").Hidden().String()
+	collectorQdiscDeviceExclude    = kingpin.Flag("collector.qdisc.device-exclude", "Regexp of qdisc devices to exclude (mutually exclusive to device-include).").String()
+	oldCollectorQdiskDeviceExclude = kingpin.Flag("collector.qdisk.device-exclude", "DEPRECATED: Use collector.qdisc.device-exclude").Hidden().String()
 )
 
 func init() {
@@ -45,6 +55,28 @@ func init() {
 
 // NewQdiscStatCollector returns a new Collector exposing queuing discipline statistics.
 func NewQdiscStatCollector(logger log.Logger) (Collector, error) {
+	if *oldCollectorQdiskDeviceInclude != "" {
+		if *collectorQdiscDeviceInclude == "" {
+			level.Warn(logger).Log("msg", "--collector.qdisk.device-include is DEPRECATED and will be removed in 2.0.0, use --collector.qdisc.device-include")
+			*collectorQdiscDeviceInclude = *oldCollectorQdiskDeviceInclude
+		} else {
+			return nil, fmt.Errorf("--collector.qdisk.device-include and --collector.qdisc.device-include are mutually exclusive")
+		}
+	}
+
+	if *oldCollectorQdiskDeviceExclude != "" {
+		if *collectorQdiscDeviceExclude == "" {
+			level.Warn(logger).Log("msg", "--collector.qdisk.device-exclude is DEPRECATED and will be removed in 2.0.0, use --collector.qdisc.device-exclude")
+			*collectorQdiscDeviceExclude = *oldCollectorQdiskDeviceExclude
+		} else {
+			return nil, fmt.Errorf("--collector.qdisk.device-exclude and --collector.qdisc.device-exclude are mutually exclusive")
+		}
+	}
+
+	if *collectorQdiscDeviceExclude != "" && *collectorQdiscDeviceInclude != "" {
+		return nil, fmt.Errorf("collector.qdisc.device-include and collector.qdisc.device-exclude are mutaly exclusive")
+	}
+
 	return &qdiscStatCollector{
 		bytes: typedDesc{prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, "qdisc", "bytes_total"),
@@ -71,14 +103,25 @@ func NewQdiscStatCollector(logger log.Logger) (Collector, error) {
 			"Number of overlimit packets.",
 			[]string{"device", "kind"}, nil,
 		), prometheus.CounterValue},
-		logger: logger,
+		qlength: typedDesc{prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, "qdisc", "current_queue_length"),
+			"Number of packets currently in queue to be sent.",
+			[]string{"device", "kind"}, nil,
+		), prometheus.GaugeValue},
+		backlog: typedDesc{prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, "qdisc", "backlog"),
+			"Number of bytes currently in queue to be sent.",
+			[]string{"device", "kind"}, nil,
+		), prometheus.GaugeValue},
+		logger:       logger,
+		deviceFilter: newDeviceFilter(*collectorQdiscDeviceExclude, *collectorQdiscDeviceInclude),
 	}, nil
 }
 
 func testQdiscGet(fixtures string) ([]qdisc.QdiscInfo, error) {
 	var res []qdisc.QdiscInfo
 
-	b, err := ioutil.ReadFile(filepath.Join(fixtures, "results.json"))
+	b, err := os.ReadFile(filepath.Join(fixtures, "results.json"))
 	if err != nil {
 		return res, err
 	}
@@ -109,11 +152,17 @@ func (c *qdiscStatCollector) Update(ch chan<- prometheus.Metric) error {
 			continue
 		}
 
+		if c.deviceFilter.ignored(msg.IfaceName) {
+			continue
+		}
+
 		ch <- c.bytes.mustNewConstMetric(float64(msg.Bytes), msg.IfaceName, msg.Kind)
 		ch <- c.packets.mustNewConstMetric(float64(msg.Packets), msg.IfaceName, msg.Kind)
 		ch <- c.drops.mustNewConstMetric(float64(msg.Drops), msg.IfaceName, msg.Kind)
 		ch <- c.requeues.mustNewConstMetric(float64(msg.Requeues), msg.IfaceName, msg.Kind)
 		ch <- c.overlimits.mustNewConstMetric(float64(msg.Overlimits), msg.IfaceName, msg.Kind)
+		ch <- c.qlength.mustNewConstMetric(float64(msg.Qlen), msg.IfaceName, msg.Kind)
+		ch <- c.backlog.mustNewConstMetric(float64(msg.Backlog), msg.IfaceName, msg.Kind)
 	}
 
 	return nil

@@ -11,13 +11,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// +build darwin freebsd openbsd linux
+//go:build (darwin || freebsd || openbsd || netbsd || linux) && !nouname
+// +build darwin freebsd openbsd netbsd linux
 // +build !nouname
 
 package collector
 
 import (
-	"github.com/go-kit/kit/log"
+	"github.com/go-kit/log"
 	"github.com/prometheus/client_golang/prometheus"
 )
 

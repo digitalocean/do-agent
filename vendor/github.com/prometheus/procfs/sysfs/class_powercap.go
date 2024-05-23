@@ -11,13 +11,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+//go:build linux
 // +build linux
 
 package sysfs
 
 import (
 	"fmt"
-	"io/ioutil"
+	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -25,7 +26,7 @@ import (
 	"github.com/prometheus/procfs/internal/util"
 )
 
-// RaplZone stores the information for one RAPL power zone
+// RaplZone stores the information for one RAPL power zone.
 type RaplZone struct {
 	Name           string // name of RAPL zone from file "name"
 	Index          int    // index (different value for duplicate names)
@@ -33,28 +34,28 @@ type RaplZone struct {
 	MaxMicrojoules uint64 // max RAPL microjoule value
 }
 
-// GetRaplZones returns a slice of RaplZones
-// When RAPL files are not present, returns nil with error
-// https://www.kernel.org/doc/Documentation/power/powercap/powercap.txt
+// GetRaplZones returns a slice of RaplZones. When RAPL files are not present,
+// returns nil with error.
+// - https://www.kernel.org/doc/Documentation/power/powercap/powercap.txt
 func GetRaplZones(fs FS) ([]RaplZone, error) {
 	raplDir := fs.sys.Path("class/powercap")
 
-	files, err := ioutil.ReadDir(raplDir)
+	files, err := os.ReadDir(raplDir)
 	if err != nil {
 		return nil, fmt.Errorf("unable to read class/powercap: %w", err)
 	}
 
 	var zones []RaplZone
 
-	// count name usages to avoid duplicates (label them with an index)
+	// Count name usages to avoid duplicates (label them with an index).
 	countNameUsages := make(map[string]int)
 
-	// loop through directory files searching for file "name" from subdirs
+	// Loop through directory files searching for file "name" from subdirs.
 	for _, f := range files {
 		nameFile := filepath.Join(raplDir, f.Name(), "/name")
-		nameBytes, err := ioutil.ReadFile(nameFile)
+		nameBytes, err := os.ReadFile(nameFile)
 		if err == nil {
-			// add new rapl zone since name file was found
+			// Add new rapl zone since name file was found.
 			name := strings.TrimSpace(string(nameBytes))
 
 			// get a pair of index and final name

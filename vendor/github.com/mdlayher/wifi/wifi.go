@@ -7,10 +7,8 @@ import (
 	"time"
 )
 
-var (
-	// errInvalidIE is returned when one or more IEs are malformed.
-	errInvalidIE = errors.New("invalid 802.11 information element")
-)
+// errInvalidIE is returned when one or more IEs are malformed.
+var errInvalidIE = errors.New("invalid 802.11 information element")
 
 // An InterfaceType is the operating mode of an Interface.
 type InterfaceType int

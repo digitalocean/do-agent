@@ -11,6 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+//go:build !notime
 // +build !notime
 
 package collector
@@ -18,14 +19,17 @@ package collector
 import (
 	"time"
 
-	"github.com/go-kit/kit/log"
-	"github.com/go-kit/kit/log/level"
+	"github.com/go-kit/log"
+	"github.com/go-kit/log/level"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
 type timeCollector struct {
-	desc   *prometheus.Desc
-	logger log.Logger
+	now                   typedDesc
+	zone                  typedDesc
+	clocksourcesAvailable typedDesc
+	clocksourceCurrent    typedDesc
+	logger                log.Logger
 }
 
 func init() {
@@ -35,19 +39,40 @@ func init() {
 // NewTimeCollector returns a new Collector exposing the current system time in
 // seconds since epoch.
 func NewTimeCollector(logger log.Logger) (Collector, error) {
+	const subsystem = "time"
 	return &timeCollector{
-		desc: prometheus.NewDesc(
-			namespace+"_time_seconds",
+		now: typedDesc{prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, subsystem, "seconds"),
 			"System time in seconds since epoch (1970).",
 			nil, nil,
-		),
+		), prometheus.GaugeValue},
+		zone: typedDesc{prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, subsystem, "zone_offset_seconds"),
+			"System time zone offset in seconds.",
+			[]string{"time_zone"}, nil,
+		), prometheus.GaugeValue},
+		clocksourcesAvailable: typedDesc{prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, subsystem, "clocksource_available_info"),
+			"Available clocksources read from '/sys/devices/system/clocksource'.",
+			[]string{"device", "clocksource"}, nil,
+		), prometheus.GaugeValue},
+		clocksourceCurrent: typedDesc{prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, subsystem, "clocksource_current_info"),
+			"Current clocksource read from '/sys/devices/system/clocksource'.",
+			[]string{"device", "clocksource"}, nil,
+		), prometheus.GaugeValue},
 		logger: logger,
 	}, nil
 }
 
 func (c *timeCollector) Update(ch chan<- prometheus.Metric) error {
-	now := float64(time.Now().UnixNano()) / 1e9
-	level.Debug(c.logger).Log("msg", "Return time", "now", now)
-	ch <- prometheus.MustNewConstMetric(c.desc, prometheus.GaugeValue, now)
-	return nil
+	now := time.Now()
+	nowSec := float64(now.UnixNano()) / 1e9
+	zone, zoneOffset := now.Zone()
+
+	level.Debug(c.logger).Log("msg", "Return time", "now", nowSec)
+	ch <- c.now.mustNewConstMetric(nowSec)
+	level.Debug(c.logger).Log("msg", "Zone offset", "offset", zoneOffset, "time_zone", zone)
+	ch <- c.zone.mustNewConstMetric(float64(zoneOffset), zone)
+	return c.update(ch)
 }

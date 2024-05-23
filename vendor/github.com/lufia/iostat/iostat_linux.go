@@ -1,3 +1,4 @@
+//go:build !darwin
 // +build !darwin
 
 package iostat
@@ -6,7 +7,7 @@ import (
 	"errors"
 )
 
-// ReadDriveStats returns statictics of each of the drives.
+// ReadDriveStats returns statistics of each of the drives.
 func ReadDriveStats() ([]*DriveStats, error) {
 	return nil, errors.New("not implement")
 }

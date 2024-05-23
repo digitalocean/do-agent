@@ -11,13 +11,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+//go:build (linux || openbsd) && !nointerrupts
 // +build linux openbsd
 // +build !nointerrupts
 
 package collector
 
 import (
-	"github.com/go-kit/kit/log"
+	"github.com/go-kit/log"
 	"github.com/prometheus/client_golang/prometheus"
 )
 

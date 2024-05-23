@@ -11,24 +11,35 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+//go:build !noarp
 // +build !noarp
 
 package collector
 
 import (
-	"bufio"
+	"errors"
 	"fmt"
-	"io"
-	"os"
-	"strings"
+	"net"
 
-	"github.com/go-kit/kit/log"
+	"github.com/alecthomas/kingpin/v2"
+	"github.com/go-kit/log"
+	"github.com/jsimonetti/rtnetlink"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/procfs"
+	"golang.org/x/sys/unix"
+)
+
+var (
+	arpDeviceInclude = kingpin.Flag("collector.arp.device-include", "Regexp of arp devices to include (mutually exclusive to device-exclude).").String()
+	arpDeviceExclude = kingpin.Flag("collector.arp.device-exclude", "Regexp of arp devices to exclude (mutually exclusive to device-include).").String()
+	arpNetlink       = kingpin.Flag("collector.arp.netlink", "Use netlink to gather stats instead of /proc/net/arp.").Default("true").Bool()
 )
 
 type arpCollector struct {
-	entries *prometheus.Desc
-	logger  log.Logger
+	fs           procfs.FS
+	deviceFilter deviceFilter
+	entries      *prometheus.Desc
+	logger       log.Logger
 }
 
 func init() {
@@ -37,7 +48,14 @@ func init() {
 
 // NewARPCollector returns a new Collector exposing ARP stats.
 func NewARPCollector(logger log.Logger) (Collector, error) {
+	fs, err := procfs.NewFS(*procPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open procfs: %w", err)
+	}
+
 	return &arpCollector{
+		fs:           fs,
+		deviceFilter: newDeviceFilter(*arpDeviceExclude, *arpDeviceInclude),
 		entries: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, "arp", "entries"),
 			"ARP entries by device",
@@ -47,56 +65,80 @@ func NewARPCollector(logger log.Logger) (Collector, error) {
 	}, nil
 }
 
-func getARPEntries() (map[string]uint32, error) {
-	file, err := os.Open(procFilePath("net/arp"))
-	if err != nil {
-		return nil, err
-	}
-	defer file.Close()
-
-	entries, err := parseARPEntries(file)
-	if err != nil {
-		return nil, err
-	}
-
-	return entries, nil
-}
-
-// TODO: This should get extracted to the github.com/prometheus/procfs package
-// to support more complete parsing of /proc/net/arp. Instead of adding
-// more fields to this function's return values it should get moved and
-// changed to support each field.
-func parseARPEntries(data io.Reader) (map[string]uint32, error) {
-	scanner := bufio.NewScanner(data)
+func getTotalArpEntries(deviceEntries []procfs.ARPEntry) map[string]uint32 {
 	entries := make(map[string]uint32)
 
-	for scanner.Scan() {
-		columns := strings.Fields(scanner.Text())
+	for _, device := range deviceEntries {
+		entries[device.Device]++
+	}
 
-		if len(columns) < 6 {
-			return nil, fmt.Errorf("unexpected ARP table format")
-		}
+	return entries
+}
 
-		if columns[0] != "IP" {
-			deviceIndex := len(columns) - 1
-			entries[columns[deviceIndex]]++
+func getTotalArpEntriesRTNL() (map[string]uint32, error) {
+	conn, err := rtnetlink.Dial(nil)
+	if err != nil {
+		return nil, err
+	}
+	defer conn.Close()
+
+	neighbors, err := conn.Neigh.List()
+	if err != nil {
+		return nil, err
+	}
+
+	ifIndexEntries := make(map[uint32]uint32)
+
+	for _, n := range neighbors {
+		// Neighbors will also contain IPv6 neighbors, but since this is purely an ARP collector,
+		// restrict to AF_INET. Also skip entries which have state NUD_NOARP to conform to output
+		// of /proc/net/arp.
+		if n.Family == unix.AF_INET && n.State&unix.NUD_NOARP == 0 {
+			ifIndexEntries[n.Index]++
 		}
 	}
 
-	if err := scanner.Err(); err != nil {
-		return nil, fmt.Errorf("failed to parse ARP info: %s", err)
+	enumEntries := make(map[string]uint32)
+
+	// Convert interface indexes to names.
+	for ifIndex, entryCount := range ifIndexEntries {
+		iface, err := net.InterfaceByIndex(int(ifIndex))
+		if err != nil {
+			if errors.Unwrap(err).Error() == "no such network interface" {
+				continue
+			}
+			return nil, err
+		}
+
+		enumEntries[iface.Name] = entryCount
 	}
 
-	return entries, nil
+	return enumEntries, nil
 }
 
 func (c *arpCollector) Update(ch chan<- prometheus.Metric) error {
-	entries, err := getARPEntries()
-	if err != nil {
-		return fmt.Errorf("could not get ARP entries: %s", err)
+	var enumeratedEntry map[string]uint32
+
+	if *arpNetlink {
+		var err error
+
+		enumeratedEntry, err = getTotalArpEntriesRTNL()
+		if err != nil {
+			return fmt.Errorf("could not get ARP entries: %w", err)
+		}
+	} else {
+		entries, err := c.fs.GatherARPEntries()
+		if err != nil {
+			return fmt.Errorf("could not get ARP entries: %w", err)
+		}
+
+		enumeratedEntry = getTotalArpEntries(entries)
 	}
 
-	for device, entryCount := range entries {
+	for device, entryCount := range enumeratedEntry {
+		if c.deviceFilter.ignored(device) {
+			continue
+		}
 		ch <- prometheus.MustNewConstMetric(
 			c.entries, prometheus.GaugeValue, float64(entryCount), device)
 	}

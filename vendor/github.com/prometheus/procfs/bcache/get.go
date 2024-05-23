@@ -16,7 +16,6 @@ package bcache
 import (
 	"bufio"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path"
 	"path/filepath"
@@ -51,8 +50,8 @@ func NewFS(mountPoint string) (FS, error) {
 	return FS{&fs}, nil
 }
 
-// Stats is a wrapper around stats()
-// It returns full available statistics
+// Stats is a wrapper around stats().
+// It returns full available statistics.
 func (fs FS) Stats() ([]*Stats, error) {
 	return fs.stats(true)
 }
@@ -197,14 +196,18 @@ func (p *parser) setSubDir(pathElements ...string) {
 	p.currentDir = path.Join(p.uuidPath, p.subDir)
 }
 
+// readValues reads a number of numerical values into an uint64 slice.
+// Non-existing files are ignored.
 func (p *parser) readValue(fileName string) uint64 {
 	if p.err != nil {
 		return 0
 	}
 	path := path.Join(p.currentDir, fileName)
-	byt, err := ioutil.ReadFile(path)
+	byt, err := os.ReadFile(path)
 	if err != nil {
-		p.err = fmt.Errorf("failed to read: %s", path)
+		if !os.IsNotExist(err) {
+			p.err = fmt.Errorf("failed to read: %s", path)
+		}
 		return 0
 	}
 	// Remove trailing newline.

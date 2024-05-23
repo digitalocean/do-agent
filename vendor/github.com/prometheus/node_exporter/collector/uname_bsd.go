@@ -11,13 +11,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// +build darwin freebsd openbsd
+//go:build (darwin || freebsd || openbsd || netbsd) && !nouname
+// +build darwin freebsd openbsd netbsd
 // +build !nouname
 
 package collector
 
 import (
-	"bytes"
 	"strings"
 
 	"golang.org/x/sys/unix"
@@ -32,10 +32,10 @@ func getUname() (uname, error) {
 	nodeName, domainName := parseHostNameAndDomainName(utsname)
 
 	output := uname{
-		SysName:    string(utsname.Sysname[:bytes.IndexByte(utsname.Sysname[:], 0)]),
-		Release:    string(utsname.Release[:bytes.IndexByte(utsname.Release[:], 0)]),
-		Version:    string(utsname.Version[:bytes.IndexByte(utsname.Version[:], 0)]),
-		Machine:    string(utsname.Machine[:bytes.IndexByte(utsname.Machine[:], 0)]),
+		SysName:    unix.ByteSliceToString(utsname.Sysname[:]),
+		Release:    unix.ByteSliceToString(utsname.Release[:]),
+		Version:    unix.ByteSliceToString(utsname.Version[:]),
+		Machine:    unix.ByteSliceToString(utsname.Machine[:]),
 		NodeName:   nodeName,
 		DomainName: domainName,
 	}
@@ -46,7 +46,7 @@ func getUname() (uname, error) {
 // parseHostNameAndDomainName for FreeBSD,OpenBSD,Darwin.
 // Attempts to emulate what happens in the Linux uname calls since these OS doesn't have a Domainname.
 func parseHostNameAndDomainName(utsname unix.Utsname) (hostname string, domainname string) {
-	nodename := string(utsname.Nodename[:bytes.IndexByte(utsname.Nodename[:], 0)])
+	nodename := unix.ByteSliceToString(utsname.Nodename[:])
 	split := strings.SplitN(nodename, ".", 2)
 
 	// We'll always have at least a single element in the array. We assume this

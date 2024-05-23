@@ -11,13 +11,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+//go:build linux
 // +build linux
 
 package sysfs
 
 import (
 	"fmt"
-	"io/ioutil"
+	"os"
 	"path/filepath"
 	"regexp"
 
@@ -50,7 +51,7 @@ type SCSITapeClass map[string]SCSITape
 func (fs FS) SCSITapeClass() (SCSITapeClass, error) {
 	path := fs.sys.Path(scsiTapeClassPath)
 
-	dirs, err := ioutil.ReadDir(path)
+	dirs, err := os.ReadDir(path)
 	if err != nil {
 		return nil, err
 	}
@@ -75,7 +76,7 @@ func (fs FS) SCSITapeClass() (SCSITapeClass, error) {
 	return stc, nil
 }
 
-// Parse a single scsi_tape
+// Parse a single scsi_tape.
 func (fs FS) parseSCSITape(name string) (*SCSITape, error) {
 	path := fs.sys.Path(scsiTapeClassPath, name)
 	tape := SCSITape{Name: name}
@@ -94,7 +95,7 @@ func parseSCSITapeStatistics(tapePath string) (*SCSITapeCounters, error) {
 	var counters SCSITapeCounters
 
 	path := filepath.Join(tapePath, "stats")
-	files, err := ioutil.ReadDir(path)
+	files, err := os.ReadDir(path)
 	if err != nil {
 		return nil, err
 	}

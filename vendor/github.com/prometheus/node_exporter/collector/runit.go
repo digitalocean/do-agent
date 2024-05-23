@@ -11,16 +11,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+//go:build !norunit
 // +build !norunit
 
 package collector
 
 import (
-	"github.com/go-kit/kit/log"
-	"github.com/go-kit/kit/log/level"
+	"github.com/alecthomas/kingpin/v2"
+	"github.com/go-kit/log"
+	"github.com/go-kit/log/level"
+	"github.com/prometheus-community/go-runit/runit"
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/soundcloud/go-runit/runit"
-	"gopkg.in/alecthomas/kingpin.v2"
 )
 
 var runitServiceDir = kingpin.Flag("collector.runit.servicedir", "Path to runit service directory.").Default("/etc/service").String()
@@ -44,6 +45,8 @@ func NewRunitCollector(logger log.Logger) (Collector, error) {
 		constLabels = prometheus.Labels{"supervisor": "runit"}
 		labelNames  = []string{"service"}
 	)
+
+	level.Warn(logger).Log("msg", "This collector is deprecated and will be removed in the next major version release.")
 
 	return &runitCollector{
 		state: typedDesc{prometheus.NewDesc(

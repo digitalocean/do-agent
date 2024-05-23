@@ -11,6 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+//go:build !nosupervisord
 // +build !nosupervisord
 
 package collector
@@ -23,15 +24,15 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/go-kit/kit/log"
-	"github.com/go-kit/kit/log/level"
+	"github.com/alecthomas/kingpin/v2"
+	"github.com/go-kit/log"
+	"github.com/go-kit/log/level"
 	"github.com/mattn/go-xmlrpc"
 	"github.com/prometheus/client_golang/prometheus"
-	"gopkg.in/alecthomas/kingpin.v2"
 )
 
 var (
-	supervisordURL = kingpin.Flag("collector.supervisord.url", "XML RPC endpoint.").Default("http://localhost:9001/RPC2").String()
+	supervisordURL = kingpin.Flag("collector.supervisord.url", "XML RPC endpoint.").Default("http://localhost:9001/RPC2").Envar("SUPERVISORD_URL").String()
 	xrpc           *xmlrpc.Client
 )
 
@@ -67,6 +68,8 @@ func NewSupervisordCollector(logger log.Logger) (Collector, error) {
 	} else {
 		xrpc = xmlrpc.NewClient(*supervisordURL)
 	}
+
+	level.Warn(logger).Log("msg", "This collector is deprecated and will be removed in the next major version release.")
 
 	return &supervisordCollector{
 		upDesc: prometheus.NewDesc(
@@ -134,7 +137,7 @@ func (c *supervisordCollector) Update(ch chan<- prometheus.Metric) error {
 
 	res, err := xrpc.Call("supervisor.getAllProcessInfo")
 	if err != nil {
-		return fmt.Errorf("unable to call supervisord: %s", err)
+		return fmt.Errorf("unable to call supervisord: %w", err)
 	}
 
 	for _, p := range res.(xmlrpc.Array) {

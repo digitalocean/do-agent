@@ -11,6 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+//go:build !nontp
 // +build !nontp
 
 package collector
@@ -21,10 +22,11 @@ import (
 	"sync"
 	"time"
 
+	"github.com/alecthomas/kingpin/v2"
 	"github.com/beevik/ntp"
-	"github.com/go-kit/kit/log"
+	"github.com/go-kit/log"
+	"github.com/go-kit/log/level"
 	"github.com/prometheus/client_golang/prometheus"
-	"gopkg.in/alecthomas/kingpin.v2"
 )
 
 const (
@@ -34,6 +36,7 @@ const (
 
 var (
 	ntpServer          = kingpin.Flag("collector.ntp.server", "NTP server to use for ntp collector").Default("127.0.0.1").String()
+	ntpServerPort      = kingpin.Flag("collector.ntp.server-port", "UDP port number to connect to on NTP server").Default("123").Int()
 	ntpProtocolVersion = kingpin.Flag("collector.ntp.protocol-version", "NTP protocol version").Default("4").Int()
 	ntpServerIsLocal   = kingpin.Flag("collector.ntp.server-is-local", "Certify that collector.ntp.server address is not a public ntp server").Default("false").Bool()
 	ntpIPTTL           = kingpin.Flag("collector.ntp.ip-ttl", "IP TTL to use while sending NTP query").Default("1").Int()
@@ -73,6 +76,11 @@ func NewNtpCollector(logger log.Logger) (Collector, error) {
 		return nil, fmt.Errorf("offset tolerance must be non-negative")
 	}
 
+	if *ntpServerPort < 1 || *ntpServerPort > 65535 {
+		return nil, fmt.Errorf("invalid NTP port number %d; must be between 1 and 65535 inclusive", *ntpServerPort)
+	}
+
+	level.Warn(logger).Log("msg", "This collector is deprecated and will be removed in the next major version release.")
 	return &ntpCollector{
 		stratum: typedDesc{prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, ntpSubsystem, "stratum"),
@@ -123,9 +131,10 @@ func (c *ntpCollector) Update(ch chan<- prometheus.Metric) error {
 		Version: *ntpProtocolVersion,
 		TTL:     *ntpIPTTL,
 		Timeout: time.Second, // default `ntpdate` timeout
+		Port:    *ntpServerPort,
 	})
 	if err != nil {
-		return fmt.Errorf("couldn't get SNTP reply: %s", err)
+		return fmt.Errorf("couldn't get SNTP reply: %w", err)
 	}
 
 	ch <- c.stratum.mustNewConstMetric(float64(resp.Stratum))

@@ -32,5 +32,10 @@ struct CPUStats {
 	natural_t idle;
 };
 
-extern int readdrivestat(DriveStats a[], int n);
-extern int readcpustat(CPUStats *cpu);
+extern int lufia_iostat_v1_readdrivestat(DriveStats a[], int n);
+extern int lufia_iostat_v1_readcpustat(CPUStats *cpu);
+
+#if (MAC_OS_X_VERSION_MIN_REQUIRED < 120000)
+	// If deployent target is before monterey, use the old name.
+	#define IOMainPort IOMasterPort
+#endif

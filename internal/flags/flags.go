@@ -4,8 +4,8 @@
 package flags
 
 import (
+	"github.com/alecthomas/kingpin/v2"
 	"github.com/prometheus/procfs"
-	kingpin "gopkg.in/alecthomas/kingpin.v2"
 )
 
 var (

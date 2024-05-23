@@ -1,9 +1,11 @@
 package qdisc
 
 import (
+	"errors"
 	"fmt"
 	"math"
 	"net"
+	"syscall"
 
 	"github.com/mdlayher/netlink"
 	"github.com/mdlayher/netlink/nlenc"
@@ -86,6 +88,8 @@ type QdiscInfo struct {
 	GcFlows     uint64
 	Throttled   uint64
 	FlowsPlimit uint64
+	Qlen        uint32
+	Backlog     uint32
 }
 
 func parseTCAStats(attr netlink.Attribute) TC_Stats {
@@ -173,7 +177,7 @@ func getQdiscMsgs(c *netlink.Conn) ([]netlink.Message, error) {
 }
 
 // See https://tools.ietf.org/html/rfc3549#section-3.1.3
-func parseMessage(msg netlink.Message) (QdiscInfo, error) {
+func parseMessage(msg netlink.Message, ifaceNamesByID map[int]string) (QdiscInfo, error) {
 	var m QdiscInfo
 	var s TC_Stats
 	var s2 TC_Stats2
@@ -237,6 +241,8 @@ func parseMessage(msg netlink.Message) (QdiscInfo, error) {
 			// requeues only available in TCA_STATS2, not in TCA_STATS
 			m.Requeues = s2.Requeues
 			m.Overlimits = s2.Overlimits
+			m.Qlen = s2.Qlen
+			m.Backlog = s2.Backlog
 		case TCA_STATS:
 			// Legacy
 			s = parseTCAStats(attr)
@@ -244,18 +250,30 @@ func parseMessage(msg netlink.Message) (QdiscInfo, error) {
 			m.Packets = s.Packets
 			m.Drops = s.Drops
 			m.Overlimits = s.Overlimits
+			m.Qlen = s.Qlen
+			m.Backlog = s.Backlog
 		default:
 			// TODO: TCA_OPTIONS and TCA_XSTATS
 		}
 	}
 
-	iface, err := net.InterfaceByIndex(int(ifaceIdx))
-
-	if err == nil {
-		m.IfaceName = iface.Name
-	}
+	m.IfaceName = ifaceNamesByID[int(ifaceIdx)]
 
 	return m, err
+}
+
+func getInterfaceNames() (map[int]string, error) {
+	ifas, err := net.Interfaces()
+	if err != nil {
+		return nil, err
+	}
+
+	ifNamesByID := make(map[int]string)
+	for _, ifa := range ifas {
+		ifNamesByID[ifa.Index] = ifa.Name
+	}
+
+	return ifNamesByID, nil
 }
 
 func getAndParse(c *netlink.Conn) ([]QdiscInfo, error) {
@@ -267,8 +285,13 @@ func getAndParse(c *netlink.Conn) ([]QdiscInfo, error) {
 		return nil, err
 	}
 
+	ifNamesByID, err := getInterfaceNames()
+	if err != nil {
+		return nil, err
+	}
+
 	for _, msg := range msgs {
-		m, err := parseMessage(msg)
+		m, err := parseMessage(msg, ifNamesByID)
 
 		if err != nil {
 			return nil, err
@@ -287,6 +310,14 @@ func Get() ([]QdiscInfo, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to dial netlink: %v", err)
 	}
+
+	if err := c.SetOption(netlink.GetStrictCheck, true); err != nil {
+		// silently accept ENOPROTOOPT errors when kernel is not > 4.20
+		if !errors.Is(err, syscall.ENOPROTOOPT) {
+			return nil, fmt.Errorf("unexpected error trying to set option NETLINK_GET_STRICT_CHK: %v", err)
+		}
+	}
+
 	defer c.Close()
 
 	return getAndParse(c)

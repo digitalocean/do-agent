@@ -47,7 +47,7 @@ func TestScraper(t *testing.T) {
 	ch := make(chan prometheus.Metric)
 	go s.Collect(ch)
 	for m := range ch {
-		if m.Desc().String() == `Desc{fqName: "testscraper_scrape_collector_success", help: "testscraper: Whether a collector succeeded.", constLabels: {}, variableLabels: [collector]}` {
+		if m.Desc().String() == `Desc{fqName: "testscraper_scrape_collector_success", help: "testscraper: Whether a collector succeeded.", constLabels: {}, variableLabels: {collector}}` {
 			metric := &dto.Metric{}
 			require.NoError(t, m.Write(metric))
 			require.Equal(t, float64(1), *metric.Gauge.Value)
@@ -73,8 +73,8 @@ func TestScraperAddsKubernetesClusterUUID(t *testing.T) {
 	ch := make(chan prometheus.Metric)
 	go s.Collect(ch)
 	for m := range ch {
-		if m.Desc().String() == `Desc{fqName: "testscraper_scrape_collector_success", help: "testscraper: Whether a collector succeeded.", constLabels: {}, variableLabels: [collector]}` ||
-			m.Desc().String() == `Desc{fqName: "testscraper_scrape_collector_duration_seconds", help: "testscraper: Duration of a collector scrape.", constLabels: {}, variableLabels: [collector]}` {
+		if m.Desc().String() == `Desc{fqName: "testscraper_scrape_collector_success", help: "testscraper: Whether a collector succeeded.", constLabels: {}, variableLabels: {collector}}` ||
+			m.Desc().String() == `Desc{fqName: "testscraper_scrape_collector_duration_seconds", help: "testscraper: Duration of a collector scrape.", constLabels: {}, variableLabels: {collector}}` {
 			continue
 		}
 		metric := &dto.Metric{}
@@ -107,15 +107,15 @@ func TestWhitelist(t *testing.T) {
 	var whitelist int
 	for m := range ch {
 		switch m.Desc().String() {
-		case `Desc{fqName: "kube_configmap_created", help: "Unix creation timestamp", constLabels: {}, variableLabels: [namespace configmap]}`:
+		case `Desc{fqName: "kube_configmap_created", help: "Unix creation timestamp", constLabels: {}, variableLabels: {namespace,configmap}}`:
 			whitelist++
 			continue // expected whitelisted metric
-		case `Desc{fqName: "testscraper_scrape_collector_success", help: "testscraper: Whether a collector succeeded.", constLabels: {}, variableLabels: [collector]}`:
+		case `Desc{fqName: "testscraper_scrape_collector_success", help: "testscraper: Whether a collector succeeded.", constLabels: {}, variableLabels: {collector}}`:
 			metric := &dto.Metric{}
 			require.NoError(t, m.Write(metric))
 			require.Equal(t, float64(1), *metric.Gauge.Value)
 			return
-		case `Desc{fqName: "testscraper_scrape_collector_duration_seconds", help: "testscraper: Duration of a collector scrape.", constLabels: {}, variableLabels: [collector]}`:
+		case `Desc{fqName: "testscraper_scrape_collector_duration_seconds", help: "testscraper: Duration of a collector scrape.", constLabels: {}, variableLabels: {collector}}`:
 			continue
 		default:
 			t.Errorf("Unexpected metric was scraped: %v", m.Desc())

@@ -11,6 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+//go:build linux
 // +build linux
 
 package sysfs
@@ -22,7 +23,7 @@ import (
 	"github.com/prometheus/procfs/internal/util"
 )
 
-// ClockSource contains metrics related to the clock source
+// ClockSource contains metrics related to the clock source.
 type ClockSource struct {
 	Name      string
 	Available []string
@@ -30,7 +31,7 @@ type ClockSource struct {
 }
 
 // ClockSources returns clocksource information including current and available clocksources
-// read from '/sys/devices/system/clocksource'
+// read from '/sys/devices/system/clocksource'.
 func (fs FS) ClockSources() ([]ClockSource, error) {
 
 	clocksourcePaths, err := filepath.Glob(fs.sys.Path("devices/system/clocksource/clocksource[0-9]*"))

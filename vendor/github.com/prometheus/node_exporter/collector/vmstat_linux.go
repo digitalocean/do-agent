@@ -11,6 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+//go:build !novmstat
 // +build !novmstat
 
 package collector
@@ -23,9 +24,9 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/go-kit/kit/log"
+	"github.com/alecthomas/kingpin/v2"
+	"github.com/go-kit/log"
 	"github.com/prometheus/client_golang/prometheus"
-	"gopkg.in/alecthomas/kingpin.v2"
 )
 
 const (
