@@ -13,7 +13,6 @@ import (
 	"github.com/digitalocean/do-agent/internal/log"
 	"github.com/digitalocean/do-agent/pkg/clients"
 	"github.com/digitalocean/do-agent/pkg/clients/roundtrippers"
-	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	dto "github.com/prometheus/client_model/go"
 	"github.com/prometheus/common/expfmt"
@@ -82,7 +81,7 @@ func NewScraper(name, metricsEndpoint string, extraMetricLabels []*dto.LabelPair
 	metricsEndpoint = strings.TrimRight(metricsEndpoint, "/")
 	req, err := http.NewRequest("GET", metricsEndpoint, nil)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to create http request")
+		return nil, fmt.Errorf("failed to create http request: %w", err)
 	}
 	req.Header.Add("Accept", `text/plain;version=0.0.4;q=1,*/*;q=0.1`)
 	req.Header.Add("Accept-Encoding", "gzip")
@@ -149,17 +148,17 @@ func (s *Scraper) readStream(ctx context.Context) (r io.ReadCloser, outerr error
 		if err := r.Close(); err != nil {
 			// This should not happen, but if it does it'll be nice
 			// to know why we have a bunch of unclosed messages
-			s.log("failed to close stream on error: %+v", errors.WithStack(err))
+			s.log("failed to close stream on error: %s", err)
 		}
 	}()
 
 	resp, err := s.client.Do(s.req.WithContext(ctx))
 	if err != nil {
-		return nil, errors.Wrap(err, "HTTP request failed")
+		return nil, fmt.Errorf("HTTP request failed: %w", err)
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, errors.Errorf("server returned bad HTTP status %s", resp.Status)
+		return nil, fmt.Errorf("server returned bad HTTP status %s", resp.Status)
 	}
 
 	if resp.Header.Get("Content-Encoding") != "gzip" {
@@ -167,7 +166,7 @@ func (s *Scraper) readStream(ctx context.Context) (r io.ReadCloser, outerr error
 	}
 
 	reader, err := gzip.NewReader(bufio.NewReader(resp.Body))
-	return reader, errors.Wrap(err, "failed to create gzip reader")
+	return reader, fmt.Errorf("failed to create gzip reader: %w", err)
 }
 
 // Describe describes this collector
@@ -207,7 +206,7 @@ func (s *Scraper) scrape(ctx context.Context, ch chan<- prometheus.Metric) (oute
 
 	parsed, err := new(expfmt.TextParser).TextToMetricFamilies(stream)
 	if err != nil {
-		return errors.Wrapf(err, "parsing message failed")
+		return fmt.Errorf("parsing message failed: %w", err)
 	}
 
 	for _, mf := range parsed {

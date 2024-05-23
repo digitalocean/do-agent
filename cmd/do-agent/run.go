@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	dto "github.com/prometheus/client_model/go"
 
@@ -99,7 +98,7 @@ func run(w metricWriter, l limiter, dec decorate.Decorator, g gatherer, aggregat
 // writeDiagnostics filters all metrics and gathers only the diagnostic information and sends the metrics
 // in the event of a write failure
 func writeDiagnostics(w metricWriter, mfs []*dto.MetricFamily, err error) {
-	diagnosticMetric.WithLabelValues(errors.Cause(err).Error()).Inc()
+	diagnosticMetric.WithLabelValues(err.Error()).Inc()
 	var diags []*dto.MetricFamily
 
 	for _, mf := range mfs {
