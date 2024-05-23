@@ -1,6 +1,6 @@
 module github.com/digitalocean/do-agent
 
-go 1.18
+go 1.22
 
 require (
 	github.com/go-kit/kit v0.10.0

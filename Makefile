@@ -83,7 +83,7 @@ test:
 build: $(binary)
 $(binary): $(gofiles) $(vendorgofiles)
 	$(print)
-	$(go) build -ldflags $(ldflags) -o "$(docker_dir)/$@" ./cmd/$(project)
+	$(go) build -buildvcs=false -ldflags $(ldflags) -o "$(docker_dir)/$@" ./cmd/$(project)
 
 shell:
 	$(print)
