@@ -33,6 +33,7 @@ go = docker run --rm -i \
 	-e "GOARCH=$(GOARCH)" \
 	-e "GO111MODULE=on" \
 	-e "GOFLAGS=-mod=vendor" \
+	-e "CGO_ENABLED=0" \
 	-e "GOCACHE=$(docker_dir)/target/.cache/go" \
 	-v "$(CURDIR):$(docker_dir)" \
 	-w "$(docker_dir)" \
@@ -44,6 +45,7 @@ go = GOOS=$(GOOS) \
 	GO111MODULE=on \
 	GOFLAGS=-mod=vendor \
 	GOCACHE=$(docker_dir)/target/.cache/go \
+	CGO_ENABLED=0 \
 	$(shell which go)
 endif
 
