@@ -3,7 +3,6 @@ package main
 import (
 	"errors"
 	"fmt"
-	"hash/fnv"
 	"net/url"
 	"os"
 	"strings"
@@ -152,6 +151,12 @@ func initConfig() {
 	// read flags from cli directly first so we have access to them
 	flags.Init(os.Args[1:])
 
+	rp, err := os.ReadFile("/etc/do-agent/do-agent.conf")
+	if err == nil {
+		f := strings.Split(string(rp), "\n")
+		additionalParams = append(additionalParams, f...)
+	}
+
 	// parse all command line flags which are defined across the app
 	kingpin.HelpFlag.Short('h')
 	kingpin.Parse()
@@ -170,24 +175,6 @@ func checkConfig() error {
 	}
 
 	return nil
-}
-
-func toggleGradualRollouts() {
-	hostname, err := os.Hostname()
-	if err != nil {
-		return
-	}
-
-	hash := fnv.New64a()
-	_, err = hash.Write([]byte(hostname))
-	if err != nil {
-		return
-	}
-
-	if hash.Sum64()%100 <= processScrapingDropletPct {
-		log.Debug("Enabling process scraping")
-		config.noProcesses = false
-	}
 }
 
 func initWriter(wc *prometheus.CounterVec) (metricWriter, limiter) {
