@@ -85,6 +85,22 @@ var dbaasWhitelist = map[string]bool{
 	"redis_replication_lag":            true,
 	"redis_replication_offset":         true,
 
+	"valkey_total_connections_received": true,
+	"valkey_rejected_connections":       true,
+	"valkey_evicted_keys":               true,
+	"valkey_keyspace_hits":              true,
+	"valkey_keyspace_keys":              true,
+	"valkey_keyspace_misses":            true,
+	"valkey_instantaneous_ops_per_sec":  true,
+	"valkey_used_memory_rss":            true,
+	"valkey_used_memory":                true,
+	"valkey_connected_slaves":           true,
+	"valkey_clients":                    true,
+	"valkey_total_commands_processed":   true,
+	"valkey_uptime":                     true,
+	"valkey_replication_lag":            true,
+	"valkey_replication_offset":         true,
+
 	"kafka_log_Log_Size_Value": true,
 
 	"kafka_server_BrokerTopicMetrics_BytesInPerSec_Count":                    true,
