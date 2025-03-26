@@ -166,7 +166,11 @@ func (s *Scraper) readStream(ctx context.Context) (r io.ReadCloser, outerr error
 	}
 
 	reader, err := gzip.NewReader(bufio.NewReader(resp.Body))
-	return reader, fmt.Errorf("failed to create gzip reader: %w", err)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create gzip reader: %w", err)
+	}
+
+	return reader, nil
 }
 
 // Describe describes this collector
