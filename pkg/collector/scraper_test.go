@@ -1,6 +1,7 @@
 package collector
 
 import (
+	"compress/gzip"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -124,4 +125,32 @@ func TestWhitelist(t *testing.T) {
 
 	// There are 3 whitelisted metrics we expected to receive
 	require.Equal(t, 3, whitelist)
+}
+func TestScraperHandlesGzipContentEncoding(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		log.Debug("metrics requested")
+		w.Header().Add("Content-Encoding", "gzip")
+		w.Header().Add("Content-Type", "text/plain")
+
+		gz := gzip.NewWriter(w)
+		defer gz.Close()
+
+		_, err := io.WriteString(gz, testmetrics)
+		assert.NoError(t, err)
+	}))
+	defer ts.Close()
+
+	s, err := NewScraper("testscraper", ts.URL, nil, nil, WithTimeout(30*time.Second))
+	require.NoError(t, err)
+
+	ch := make(chan prometheus.Metric)
+	go s.Collect(ch)
+	for m := range ch {
+		if m.Desc().String() == `Desc{fqName: "testscraper_scrape_collector_success", help: "testscraper: Whether a collector succeeded.", constLabels: {}, variableLabels: {collector}}` {
+			metric := &dto.Metric{}
+			require.NoError(t, m.Write(metric))
+			require.Equal(t, float64(1), *metric.Gauge.Value)
+			break
+		}
+	}
 }
