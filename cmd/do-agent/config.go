@@ -10,11 +10,11 @@ import (
 	"time"
 
 	"github.com/alecthomas/kingpin/v2"
+	"github.com/digitalocean/do-agent/internal/flags"
 	"github.com/prometheus/client_golang/prometheus"
 	dto "github.com/prometheus/client_model/go"
 	"github.com/prometheus/common/model"
 
-	"github.com/digitalocean/do-agent/internal/flags"
 	"github.com/digitalocean/do-agent/internal/log"
 	"github.com/digitalocean/do-agent/internal/process"
 	"github.com/digitalocean/do-agent/pkg/clients/tsclient"
@@ -46,6 +46,7 @@ var (
 		defaultMaxBatchSize    int
 		defaultMaxMetricLength int
 		promAddr               string
+		gpuMetricsPath         string
 		topK                   int
 		scrapeTimeout          time.Duration
 	}
@@ -123,6 +124,9 @@ func init() {
 	kingpin.Flag("metrics-path", "enable metrics collection from a prometheus endpoint").
 		StringVar(&config.promAddr)
 
+	kingpin.Flag("gpu-metrics-path", "enable GPU metrics collection from a prometheus endpoint (e.g., AMD device-metrics-exporter)").
+		StringVar(&config.gpuMetricsPath)
+
 	kingpin.Flag("web.listen", "enable a local endpoint for scrapeable prometheus metrics as well").
 		Default("false").
 		BoolVar(&config.webListen)
@@ -155,6 +159,7 @@ func initConfig() {
 	// parse all command line flags which are defined across the app
 	kingpin.HelpFlag.Short('h')
 	kingpin.Parse()
+
 }
 
 func checkConfig() error {
@@ -247,6 +252,12 @@ func initAggregatorSpecs() map[string][]string {
 		}
 	}
 
+	if config.gpuMetricsPath != "" {
+		for k, v := range gpuAggregationSpec {
+			aggregateSpecs[k] = append(aggregateSpecs[k], v...)
+		}
+	}
+
 	return aggregateSpecs
 }
 
@@ -318,6 +329,15 @@ func initCollectors() []prometheus.Collector {
 			log.Error("Failed to initialize generic metrics collector: %+v", err)
 		} else {
 			cols = append(cols, k)
+		}
+	}
+
+	if config.gpuMetricsPath != "" {
+		gpu, err := collector.NewScraper("gpu", config.gpuMetricsPath, nil, gpuWhitelist, collector.WithTimeout(config.scrapeTimeout))
+		if err != nil {
+			log.Error("Failed to initialize GPU metrics collector: %+v", err)
+		} else {
+			cols = append(cols, gpu)
 		}
 	}
 

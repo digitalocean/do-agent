@@ -95,3 +95,58 @@ var k8sAggregationSpec = map[string][]string{
 var mongoAggregationSpec = map[string][]string{
 	"mongoagent_data_usage_percentage": {"cluster_uuid"},
 }
+
+// amdAggregatedLabels contains all the labels we want to aggregate on for AMD GPU metrics.
+// keep only gpu_id and hostname
+var amdAggregatedLabels = []string{
+	"card_model", "card_series", "card_vendor", "cluster_name", "container",
+	"driver_version", "gpu_compute_partition_type", "gpu_memory_partition_type",
+	"gpu_partition_id", "gpu_uuid", "job_id", "job_partition", "job_user",
+	"namespace", "pod", "serial_number", "usergroup_id", "vbios_version", "workload_id",
+}
+
+var gpuAggregationSpec = map[string][]string{
+	// GPU Utilization metrics
+	"amd_gpu_prof_gui_util_percent":      amdAggregatedLabels,
+	"amd_gpu_prof_valu_pipe_issue_util":  amdAggregatedLabels,
+	"amd_gpu_prof_tensor_active_percent": amdAggregatedLabels,
+	"amd_gpu_prof_occupancy_percent":     amdAggregatedLabels,
+	"amd_gpu_prof_fetch_size":            amdAggregatedLabels,
+	"amd_gpu_prof_write_size":            amdAggregatedLabels,
+
+	// GPU VRAM usage metrics
+	"amd_gpu_used_vram":  amdAggregatedLabels,
+	"amd_gpu_total_vram": amdAggregatedLabels,
+	"amd_gpu_free_vram":  amdAggregatedLabels,
+
+	// XGMI Bandwidth metrics - all neighbors 0-7
+	"amd_xgmi_neighbor_0_tx_throughput": amdAggregatedLabels,
+	"amd_xgmi_neighbor_1_tx_throughput": amdAggregatedLabels,
+	"amd_xgmi_neighbor_2_tx_throughput": amdAggregatedLabels,
+	"amd_xgmi_neighbor_3_tx_throughput": amdAggregatedLabels,
+	"amd_xgmi_neighbor_4_tx_throughput": amdAggregatedLabels,
+	"amd_xgmi_neighbor_5_tx_throughput": amdAggregatedLabels,
+	"amd_xgmi_neighbor_6_tx_throughput": amdAggregatedLabels,
+	"amd_xgmi_neighbor_7_tx_throughput": amdAggregatedLabels,
+
+	"amd_xgmi_neighbor_0_response_tx": amdAggregatedLabels,
+	"amd_xgmi_neighbor_1_response_tx": amdAggregatedLabels,
+	"amd_xgmi_neighbor_2_response_tx": amdAggregatedLabels,
+	"amd_xgmi_neighbor_3_response_tx": amdAggregatedLabels,
+	"amd_xgmi_neighbor_4_response_tx": amdAggregatedLabels,
+	"amd_xgmi_neighbor_5_response_tx": amdAggregatedLabels,
+	"amd_xgmi_neighbor_6_response_tx": amdAggregatedLabels,
+	"amd_xgmi_neighbor_7_response_tx": amdAggregatedLabels,
+
+	"amd_xgmi_neighbor_0_request_tx": amdAggregatedLabels,
+	"amd_xgmi_neighbor_1_request_tx": amdAggregatedLabels,
+	"amd_xgmi_neighbor_2_request_tx": amdAggregatedLabels,
+	"amd_xgmi_neighbor_3_request_tx": amdAggregatedLabels,
+	"amd_xgmi_neighbor_4_request_tx": amdAggregatedLabels,
+	"amd_xgmi_neighbor_5_request_tx": amdAggregatedLabels,
+	"amd_xgmi_neighbor_6_request_tx": amdAggregatedLabels,
+	"amd_xgmi_neighbor_7_request_tx": amdAggregatedLabels,
+
+	// PCIe bandwidth
+	"amd_pcie_bandwidth": amdAggregatedLabels,
+}
