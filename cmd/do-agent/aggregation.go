@@ -149,4 +149,19 @@ var gpuAggregationSpec = map[string][]string{
 
 	// PCIe bandwidth
 	"amd_pcie_bandwidth": amdAggregatedLabels,
+
+	"amd_gpu_ecc_uncorrect_total":                         amdAggregatedLabels,
+	"amd_pcie_replay_count":                               amdAggregatedLabels,
+	"amd_pcie_recovery_count":                             amdAggregatedLabels,
+	"amd_pcie_replay_rollover_count":                      amdAggregatedLabels,
+	"amd_pcie_max_speed":                                  amdAggregatedLabels,
+	"amd_pcie_speed":                                      amdAggregatedLabels,
+	"amd_gpu_prof_cpf_cpf_stat_stall":                     amdAggregatedLabels,
+	"amd_gpu_clock":                                       amdAggregatedLabels,
+	"amd_gpu_violation_proc_hot_residency_accumulated":    amdAggregatedLabels,
+	"amd_gpu_violation_soc_thermal_residency_accumulated": amdAggregatedLabels,
+	"amd_gpu_violation_ppt_residency_accumulated":         amdAggregatedLabels,
+	"amd_gpu_violation_hbm_thermal_residency_accumulated": amdAggregatedLabels,
+	"amd_gpu_violation_vr_thermal_tracking_accumulated":   amdAggregatedLabels,
+	"amd_gpu_junction_temperature":                        amdAggregatedLabels,
 }

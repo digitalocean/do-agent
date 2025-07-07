@@ -208,4 +208,19 @@ var gpuWhitelist = map[string]bool{
 
 	// PCIe bandwidth
 	"amd_pcie_bandwidth": true,
+
+	"amd_gpu_ecc_uncorrect_total":                         true,
+	"amd_pcie_replay_count":                               true,
+	"amd_pcie_recovery_count":                             true,
+	"amd_pcie_replay_rollover_count":                      true,
+	"amd_pcie_max_speed":                                  true,
+	"amd_pcie_speed":                                      true,
+	"amd_gpu_prof_cpf_cpf_stat_stall":                     true,
+	"amd_gpu_clock":                                       true,
+	"amd_gpu_violation_proc_hot_residency_accumulated":    true,
+	"amd_gpu_violation_soc_thermal_residency_accumulated": true,
+	"amd_gpu_violation_ppt_residency_accumulated":         true,
+	"amd_gpu_violation_hbm_thermal_residency_accumulated": true,
+	"amd_gpu_violation_vr_thermal_tracking_accumulated":   true,
+	"amd_gpu_junction_temperature":                        true,
 }
