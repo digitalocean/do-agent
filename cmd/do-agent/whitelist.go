@@ -163,3 +163,64 @@ var dbaasWhitelist = map[string]bool{
 
 	"opensearch_http_total_opened": true,
 }
+
+var gpuWhitelist = map[string]bool{
+	// GPU Utilization
+	"amd_gpu_prof_gui_util_percent":      true,
+	"amd_gpu_prof_valu_pipe_issue_util":  true,
+	"amd_gpu_prof_tensor_active_percent": true,
+	"amd_gpu_prof_occupancy_percent":     true,
+	"amd_gpu_prof_fetch_size":            true,
+	"amd_gpu_prof_write_size":            true,
+
+	// GPU VRAM usage
+	"amd_gpu_used_vram":  true,
+	"amd_gpu_total_vram": true,
+	"amd_gpu_free_vram":  true,
+
+	// XGMI Bandwidth
+	"amd_xgmi_neighbor_0_tx_throughput": true,
+	"amd_xgmi_neighbor_1_tx_throughput": true,
+	"amd_xgmi_neighbor_2_tx_throughput": true,
+	"amd_xgmi_neighbor_3_tx_throughput": true,
+	"amd_xgmi_neighbor_4_tx_throughput": true,
+	"amd_xgmi_neighbor_5_tx_throughput": true,
+	"amd_xgmi_neighbor_6_tx_throughput": true,
+	"amd_xgmi_neighbor_7_tx_throughput": true,
+
+	"amd_xgmi_neighbor_0_response_tx": true,
+	"amd_xgmi_neighbor_1_response_tx": true,
+	"amd_xgmi_neighbor_2_response_tx": true,
+	"amd_xgmi_neighbor_3_response_tx": true,
+	"amd_xgmi_neighbor_4_response_tx": true,
+	"amd_xgmi_neighbor_5_response_tx": true,
+	"amd_xgmi_neighbor_6_response_tx": true,
+	"amd_xgmi_neighbor_7_response_tx": true,
+
+	"amd_xgmi_neighbor_0_request_tx": true,
+	"amd_xgmi_neighbor_1_request_tx": true,
+	"amd_xgmi_neighbor_2_request_tx": true,
+	"amd_xgmi_neighbor_3_request_tx": true,
+	"amd_xgmi_neighbor_4_request_tx": true,
+	"amd_xgmi_neighbor_5_request_tx": true,
+	"amd_xgmi_neighbor_6_request_tx": true,
+	"amd_xgmi_neighbor_7_request_tx": true,
+
+	// PCIe bandwidth
+	"amd_pcie_bandwidth": true,
+
+	"amd_gpu_ecc_uncorrect_total":                         true,
+	"amd_pcie_replay_count":                               true,
+	"amd_pcie_recovery_count":                             true,
+	"amd_pcie_replay_rollover_count":                      true,
+	"amd_pcie_max_speed":                                  true,
+	"amd_pcie_speed":                                      true,
+	"amd_gpu_prof_cpf_cpf_stat_stall":                     true,
+	"amd_gpu_clock":                                       true,
+	"amd_gpu_violation_proc_hot_residency_accumulated":    true,
+	"amd_gpu_violation_soc_thermal_residency_accumulated": true,
+	"amd_gpu_violation_ppt_residency_accumulated":         true,
+	"amd_gpu_violation_hbm_thermal_residency_accumulated": true,
+	"amd_gpu_violation_vr_thermal_tracking_accumulated":   true,
+	"amd_gpu_junction_temperature":                        true,
+}
