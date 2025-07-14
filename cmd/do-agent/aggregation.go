@@ -164,4 +164,6 @@ var gpuAggregationSpec = map[string][]string{
 	"amd_gpu_violation_hbm_thermal_residency_accumulated": amdAggregatedLabels,
 	"amd_gpu_violation_vr_thermal_tracking_accumulated":   amdAggregatedLabels,
 	"amd_gpu_junction_temperature":                        amdAggregatedLabels,
+	"amd_gpu_power_usage":                                 amdAggregatedLabels,
+	"amd_gpu_memory_temperature":                          amdAggregatedLabels,
 }
