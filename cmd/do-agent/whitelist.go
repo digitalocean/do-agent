@@ -225,4 +225,6 @@ var gpuWhitelist = map[string]bool{
 	"amd_gpu_junction_temperature":                        true,
 	"amd_gpu_power_usage":                                 true,
 	"amd_gpu_memory_temperature":                          true,
+	"amd_gpu_gfx_activity":                                true,
+	"amd_gpu_prof_sm_active":                              true,
 }

@@ -166,4 +166,6 @@ var gpuAggregationSpec = map[string][]string{
 	"amd_gpu_junction_temperature":                        amdAggregatedLabels,
 	"amd_gpu_power_usage":                                 amdAggregatedLabels,
 	"amd_gpu_memory_temperature":                          amdAggregatedLabels,
+	"amd_gpu_gfx_activity":                                amdAggregatedLabels,
+	"amd_gpu_prof_sm_active":                              amdAggregatedLabels,
 }
