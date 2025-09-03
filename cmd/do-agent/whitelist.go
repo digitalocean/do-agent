@@ -165,6 +165,12 @@ var dbaasWhitelist = map[string]bool{
 }
 
 var gpuWhitelist = map[string]bool{
+	// NVIDIA GPU metrics
+	"DCGM_FI_DEV_GPU_UTIL":               true,
+	"DCGM_FI_DEV_FB_FREE":                true,
+	"DCGM_FI_DEV_FB_USED":                true,
+	"DCGM_FI_DEV_NVLINK_BANDWIDTH_TOTAL": true,
+
 	// GPU Utilization
 	"amd_gpu_prof_gui_util_percent":      true,
 	"amd_gpu_prof_valu_pipe_issue_util":  true,

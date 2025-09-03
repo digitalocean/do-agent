@@ -105,7 +105,17 @@ var amdAggregatedLabels = []string{
 	"namespace", "pod", "serial_number", "usergroup_id", "vbios_version", "workload_id",
 }
 
+// nvidiaAggregatedLabels contains all the labels we want to aggregate on for NVIDIA GPU metrics.
+// keep only gpu, UUID, and Hostname
+var nvidiaAggregatedLabels = []string{"pci_bus_id", "device", "modelName", "DCGM_FI_DRIVER_VERSION"}
+
 var gpuAggregationSpec = map[string][]string{
+	// NVIDIA GPU metrics
+	"DCGM_FI_DEV_GPU_UTIL":               nvidiaAggregatedLabels,
+	"DCGM_FI_DEV_FB_FREE":                nvidiaAggregatedLabels,
+	"DCGM_FI_DEV_FB_USED":                nvidiaAggregatedLabels,
+	"DCGM_FI_DEV_NVLINK_BANDWIDTH_TOTAL": nvidiaAggregatedLabels,
+
 	// GPU Utilization metrics
 	"amd_gpu_prof_gui_util_percent":      amdAggregatedLabels,
 	"amd_gpu_prof_valu_pipe_issue_util":  amdAggregatedLabels,
