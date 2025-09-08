@@ -226,6 +226,7 @@ func initDecorator() decorate.Chain {
 
 // initAggregatorSpecs initializes the field aggregation specifications.
 // The map's key is the prometheus metric name to aggregate over, and the value is the label to aggregate away.
+// The metric name should be in the format expected after the decorators are applied, e.g., lowercase.
 func initAggregatorSpecs() map[string][]string {
 	aggregateSpecs := make(map[string][]string)
 
