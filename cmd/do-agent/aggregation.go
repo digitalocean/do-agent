@@ -115,6 +115,15 @@ var gpuAggregationSpec = map[string][]string{
 	"dcgm_fi_dev_fb_free":                nvidiaAggregatedLabels,
 	"dcgm_fi_dev_fb_used":                nvidiaAggregatedLabels,
 	"dcgm_fi_dev_nvlink_bandwidth_total": nvidiaAggregatedLabels,
+	"dcgm_fi_prof_sm_occupancy":          nvidiaAggregatedLabels,
+	"dcgm_fi_prof_pipe_tensor_active":    nvidiaAggregatedLabels,
+	"dcgm_fi_prof_pcie_rx_bytes":         nvidiaAggregatedLabels,
+	"dcgm_fi_prof_pcie_tx_bytes":         nvidiaAggregatedLabels,
+	"dcgm_fi_dev_gpu_temp":               nvidiaAggregatedLabels,
+	"dcgm_fi_dev_memory_temp":            nvidiaAggregatedLabels,
+	"dcgm_fi_dev_power_usage":            nvidiaAggregatedLabels,
+	"dcgm_fi_dev_power_violation":        nvidiaAggregatedLabels,
+	"dcgm_fi_dev_thermal_violation":      nvidiaAggregatedLabels,
 
 	// GPU Utilization metrics
 	"amd_gpu_prof_gui_util_percent":      amdAggregatedLabels,
