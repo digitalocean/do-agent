@@ -130,6 +130,9 @@ var gpuAggregationSpec = map[string][]string{
 	"amd_gpu_free_vram":  amdAggregatedLabels,
 
 	// XGMI Bandwidth metrics - all neighbors 0-7
+	"amd_gpu_xgmi_link_rx": amdAggregatedLabels,
+	"amd_gpu_xgmi_link_tx": amdAggregatedLabels,
+
 	"amd_xgmi_neighbor_0_tx_throughput": amdAggregatedLabels,
 	"amd_xgmi_neighbor_1_tx_throughput": amdAggregatedLabels,
 	"amd_xgmi_neighbor_2_tx_throughput": amdAggregatedLabels,
@@ -176,6 +179,7 @@ var gpuAggregationSpec = map[string][]string{
 	"amd_gpu_junction_temperature":                        amdAggregatedLabels,
 	"amd_gpu_power_usage":                                 amdAggregatedLabels,
 	"amd_gpu_memory_temperature":                          amdAggregatedLabels,
+	"amd_gpu_hbm_temperature":                             amdAggregatedLabels,
 	"amd_gpu_gfx_activity":                                amdAggregatedLabels,
 	"amd_gpu_prof_sm_active":                              amdAggregatedLabels,
 }

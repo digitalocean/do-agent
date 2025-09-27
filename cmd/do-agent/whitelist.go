@@ -212,6 +212,9 @@ var gpuWhitelist = map[string]bool{
 	"amd_xgmi_neighbor_6_request_tx": true,
 	"amd_xgmi_neighbor_7_request_tx": true,
 
+	"amd_gpu_xgmi_link_rx": true,
+	"amd_gpu_xgmi_link_tx": true,
+
 	// PCIe bandwidth
 	"amd_pcie_bandwidth": true,
 
@@ -229,6 +232,7 @@ var gpuWhitelist = map[string]bool{
 	"amd_gpu_violation_hbm_thermal_residency_accumulated": true,
 	"amd_gpu_violation_vr_thermal_tracking_accumulated":   true,
 	"amd_gpu_junction_temperature":                        true,
+	"amd_gpu_hbm_temperature":                             true,
 	"amd_gpu_power_usage":                                 true,
 	"amd_gpu_memory_temperature":                          true,
 	"amd_gpu_gfx_activity":                                true,
