@@ -103,6 +103,7 @@ var amdAggregatedLabels = []string{
 	"driver_version", "gpu_compute_partition_type", "gpu_memory_partition_type",
 	"gpu_partition_id", "gpu_uuid", "job_id", "job_partition", "job_user",
 	"namespace", "pod", "serial_number", "usergroup_id", "vbios_version", "workload_id",
+	"link_index",
 }
 
 // nvidiaAggregatedLabels contains all the labels we want to aggregate on for NVIDIA GPU metrics.
