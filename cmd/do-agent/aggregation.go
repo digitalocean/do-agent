@@ -103,9 +103,30 @@ var amdAggregatedLabels = []string{
 	"driver_version", "gpu_compute_partition_type", "gpu_memory_partition_type",
 	"gpu_partition_id", "gpu_uuid", "job_id", "job_partition", "job_user",
 	"namespace", "pod", "serial_number", "usergroup_id", "vbios_version", "workload_id",
+	"link_index",
 }
 
+// nvidiaAggregatedLabels contains all the labels we want to aggregate on for NVIDIA GPU metrics.
+// keep only gpu and Hostname
+var nvidiaAggregatedLabels = []string{"pci_bus_id", "UUID", "device", "modelName", "DCGM_FI_DRIVER_VERSION"}
+
 var gpuAggregationSpec = map[string][]string{
+	// NVIDIA GPU metrics
+	"dcgm_fi_dev_gpu_util":               nvidiaAggregatedLabels,
+	"dcgm_fi_dev_fb_free":                nvidiaAggregatedLabels,
+	"dcgm_fi_dev_fb_used":                nvidiaAggregatedLabels,
+	"dcgm_fi_dev_nvlink_bandwidth_total": nvidiaAggregatedLabels,
+	"dcgm_fi_prof_sm_occupancy":          nvidiaAggregatedLabels,
+	"dcgm_fi_prof_pipe_tensor_active":    nvidiaAggregatedLabels,
+	"dcgm_fi_prof_pcie_rx_bytes":         nvidiaAggregatedLabels,
+	"dcgm_fi_prof_pcie_tx_bytes":         nvidiaAggregatedLabels,
+	"dcgm_fi_dev_gpu_temp":               nvidiaAggregatedLabels,
+	"dcgm_fi_dev_memory_temp":            nvidiaAggregatedLabels,
+	"dcgm_fi_dev_power_usage":            nvidiaAggregatedLabels,
+	"dcgm_fi_dev_power_violation":        nvidiaAggregatedLabels,
+	"dcgm_fi_dev_thermal_violation":      nvidiaAggregatedLabels,
+	"dcgm_fi_dev_ecc_sbe_agg_total":      nvidiaAggregatedLabels,
+
 	// GPU Utilization metrics
 	"amd_gpu_prof_gui_util_percent":      amdAggregatedLabels,
 	"amd_gpu_prof_valu_pipe_issue_util":  amdAggregatedLabels,
@@ -120,6 +141,9 @@ var gpuAggregationSpec = map[string][]string{
 	"amd_gpu_free_vram":  amdAggregatedLabels,
 
 	// XGMI Bandwidth metrics - all neighbors 0-7
+	"amd_gpu_xgmi_link_rx": amdAggregatedLabels,
+	"amd_gpu_xgmi_link_tx": amdAggregatedLabels,
+
 	"amd_xgmi_neighbor_0_tx_throughput": amdAggregatedLabels,
 	"amd_xgmi_neighbor_1_tx_throughput": amdAggregatedLabels,
 	"amd_xgmi_neighbor_2_tx_throughput": amdAggregatedLabels,

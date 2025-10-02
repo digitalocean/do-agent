@@ -165,6 +165,22 @@ var dbaasWhitelist = map[string]bool{
 }
 
 var gpuWhitelist = map[string]bool{
+	// NVIDIA GPU metrics
+	"DCGM_FI_DEV_GPU_UTIL":               true,
+	"DCGM_FI_DEV_FB_FREE":                true,
+	"DCGM_FI_DEV_FB_USED":                true,
+	"DCGM_FI_DEV_NVLINK_BANDWIDTH_TOTAL": true,
+	"DCGM_FI_PROF_SM_OCCUPANCY":          true,
+	"DCGM_FI_PROF_PIPE_TENSOR_ACTIVE":    true,
+	"DCGM_FI_PROF_PCIE_RX_BYTES":         true,
+	"DCGM_FI_PROF_PCIE_TX_BYTES":         true,
+	"DCGM_FI_DEV_GPU_TEMP":               true,
+	"DCGM_FI_DEV_MEMORY_TEMP":            true,
+	"DCGM_FI_DEV_POWER_USAGE":            true,
+	"DCGM_FI_DEV_POWER_VIOLATION":        true,
+	"DCGM_FI_DEV_THERMAL_VIOLATION":      true,
+	"DCGM_FI_DEV_ECC_SBE_AGG_TOTAL":      true,
+
 	// GPU Utilization
 	"amd_gpu_prof_gui_util_percent":      true,
 	"amd_gpu_prof_valu_pipe_issue_util":  true,
@@ -205,6 +221,9 @@ var gpuWhitelist = map[string]bool{
 	"amd_xgmi_neighbor_5_request_tx": true,
 	"amd_xgmi_neighbor_6_request_tx": true,
 	"amd_xgmi_neighbor_7_request_tx": true,
+
+	"amd_gpu_xgmi_link_rx": true,
+	"amd_gpu_xgmi_link_tx": true,
 
 	// PCIe bandwidth
 	"amd_pcie_bandwidth": true,
