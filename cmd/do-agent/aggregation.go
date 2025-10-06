@@ -125,7 +125,7 @@ var gpuAggregationSpec = map[string][]string{
 	"dcgm_fi_dev_power_usage":            nvidiaAggregatedLabels,
 	"dcgm_fi_dev_power_violation":        nvidiaAggregatedLabels,
 	"dcgm_fi_dev_thermal_violation":      nvidiaAggregatedLabels,
-	"dcgm_fi_dev_ecc_sbe_agg_total":      nvidiaAggregatedLabels,
+	"dcgm_fi_dev_ecc_dbe_agg_total":      nvidiaAggregatedLabels,
 
 	// GPU Utilization metrics
 	"amd_gpu_prof_gui_util_percent":      amdAggregatedLabels,
