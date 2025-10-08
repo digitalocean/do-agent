@@ -179,7 +179,7 @@ var gpuWhitelist = map[string]bool{
 	"DCGM_FI_DEV_POWER_USAGE":            true,
 	"DCGM_FI_DEV_POWER_VIOLATION":        true,
 	"DCGM_FI_DEV_THERMAL_VIOLATION":      true,
-	"DCGM_FI_DEV_ECC_SBE_AGG_TOTAL":      true,
+	"DCGM_FI_DEV_ECC_DBE_AGG_TOTAL":      true,
 
 	// GPU Utilization
 	"amd_gpu_prof_gui_util_percent":      true,
