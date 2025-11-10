@@ -108,7 +108,10 @@ var amdAggregatedLabels = []string{
 
 // nvidiaAggregatedLabels contains all the labels we want to aggregate on for NVIDIA GPU metrics.
 // keep only gpu and Hostname
-var nvidiaAggregatedLabels = []string{"pci_bus_id", "UUID", "device", "modelName", "DCGM_FI_DRIVER_VERSION"}
+var nvidiaAggregatedLabels = []string{
+	"pci_bus_id", "UUID", "device", "modelName", "DCGM_FI_DRIVER_VERSION",
+	"container", "namespace", "pod",
+}
 
 var gpuAggregationSpec = map[string][]string{
 	// NVIDIA GPU metrics
