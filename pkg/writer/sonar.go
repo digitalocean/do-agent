@@ -43,7 +43,8 @@ func NewSonar(client tsclient.Client, c *prometheus.CounterVec) *Sonar {
 func (s *Sonar) Write(mets []aggregate.MetricWithValue) error {
 	if len(mets) > s.client.MaxBatchSize() {
 		s.c.WithLabelValues("failure", "too many metrics").Inc()
-		return fmt.Errorf("cannot write metrics: %w", ErrTooManyMetrics)
+		return fmt.Errorf("cannot write metrics, current count: %d, max allowed: %d, error: %w",
+			len(mets), s.client.MaxBatchSize(), ErrTooManyMetrics)
 	}
 
 	for _, m := range mets {
