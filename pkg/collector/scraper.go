@@ -68,6 +68,7 @@ func NewScraper(name, metricsEndpoint string, extraMetricLabels []*dto.LabelPair
 	for _, opt := range opts {
 		opt(defOpts)
 	}
+
 	// setup http client, add auth roundtrippers
 	client := clients.NewHTTP(defOpts.timeout)
 	if defOpts.bearerTokenFile != "" {
@@ -110,6 +111,7 @@ func NewScraper(name, metricsEndpoint string, extraMetricLabels []*dto.LabelPair
 	}, nil
 }
 
+// Scraper is a remote metric scraper that scrapes HTTP endpoints
 type Scraper struct {
 	timeout            time.Duration
 	logLevel           log.Level
@@ -122,6 +124,7 @@ type Scraper struct {
 	scrapeSuccessDesc  *prometheus.Desc
 }
 
+// log emits log messages respecting the scraper's log level.
 func (s *Scraper) log(msg string, params ...interface{}) {
 	var logFunc func(msg string, params ...interface{})
 	switch s.logLevel {
@@ -130,6 +133,7 @@ func (s *Scraper) log(msg string, params ...interface{}) {
 	case log.LevelError:
 		logFunc = log.Error
 	}
+
 	logFunc(msg, params...)
 }
 
@@ -141,7 +145,11 @@ func (s *Scraper) readStream(ctx context.Context) (r io.ReadCloser, outerr error
 		if outerr == nil || r == nil {
 			return
 		}
-		_ = r.Close()
+		if err := r.Close(); err != nil {
+			// This should not happen, but if it does it'll be nice
+			// to know why we have a bunch of unclosed messages
+			s.log("failed to close stream on error: %s", err)
+		}
 	}()
 
 	resp, err := s.client.Do(s.req.WithContext(ctx))
@@ -193,7 +201,7 @@ func (s *Scraper) Collect(ch chan<- prometheus.Metric) {
 	}
 }
 
-func (s *Scraper) scrape(ctx context.Context, ch chan<- prometheus.Metric) error {
+func (s *Scraper) scrape(ctx context.Context, ch chan<- prometheus.Metric) (outerr error) {
 	stream, err := s.readStream(ctx)
 	if err != nil {
 		return err
@@ -211,6 +219,7 @@ func (s *Scraper) scrape(ctx context.Context, ch chan<- prometheus.Metric) error
 		}
 		convertMetricFamily(mf, ch, s.extraMetricLabels)
 	}
+
 	return nil
 }
 
@@ -221,9 +230,10 @@ func (s *Scraper) Name() string {
 
 // FilterMetric returns true if the metric should be skipped (filtered out)
 func (s *Scraper) FilterMetric(metricFamily *dto.MetricFamily) bool {
-	if len(s.whitelist) == 0 {
+	if len(s.whitelist) == 0 { // if no whitelist treat all metrics as valid
 		return false
 	}
+
 	return !s.whitelist[*metricFamily.Name]
 }
 
@@ -234,59 +244,70 @@ func (s *Scraper) FilterMetric(metricFamily *dto.MetricFamily) bool {
 // see https://github.com/prometheus/node_exporter/blob/f56e8fcdf48ead56f1f149dbf1301ac028ef589b/collector/textfile.go#L63
 // for more details
 func convertMetricFamily(metricFamily *dto.MetricFamily, ch chan<- prometheus.Metric, extraLabels []*dto.LabelPair) {
+	var valType prometheus.ValueType
+	var val float64
+
 	allLabelNames := getAllLabelNames(metricFamily, extraLabels)
 
 	for _, metric := range metricFamily.Metric {
 		names, values := getLabelNamesAndValues(metric, extraLabels, allLabelNames)
 
-		switch metricFamily.GetType() {
-
+		metricType := metricFamily.GetType()
+		switch metricType {
 		case dto.MetricType_COUNTER:
-			ch <- prometheus.MustNewConstMetric(
-				prometheus.NewDesc(*metricFamily.Name, metricFamily.GetHelp(), names, nil),
-				prometheus.CounterValue,
-				metric.Counter.GetValue(),
-				values...,
-			)
+			valType = prometheus.CounterValue
+			val = metric.Counter.GetValue()
 
 		case dto.MetricType_GAUGE:
-			ch <- prometheus.MustNewConstMetric(
-				prometheus.NewDesc(*metricFamily.Name, metricFamily.GetHelp(), names, nil),
-				prometheus.GaugeValue,
-				metric.Gauge.GetValue(),
-				values...,
-			)
+			valType = prometheus.GaugeValue
+			val = metric.Gauge.GetValue()
 
-		case dto.MetricType_HISTOGRAM:
-			base := metricFamily.GetName()
+		case dto.MetricType_UNTYPED:
+			valType = prometheus.UntypedValue
+			val = metric.Untyped.GetValue()
 
-			// buckets
-			for _, b := range metric.Histogram.Bucket {
-				bucketNames := append(names, "le")
-				bucketValues := append(values, fmt.Sprintf("%g", b.GetUpperBound()))
-
-				ch <- prometheus.MustNewConstMetric(
-					prometheus.NewDesc(base+"_bucket", metricFamily.GetHelp(), bucketNames, nil),
-					prometheus.CounterValue,
-					float64(b.GetCumulativeCount()),
-					bucketValues...,
-				)
+		case dto.MetricType_SUMMARY:
+			quantiles := map[float64]float64{}
+			for _, q := range metric.Summary.Quantile {
+				quantiles[q.GetQuantile()] = q.GetValue()
 			}
-
-			// sum
-			ch <- prometheus.MustNewConstMetric(
-				prometheus.NewDesc(base+"_sum", metricFamily.GetHelp(), names, nil),
-				prometheus.GaugeValue,
-				metric.Histogram.GetSampleSum(),
-				values...,
+			ch <- prometheus.MustNewConstSummary(
+				prometheus.NewDesc(
+					*metricFamily.Name,
+					metricFamily.GetHelp(),
+					names, nil,
+				),
+				metric.Summary.GetSampleCount(),
+				metric.Summary.GetSampleSum(),
+				quantiles, values...,
 			)
-
-			// count
+		case dto.MetricType_HISTOGRAM:
+			buckets := map[float64]uint64{}
+			for _, b := range metric.Histogram.Bucket {
+				buckets[b.GetUpperBound()] = b.GetCumulativeCount()
+			}
+			ch <- prometheus.MustNewConstHistogram(
+				prometheus.NewDesc(
+					*metricFamily.Name,
+					metricFamily.GetHelp(),
+					names, nil,
+				),
+				metric.Histogram.GetSampleCount(),
+				metric.Histogram.GetSampleSum(),
+				buckets, values...,
+			)
+		default:
+			log.Error("unknown metric type %q", metricType.String())
+			continue
+		}
+		if metricType == dto.MetricType_GAUGE || metricType == dto.MetricType_COUNTER || metricType == dto.MetricType_UNTYPED {
 			ch <- prometheus.MustNewConstMetric(
-				prometheus.NewDesc(base+"_count", metricFamily.GetHelp(), names, nil),
-				prometheus.CounterValue,
-				float64(metric.Histogram.GetSampleCount()),
-				values...,
+				prometheus.NewDesc(
+					*metricFamily.Name,
+					metricFamily.GetHelp(),
+					names, nil,
+				),
+				valType, val, values...,
 			)
 		}
 	}
@@ -298,24 +319,21 @@ func getLabelNamesAndValues(metric *dto.Metric, extraLabels []*dto.LabelPair, al
 	if extraLabels != nil {
 		labels = append(labels, extraLabels...)
 	}
-
 	names := make([]string, len(labels))
 	values := make([]string, len(labels))
-
 	for i, label := range labels {
 		names[i] = label.GetName()
 		values[i] = label.GetValue()
 	}
-
 	for k := range allLabelNames {
-		found := false
-		for _, n := range names {
-			if n == k {
-				found = true
+		present := false
+		for _, name := range names {
+			if k == name {
+				present = true
 				break
 			}
 		}
-		if !found {
+		if !present {
 			names = append(names, k)
 			values = append(values, "")
 		}
@@ -325,15 +343,17 @@ func getLabelNamesAndValues(metric *dto.Metric, extraLabels []*dto.LabelPair, al
 
 // getAllLabelNames returns the map of all label names from the metric family including any extra labels provided.
 func getAllLabelNames(metricFamily *dto.MetricFamily, extraLabels []*dto.LabelPair) map[string]struct{} {
-	all := map[string]struct{}{}
+	allLabelNames := map[string]struct{}{}
 	for _, metric := range metricFamily.Metric {
 		labels := metric.GetLabel()
 		if extraLabels != nil {
 			labels = append(labels, extraLabels...)
 		}
-		for _, l := range labels {
-			all[l.GetName()] = struct{}{}
+		for _, label := range labels {
+			if _, ok := allLabelNames[label.GetName()]; !ok {
+				allLabelNames[label.GetName()] = struct{}{}
+			}
 		}
 	}
-	return all
+	return allLabelNames
 }
