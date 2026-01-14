@@ -235,6 +235,14 @@ var diAggregationSpec = map[string][]string{
 	"gradient_infra_di_inference_extension_plugin_duration_seconds_bucket":        diLabelsToDrop,
 	"gradient_infra_di_inference_extension_prefix_indexer_hit_bytes_bucket":       diLabelsToDrop,
 	"gradient_infra_di_inference_extension_scheduler_e2e_duration_seconds_bucket": diLabelsToDrop,
+	"gradient_infra_di_inference_extension_plugin_duration_seconds_sum":           diLabelsToDrop,
+	"gradient_infra_di_inference_extension_plugin_duration_seconds_count":         diLabelsToDrop,
+
+	"gradient_infra_di_inference_extension_prefix_indexer_hit_bytes_sum":   diLabelsToDrop,
+	"gradient_infra_di_inference_extension_prefix_indexer_hit_bytes_count": diLabelsToDrop,
+
+	"gradient_infra_di_inference_extension_scheduler_e2e_duration_seconds_sum":   diLabelsToDrop,
+	"gradient_infra_di_inference_extension_scheduler_e2e_duration_seconds_count": diLabelsToDrop,
 
 	// Objective request duration histogram
 	// bucket must keep "le" -> do NOT drop it

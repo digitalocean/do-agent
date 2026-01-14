@@ -257,6 +257,10 @@ func initAggregatorSpecs() map[string][]string {
 		for k, v := range gpuAggregationSpec {
 			aggregateSpecs[k] = append(aggregateSpecs[k], v...)
 		}
+		//add DI label-drop rules too
+		for k, v := range diAggregationSpec {
+			aggregateSpecs[k] = append(aggregateSpecs[k], v...)
+		}
 	}
 
 	return aggregateSpecs
@@ -334,7 +338,16 @@ func initCollectors() []prometheus.Collector {
 	}
 
 	if config.gpuMetricsPath != "" {
-		gpu, err := collector.NewScraper("gpu", config.gpuMetricsPath, nil, gpuWhitelist, collector.WithTimeout(config.scrapeTimeout))
+		//merge GPU + DI allowlist so DI metrics are not dropped at scrape time
+		wl := map[string]bool{}
+		for k, v := range gpuWhitelist {
+			wl[k] = v
+		}
+		for k, v := range diWhitelist {
+			wl[k] = v
+		}
+
+		gpu, err := collector.NewScraper("gpu", config.gpuMetricsPath, nil, wl, collector.WithTimeout(config.scrapeTimeout))
 		if err != nil {
 			log.Error("Failed to initialize GPU metrics collector: %+v", err)
 		} else {
