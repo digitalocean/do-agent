@@ -6,6 +6,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"math"
 	"net/http"
 	"strings"
 	"time"
@@ -21,10 +22,11 @@ import (
 var defaultScrapeTimeout = 5 * time.Second
 
 type scraperOpts struct {
-	timeout         time.Duration
-	logLevel        log.Level
-	bearerToken     string
-	bearerTokenFile string
+	timeout           time.Duration
+	logLevel          log.Level
+	flattenHistograms bool
+	bearerToken       string
+	bearerTokenFile   string
 }
 
 // Option is used to configure optional scraper options.
@@ -55,6 +57,11 @@ func WithTimeout(d time.Duration) Option {
 func WithLogLevel(l log.Level) Option {
 	return func(o *scraperOpts) {
 		o.logLevel = l
+	}
+}
+func WithFlattenHistograms() Option {
+	return func(o *scraperOpts) {
+		o.flattenHistograms = true
 	}
 }
 
@@ -93,6 +100,7 @@ func NewScraper(name, metricsEndpoint string, extraMetricLabels []*dto.LabelPair
 		name:              name,
 		extraMetricLabels: extraMetricLabels,
 		whitelist:         whitelist,
+		flattenHistograms: defOpts.flattenHistograms,
 		timeout:           defOpts.timeout,
 		logLevel:          defOpts.logLevel,
 		client:            client,
@@ -118,6 +126,7 @@ type Scraper struct {
 	req                *http.Request
 	client             *http.Client
 	name               string
+	flattenHistograms  bool
 	whitelist          map[string]bool
 	extraMetricLabels  []*dto.LabelPair
 	scrapeDurationDesc *prometheus.Desc
@@ -217,7 +226,7 @@ func (s *Scraper) scrape(ctx context.Context, ch chan<- prometheus.Metric) (oute
 		if s.FilterMetric(mf) {
 			continue
 		}
-		convertMetricFamily(mf, ch, s.extraMetricLabels)
+		convertMetricFamily(mf, ch, s.extraMetricLabels, s.flattenHistograms)
 	}
 
 	return nil
@@ -230,11 +239,21 @@ func (s *Scraper) Name() string {
 
 // FilterMetric returns true if the metric should be skipped (filtered out)
 func (s *Scraper) FilterMetric(metricFamily *dto.MetricFamily) bool {
-	if len(s.whitelist) == 0 { // if no whitelist treat all metrics as valid
+	if len(s.whitelist) == 0 {
 		return false
 	}
 
-	return !s.whitelist[*metricFamily.Name]
+	name := metricFamily.GetName()
+
+	// If we flatten histograms, the family name will be the base name (no suffix),
+	// but the whitelist contains *_bucket/_sum/_count.
+	if s.flattenHistograms && metricFamily.GetType() == dto.MetricType_HISTOGRAM {
+		if s.whitelist[name+"_bucket"] || s.whitelist[name+"_sum"] || s.whitelist[name+"_count"] {
+			return false
+		}
+	}
+
+	return !s.whitelist[name]
 }
 
 // convertMetricFamily converts the dto metrics parsed from the expfmt package
@@ -243,7 +262,7 @@ func (s *Scraper) FilterMetric(metricFamily *dto.MetricFamily) bool {
 // this was copied and extended/refactored from github.com/prometheus/node_exporter
 // see https://github.com/prometheus/node_exporter/blob/f56e8fcdf48ead56f1f149dbf1301ac028ef589b/collector/textfile.go#L63
 // for more details
-func convertMetricFamily(metricFamily *dto.MetricFamily, ch chan<- prometheus.Metric, extraLabels []*dto.LabelPair) {
+func convertMetricFamily(metricFamily *dto.MetricFamily, ch chan<- prometheus.Metric, extraLabels []*dto.LabelPair, flattenHistograms bool) {
 	var valType prometheus.ValueType
 	var val float64
 
@@ -282,19 +301,63 @@ func convertMetricFamily(metricFamily *dto.MetricFamily, ch chan<- prometheus.Me
 				quantiles, values...,
 			)
 		case dto.MetricType_HISTOGRAM:
-			buckets := map[float64]uint64{}
-			for _, b := range metric.Histogram.Bucket {
-				buckets[b.GetUpperBound()] = b.GetCumulativeCount()
+			// Emit Prometheus histogram as separate *_bucket, *_sum, *_count series
+			// so downstream systems that don't support native Histogram types still get data.
+			if !flattenHistograms {
+				buckets := map[float64]uint64{}
+				for _, b := range metric.Histogram.Bucket {
+					buckets[b.GetUpperBound()] = b.GetCumulativeCount()
+				}
+				ch <- prometheus.MustNewConstHistogram(
+					prometheus.NewDesc(*metricFamily.Name, metricFamily.GetHelp(), names, nil),
+					metric.Histogram.GetSampleCount(),
+					metric.Histogram.GetSampleSum(),
+					buckets, values...,
+				)
+				break
 			}
-			ch <- prometheus.MustNewConstHistogram(
+			// 1) buckets
+			for _, b := range metric.Histogram.Bucket {
+				// add "le" label
+				bucketNames := append(append([]string{}, names...), "le")
+
+				le := fmt.Sprintf("%g", b.GetUpperBound())
+				if math.IsInf(b.GetUpperBound(), 1) {
+					le = "+Inf"
+				}
+
+				bucketValues := append(append([]string{}, values...), le)
+
+				ch <- prometheus.MustNewConstMetric(
+					prometheus.NewDesc(
+						*metricFamily.Name+"_bucket",
+						metricFamily.GetHelp(),
+						bucketNames, nil,
+					),
+					prometheus.CounterValue,
+					float64(b.GetCumulativeCount()),
+					bucketValues...,
+				)
+			}
+
+			// 2) sum
+			ch <- prometheus.MustNewConstMetric(
+				prometheus.NewDesc(*metricFamily.Name+"_sum", metricFamily.GetHelp(), names, nil),
+				prometheus.GaugeValue,
+				metric.Histogram.GetSampleSum(),
+				values...,
+			)
+
+			// 3) count
+			ch <- prometheus.MustNewConstMetric(
 				prometheus.NewDesc(
-					*metricFamily.Name,
+					*metricFamily.Name+"_count",
 					metricFamily.GetHelp(),
 					names, nil,
 				),
-				metric.Histogram.GetSampleCount(),
-				metric.Histogram.GetSampleSum(),
-				buckets, values...,
+				prometheus.CounterValue,
+				float64(metric.Histogram.GetSampleCount()),
+				values...,
 			)
 		default:
 			log.Error("unknown metric type %q", metricType.String())

@@ -198,6 +198,9 @@ var gpuAggregationSpec = map[string][]string{
 	"amd_gpu_gfx_activity":                                amdAggregatedLabels,
 	"amd_gpu_prof_sm_active":                              amdAggregatedLabels,
 }
+
+// DI metrics: drop high-cardinality labels we don't want to keep.
+// NOTE: do NOT include "le" because histogram buckets need it.
 var diLabelsToDrop = []string{
 	"instance",
 	"job",
@@ -208,62 +211,39 @@ var diLabelsToDrop = []string{
 }
 
 // diAggregationSpec lists DI metric names and which labels should be DROPPED.
-// Anything NOT in this list will be kept.
-// IMPORTANT: for histogram buckets, we MUST keep "le", so do NOT include "le" in diLabelsToDrop.
+// Anything NOT in this list will keep labels as-is.
 var diAggregationSpec = map[string][]string{
-	// Dedicated Inference GPU metrics
-	"gradient_infra_di_gpu_ecc_errors":                 diLabelsToDrop,
+	// DI GPU metrics
 	"gradient_infra_di_gpu_junction_temperature":       diLabelsToDrop,
-	"gradient_infra_di_gpu_memory_temperature":         diLabelsToDrop,
-	"gradient_infra_di_gpu_pcie_bandwidth":             diLabelsToDrop,
-	"gradient_infra_di_gpu_pcie_rx_bytes":              diLabelsToDrop,
-	"gradient_infra_di_gpu_pcie_tx_bytes":              diLabelsToDrop,
-	"gradient_infra_di_gpu_power_throttle":             diLabelsToDrop,
-	"gradient_infra_di_gpu_power_usage":                diLabelsToDrop,
-	"gradient_infra_di_gpu_thermal_throttle":           diLabelsToDrop,
 	"gradient_infra_di_gpu_total_vram":                 diLabelsToDrop,
 	"gradient_infra_di_gpu_used_vram":                  diLabelsToDrop,
 	"gradient_infra_di_gpu_free_vram":                  diLabelsToDrop,
-	"gradient_infra_di_gpu_interconnect_rx":            diLabelsToDrop,
-	"gradient_infra_di_gpu_interconnect_tx":            diLabelsToDrop,
-	"gradient_infra_di_gpu_interconnect_bandwidth":     diLabelsToDrop,
 	"gradient_infra_di_gpu_occupancy_percent":          diLabelsToDrop,
 	"gradient_infra_di_gpu_tensor_utilization_percent": diLabelsToDrop,
 
-	// Inference extension / gateway histograms
-	// bucket metrics must keep "le" -> do NOT drop it
-	"gradient_infra_di_inference_extension_plugin_duration_seconds_bucket":        diLabelsToDrop,
-	"gradient_infra_di_inference_extension_prefix_indexer_hit_bytes_bucket":       diLabelsToDrop,
-	"gradient_infra_di_inference_extension_scheduler_e2e_duration_seconds_bucket": diLabelsToDrop,
-	"gradient_infra_di_inference_extension_plugin_duration_seconds_sum":           diLabelsToDrop,
-	"gradient_infra_di_inference_extension_plugin_duration_seconds_count":         diLabelsToDrop,
-
-	"gradient_infra_di_inference_extension_prefix_indexer_hit_bytes_sum":   diLabelsToDrop,
-	"gradient_infra_di_inference_extension_prefix_indexer_hit_bytes_count": diLabelsToDrop,
-
-	"gradient_infra_di_inference_extension_scheduler_e2e_duration_seconds_sum":   diLabelsToDrop,
-	"gradient_infra_di_inference_extension_scheduler_e2e_duration_seconds_count": diLabelsToDrop,
-
-	// Objective request duration histogram
-	// bucket must keep "le" -> do NOT drop it
-	"gradient_infra_di_inference_objective_request_duration_seconds_bucket": diLabelsToDrop,
-	"gradient_infra_di_inference_objective_request_duration_seconds_sum":    diLabelsToDrop,
-	"gradient_infra_di_inference_objective_request_duration_seconds_count":  diLabelsToDrop,
-
-	// Objective request counters
+	// Objective counters
 	"gradient_infra_di_inference_objective_request_error_total": diLabelsToDrop,
 	"gradient_infra_di_inference_objective_request_total":       diLabelsToDrop,
 
-	// vLLM buckets (keep "le")
-	"gradient_infra_di_vllm:e2e_request_latency_seconds_bucket":           diLabelsToDrop,
-	"gradient_infra_di_vllm:inter_token_latency_seconds_bucket":           diLabelsToDrop,
-	"gradient_infra_di_vllm:request_decode_time_seconds_bucket":           diLabelsToDrop,
-	"gradient_infra_di_vllm:request_time_per_output_token_seconds_bucket": diLabelsToDrop,
-	"gradient_infra_di_vllm:time_to_first_token_seconds_bucket":           diLabelsToDrop,
-
-	// vLLM non-bucket
+	// vLLM non-histogram metrics
 	"gradient_infra_di_vllm:generation_tokens_total": diLabelsToDrop,
-	"gradient_infra_di_vllm:kv_cache_usage_perc":     diLabelsToDrop,
 	"gradient_infra_di_vllm:num_requests_running":    diLabelsToDrop,
 	"gradient_infra_di_vllm:num_requests_waiting":    diLabelsToDrop,
+
+	// vLLM histograms – flattened (_bucket / _sum / _count)
+	"gradient_infra_di_vllm:e2e_request_latency_seconds_bucket": diLabelsToDrop,
+	"gradient_infra_di_vllm:e2e_request_latency_seconds_sum":    diLabelsToDrop,
+	"gradient_infra_di_vllm:e2e_request_latency_seconds_count":  diLabelsToDrop,
+
+	"gradient_infra_di_vllm:inter_token_latency_seconds_bucket": diLabelsToDrop,
+	"gradient_infra_di_vllm:inter_token_latency_seconds_sum":    diLabelsToDrop,
+	"gradient_infra_di_vllm:inter_token_latency_seconds_count":  diLabelsToDrop,
+
+	"gradient_infra_di_vllm:request_decode_time_seconds_bucket": diLabelsToDrop,
+	"gradient_infra_di_vllm:request_decode_time_seconds_sum":    diLabelsToDrop,
+	"gradient_infra_di_vllm:request_decode_time_seconds_count":  diLabelsToDrop,
+
+	"gradient_infra_di_vllm:time_to_first_token_seconds_bucket": diLabelsToDrop,
+	"gradient_infra_di_vllm:time_to_first_token_seconds_sum":    diLabelsToDrop,
+	"gradient_infra_di_vllm:time_to_first_token_seconds_count":  diLabelsToDrop,
 }

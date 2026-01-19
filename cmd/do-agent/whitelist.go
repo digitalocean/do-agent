@@ -250,59 +250,36 @@ var gpuWhitelist = map[string]bool{
 	"amd_gpu_prof_sm_active":                              true,
 }
 var diWhitelist = map[string]bool{
-	// Dedicated Inference GPU metrics
-	"gradient_infra_di_gpu_ecc_errors":                 true,
+	// DI GPU metrics
 	"gradient_infra_di_gpu_junction_temperature":       true,
-	"gradient_infra_di_gpu_memory_temperature":         true,
-	"gradient_infra_di_gpu_pcie_bandwidth":             true,
-	"gradient_infra_di_gpu_pcie_rx_bytes":              true,
-	"gradient_infra_di_gpu_pcie_tx_bytes":              true,
-	"gradient_infra_di_gpu_power_throttle":             true,
-	"gradient_infra_di_gpu_power_usage":                true,
-	"gradient_infra_di_gpu_thermal_throttle":           true,
 	"gradient_infra_di_gpu_total_vram":                 true,
 	"gradient_infra_di_gpu_used_vram":                  true,
 	"gradient_infra_di_gpu_free_vram":                  true,
-	"gradient_infra_di_gpu_interconnect_rx":            true,
-	"gradient_infra_di_gpu_interconnect_tx":            true,
-	"gradient_infra_di_gpu_interconnect_bandwidth":     true,
 	"gradient_infra_di_gpu_occupancy_percent":          true,
 	"gradient_infra_di_gpu_tensor_utilization_percent": true,
 
-	// Inference extension / gateway histograms (base + bucket/sum/count)
-	"gradient_infra_di_inference_extension_plugin_duration_seconds":        true,
-	"gradient_infra_di_inference_extension_plugin_duration_seconds_bucket": true,
-	"gradient_infra_di_inference_extension_plugin_duration_seconds_sum":    true,
-	"gradient_infra_di_inference_extension_plugin_duration_seconds_count":  true,
-
-	"gradient_infra_di_inference_extension_prefix_indexer_hit_bytes":        true,
-	"gradient_infra_di_inference_extension_prefix_indexer_hit_bytes_bucket": true,
-	"gradient_infra_di_inference_extension_prefix_indexer_hit_bytes_sum":    true,
-	"gradient_infra_di_inference_extension_prefix_indexer_hit_bytes_count":  true,
-
-	"gradient_infra_di_inference_extension_scheduler_e2e_duration_seconds":        true,
-	"gradient_infra_di_inference_extension_scheduler_e2e_duration_seconds_bucket": true,
-	"gradient_infra_di_inference_extension_scheduler_e2e_duration_seconds_sum":    true,
-	"gradient_infra_di_inference_extension_scheduler_e2e_duration_seconds_count":  true,
-
-	// Objective request counters
+	// Objective counters
 	"gradient_infra_di_inference_objective_request_error_total": true,
 	"gradient_infra_di_inference_objective_request_total":       true,
 
-	// Objective request duration histogram (base + bucket/sum/count)
-	"gradient_infra_di_inference_objective_request_duration_seconds":        true,
-	"gradient_infra_di_inference_objective_request_duration_seconds_bucket": true,
-	"gradient_infra_di_inference_objective_request_duration_seconds_sum":    true,
-	"gradient_infra_di_inference_objective_request_duration_seconds_count":  true,
+	// vLLM
 
-	// vLLM metrics (histograms need base + bucket/sum/count if you expect sum/count to exist)
-	"gradient_infra_di_vllm:e2e_request_latency_seconds_bucket":           true,
-	"gradient_infra_di_vllm:generation_tokens_total":                      true,
-	"gradient_infra_di_vllm:inter_token_latency_seconds_bucket":           true,
-	"gradient_infra_di_vllm:kv_cache_usage_perc":                          true,
-	"gradient_infra_di_vllm:num_requests_running":                         true,
-	"gradient_infra_di_vllm:num_requests_waiting":                         true,
-	"gradient_infra_di_vllm:request_decode_time_seconds_bucket":           true,
-	"gradient_infra_di_vllm:request_time_per_output_token_seconds_bucket": true,
-	"gradient_infra_di_vllm:time_to_first_token_seconds_bucket":           true,
+	"gradient_infra_di_vllm:generation_tokens_total":            true,
+	"gradient_infra_di_vllm:num_requests_running":               true,
+	"gradient_infra_di_vllm:num_requests_waiting":               true,
+	"gradient_infra_di_vllm:e2e_request_latency_seconds_bucket": true,
+	"gradient_infra_di_vllm:e2e_request_latency_seconds_sum":    true,
+	"gradient_infra_di_vllm:e2e_request_latency_seconds_count":  true,
+
+	"gradient_infra_di_vllm:inter_token_latency_seconds_bucket": true,
+	"gradient_infra_di_vllm:inter_token_latency_seconds_sum":    true,
+	"gradient_infra_di_vllm:inter_token_latency_seconds_count":  true,
+
+	"gradient_infra_di_vllm:request_decode_time_seconds_bucket": true,
+	"gradient_infra_di_vllm:request_decode_time_seconds_sum":    true,
+	"gradient_infra_di_vllm:request_decode_time_seconds_count":  true,
+
+	"gradient_infra_di_vllm:time_to_first_token_seconds_bucket": true,
+	"gradient_infra_di_vllm:time_to_first_token_seconds_sum":    true,
+	"gradient_infra_di_vllm:time_to_first_token_seconds_count":  true,
 }
