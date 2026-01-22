@@ -46,6 +46,7 @@ var (
 		defaultMaxBatchSize    int
 		defaultMaxMetricLength int
 		promAddr               string
+		diMetricsPath          string
 		gpuMetricsPath         string
 		topK                   int
 		scrapeTimeout          time.Duration
@@ -126,6 +127,9 @@ func init() {
 
 	kingpin.Flag("gpu-metrics-path", "enable GPU metrics collection from a prometheus endpoint (e.g., AMD device-metrics-exporter)").
 		StringVar(&config.gpuMetricsPath)
+
+	kingpin.Flag("di-metrics-path", "enable Dedicated Inference (DI) metrics collection from a prometheus endpoint").
+		StringVar(&config.diMetricsPath)
 
 	kingpin.Flag("web.listen", "enable a local endpoint for scrapeable prometheus metrics as well").
 		Default("false").
@@ -258,7 +262,11 @@ func initAggregatorSpecs() map[string][]string {
 			aggregateSpecs[k] = append(aggregateSpecs[k], v...)
 		}
 	}
-
+	if config.diMetricsPath != "" {
+		for k, v := range diAggregationSpec {
+			aggregateSpecs[k] = append(aggregateSpecs[k], v...)
+		}
+	}
 	return aggregateSpecs
 }
 
@@ -330,6 +338,15 @@ func initCollectors() []prometheus.Collector {
 			log.Error("Failed to initialize generic metrics collector: %+v", err)
 		} else {
 			cols = append(cols, k)
+		}
+	}
+
+	if config.diMetricsPath != "" {
+		di, err := collector.NewScraper("di", config.diMetricsPath, nil, diWhitelist, collector.WithTimeout(config.scrapeTimeout))
+		if err != nil {
+			log.Error("Failed to initialize DI metrics collector: %+v", err)
+		} else {
+			cols = append(cols, di)
 		}
 	}
 

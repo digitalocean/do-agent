@@ -198,3 +198,42 @@ var gpuAggregationSpec = map[string][]string{
 	"amd_gpu_gfx_activity":                                amdAggregatedLabels,
 	"amd_gpu_prof_sm_active":                              amdAggregatedLabels,
 }
+
+// DI metrics: drop high-cardinality labels we don't want to keep.
+// NOTE: do NOT include "le" because bucket-style series need it.
+var diLabelsToDrop = []string{
+	"container",
+	"job",
+	"otel_scope_name",
+	"otel_scope_schema_url",
+	"otel_scope_version",
+}
+
+// diAggregationSpec lists DI metric names and which labels should be DROPPED.
+// Anything NOT in this list will keep labels as-is.
+var diAggregationSpec = map[string][]string{
+	// DI GPU metrics
+	"gradient_infra_di_gpu_junction_temperature":       diLabelsToDrop,
+	"gradient_infra_di_gpu_total_vram":                 diLabelsToDrop,
+	"gradient_infra_di_gpu_used_vram":                  diLabelsToDrop,
+	"gradient_infra_di_gpu_free_vram":                  diLabelsToDrop,
+	"gradient_infra_di_gpu_occupancy_percent":          diLabelsToDrop,
+	"gradient_infra_di_gpu_tensor_utilization_percent": diLabelsToDrop,
+	"gradient_infra_di_gpu_memory_temperature":         diLabelsToDrop,
+
+	// Objective counters
+	"gradient_infra_di_inference_objective_request_error_total": diLabelsToDrop,
+	"gradient_infra_di_inference_objective_request_total":       diLabelsToDrop,
+
+	// vLLM non-bucket metrics
+	"gradient_infra_di_vllm:generation_tokens_total": diLabelsToDrop,
+	"gradient_infra_di_vllm:num_requests_running":    diLabelsToDrop,
+	"gradient_infra_di_vllm:num_requests_waiting":    diLabelsToDrop,
+	"gradient_infra_di_vllm:kv_cache_usage_perc":     diLabelsToDrop,
+
+	// vLLM bucket-style series
+	"gradient_infra_di_vllm:e2e_request_latency_seconds_bucket":           diLabelsToDrop,
+	"gradient_infra_di_vllm:inter_token_latency_seconds_bucket":           diLabelsToDrop,
+	"gradient_infra_di_vllm:request_time_per_output_token_seconds_bucket": diLabelsToDrop,
+	"gradient_infra_di_vllm:time_to_first_token_seconds_bucket":           diLabelsToDrop,
+}

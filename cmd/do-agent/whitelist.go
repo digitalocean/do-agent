@@ -249,3 +249,28 @@ var gpuWhitelist = map[string]bool{
 	"amd_gpu_gfx_activity":                                true,
 	"amd_gpu_prof_sm_active":                              true,
 }
+var diWhitelist = map[string]bool{
+	// DI GPU metrics
+	"gradient_infra_di_gpu_junction_temperature":       true,
+	"gradient_infra_di_gpu_total_vram":                 true,
+	"gradient_infra_di_gpu_used_vram":                  true,
+	"gradient_infra_di_gpu_free_vram":                  true,
+	"gradient_infra_di_gpu_occupancy_percent":          true,
+	"gradient_infra_di_gpu_tensor_utilization_percent": true,
+	"gradient_infra_di_gpu_memory_temperature":         true,
+
+	// Objective counters
+	"gradient_infra_di_inference_objective_request_error_total": true,
+	"gradient_infra_di_inference_objective_request_total":       true,
+
+	// vLLM
+
+	"gradient_infra_di_vllm:generation_tokens_total":                      true,
+	"gradient_infra_di_vllm:num_requests_running":                         true,
+	"gradient_infra_di_vllm:num_requests_waiting":                         true,
+	"gradient_infra_di_vllm:kv_cache_usage_perc":                          true,
+	"gradient_infra_di_vllm:e2e_request_latency_seconds_bucket":           true,
+	"gradient_infra_di_vllm:inter_token_latency_seconds_bucket":           true,
+	"gradient_infra_di_vllm:request_time_per_output_token_seconds_bucket": true,
+	"gradient_infra_di_vllm:time_to_first_token_seconds_bucket":           true,
+}
