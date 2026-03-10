@@ -177,7 +177,10 @@ var gpuAggregationSpec = map[string][]string{
 	// PCIe bandwidth
 	"amd_pcie_bandwidth": amdAggregatedLabels,
 
+	"amd_gpu_ecc_correct_total":                           amdAggregatedLabels,
 	"amd_gpu_ecc_uncorrect_total":                         amdAggregatedLabels,
+	"amd_pcie_nack_sent_count":                            amdAggregatedLabels,
+	"amd_pcie_nack_received_count":                        amdAggregatedLabels,
 	"amd_pcie_replay_count":                               amdAggregatedLabels,
 	"amd_pcie_recovery_count":                             amdAggregatedLabels,
 	"amd_pcie_replay_rollover_count":                      amdAggregatedLabels,
