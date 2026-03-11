@@ -274,3 +274,11 @@ var diWhitelist = map[string]bool{
 	"gradient_infra_di_vllm:request_time_per_output_token_seconds_bucket": true,
 	"gradient_infra_di_vllm:time_to_first_token_seconds_bucket":           true,
 }
+
+var siWhitelist = map[string]bool{
+	"gen_ai_otel_inference_proxy_http_requests_total":  true,
+	"gen_ai_otel_inference_proxy_token_throughput":     true,
+	"gen_ai_otel_inference_proxy_rate_limit_exceeded":  true,
+	"gen_ai_otel_inference_proxy_cache_hit":            true,
+	"gen_ai_otel_inference_proxy_cache_miss":           true,
+}
