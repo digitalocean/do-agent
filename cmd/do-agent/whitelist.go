@@ -276,9 +276,13 @@ var diWhitelist = map[string]bool{
 }
 
 var siWhitelist = map[string]bool{
-	"gen_ai_otel_inference_proxy_http_requests_total": true,
-	"gen_ai_otel_inference_proxy_token_throughput":    true,
-	"gen_ai_otel_inference_proxy_rate_limit_exceeded": true,
-	"gen_ai_otel_inference_proxy_cache_hit":           true,
-	"gen_ai_otel_inference_proxy_cache_miss":          true,
+	"gen_ai_platform_inference_proxy_http_requests_total":                   true,
+	"gen_ai_platform_inference_proxy_http_request_duration_seconds":         true,
+	"gen_ai_platform_inference_proxy_token_throughput":                      true,
+	"gen_ai_platform_inference_proxy_rate_limit_exceeded":                   true,
+	"gen_ai_platform_inference_proxy_cache_hit":                             true,
+	"gen_ai_platform_inference_proxy_cache_miss":                            true,
+	"gen_ai_platform_inference_proxy_inference_client_ttft_duration":        true,
+	"gen_ai_platform_inference_proxy_inference_client_itl_duration_seconds": true,
+	"gen_ai_platform_inference_proxy_inference_client_requests_total":       true,
 }
