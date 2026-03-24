@@ -196,7 +196,7 @@ var gpuAggregationSpec = map[string][]string{
 	"amd_pcie_replay_rollover_count":                         amdAggregatedLabels,
 	"amd_pcie_max_speed":                                     amdAggregatedLabels,
 	"amd_pcie_speed":                                         amdAggregatedLabels,
-	"amd_pcie_nac_received_count":                            amdAggregatedLabels,
+	"amd_pcie_nack_received_count":                           amdAggregatedLabels,
 	"amd_pcie_nack_sent_count":                               amdAggregatedLabels,
 	"amd_gpu_prof_cpf_cpf_stat_stall":                        amdAggregatedLabels,
 	"amd_gpu_clock":                                          amdAggregatedLabels,

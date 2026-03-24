@@ -247,7 +247,7 @@ var gpuWhitelist = map[string]bool{
 	"amd_pcie_replay_rollover_count":                         true,
 	"amd_pcie_max_speed":                                     true,
 	"amd_pcie_speed":                                         true,
-	"amd_pcie_nac_received_count":                            true,
+	"amd_pcie_nack_received_count":                           true,
 	"amd_pcie_nack_sent_count":                               true,
 	"amd_gpu_prof_cpf_cpf_stat_stall":                        true,
 	"amd_gpu_clock":                                          true,
