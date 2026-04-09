@@ -69,6 +69,18 @@ var dbaasWhitelist = map[string]bool{
 	"mysql_global_connection_memory":    true,
 	"mysql_slave_seconds_behind_master": true,
 
+	// Percona / mysqld_exporter native names (no relabeling)
+	"mysql_global_status_uptime":                     true,
+	"mysql_global_status_queries":                    true,
+	"mysql_global_status_threads_connected":          true,
+	"mysql_global_status_threads_running":            true,
+	"mysql_global_status_slow_queries":               true,
+	"mysql_global_status_innodb_buffer_pool_reads":   true,
+	"mysql_global_status_innodb_row_ops_total":       true,
+	"mysql_global_variables_max_connections":         true,
+	"mysql_global_variables_innodb_buffer_pool_size": true,
+	"mysql_global_status_innodb_data_reads":          true,
+
 	"redis_total_connections_received": true,
 	"redis_rejected_connections":       true,
 	"redis_evicted_keys":               true,
