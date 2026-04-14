@@ -23,6 +23,13 @@ var dbaasAggregationSpec = map[string][]string{
 	"mysql_perf_schema_table_io_waits_seconds_total_delete": {"name"},
 	"mysql_perf_schema_table_io_waits_seconds_total_insert": {"name"},
 
+	// Advanced MySQL / Percona: collapse high-cardinality labels
+	"mysql_global_status_commands_total":       {"command"},
+	"mysql_global_status_innodb_row_ops_total": {"operation"},
+	"mysql_perf_schema_file_events_total":         {"event_name"},
+	"mysql_perf_schema_file_events_seconds_total": {"event_name"},
+	"mysql_perf_schema_file_events_bytes_total":   {"event_name"},
+
 	"mysql_threads_connected": {"validate_password_dictionary_file_last_parsed"},
 	"mysql_threads_created":   {"validate_password_dictionary_file_last_parsed"},
 	"mysql_threads_running":   {"validate_password_dictionary_file_last_parsed"},
