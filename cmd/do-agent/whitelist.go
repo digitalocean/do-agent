@@ -72,17 +72,17 @@ var dbaasWhitelist = map[string]bool{
 	// Advanced MySQL / Percona (mysqld_exporter native names; no relabeling)
 	//
 	// MySQL Metrics
-	"mysql_global_status_uptime":              true,
-	"mysql_global_status_queries":             true,
-	"mysql_global_status_threads_connected":   true,
-	"mysql_global_status_threads_running":     true,
-	"mysql_global_status_threads_cached":      true,
-	"mysql_global_status_threads_created":     true,
-	"mysql_global_status_max_used_connections": true,
-	"mysql_global_status_aborted_connects":    true,
-	"mysql_global_status_aborted_clients":     true,
-	"mysql_global_status_slow_queries":        true,
-	"mysql_global_status_commands_total":       true,
+	"mysql_global_status_uptime":                     true,
+	"mysql_global_status_queries":                    true,
+	"mysql_global_status_threads_connected":          true,
+	"mysql_global_status_threads_running":            true,
+	"mysql_global_status_threads_cached":             true,
+	"mysql_global_status_threads_created":            true,
+	"mysql_global_status_max_used_connections":       true,
+	"mysql_global_status_aborted_connects":           true,
+	"mysql_global_status_aborted_clients":            true,
+	"mysql_global_status_slow_queries":               true,
+	"mysql_global_status_commands_total":             true,
 	"mysql_global_variables_innodb_buffer_pool_size": true,
 	"mysql_global_variables_max_connections":         true,
 
@@ -112,9 +112,9 @@ var dbaasWhitelist = map[string]bool{
 	"mysql_global_variables_innodb_thread_concurrency": true,
 
 	// Information Schema: InnoDB metrics (transaction details, purge, AHI)
-	"mysql_info_schema_innodb_metrics_transaction_trx_rseg_history_len":                true,
-	"mysql_info_schema_innodb_metrics_purge_purge_invoked":                             true,
-	"mysql_info_schema_innodb_metrics_purge_purge_undo_log_pages":                      true,
+	"mysql_info_schema_innodb_metrics_transaction_trx_rseg_history_len":                 true,
+	"mysql_info_schema_innodb_metrics_purge_purge_invoked":                              true,
+	"mysql_info_schema_innodb_metrics_purge_purge_undo_log_pages":                       true,
 	"mysql_info_schema_innodb_metrics_adaptive_hash_index_adaptive_hash_searches":       true,
 	"mysql_info_schema_innodb_metrics_adaptive_hash_index_adaptive_hash_searches_btree": true,
 
