@@ -69,17 +69,77 @@ var dbaasWhitelist = map[string]bool{
 	"mysql_global_connection_memory":    true,
 	"mysql_slave_seconds_behind_master": true,
 
-	// Percona / mysqld_exporter native names (no relabeling)
-	"mysql_global_status_uptime":                     true,
-	"mysql_global_status_queries":                    true,
-	"mysql_global_status_threads_connected":          true,
-	"mysql_global_status_threads_running":            true,
-	"mysql_global_status_slow_queries":               true,
-	"mysql_global_status_innodb_buffer_pool_reads":   true,
-	"mysql_global_status_innodb_row_ops_total":       true,
-	"mysql_global_variables_max_connections":         true,
+	// Advanced MySQL / Percona (mysqld_exporter native names; no relabeling)
+	//
+	// MySQL Metrics
+	"mysql_global_status_uptime":              true,
+	"mysql_global_status_queries":             true,
+	"mysql_global_status_threads_connected":   true,
+	"mysql_global_status_threads_running":     true,
+	"mysql_global_status_threads_cached":      true,
+	"mysql_global_status_threads_created":     true,
+	"mysql_global_status_max_used_connections": true,
+	"mysql_global_status_aborted_connects":    true,
+	"mysql_global_status_aborted_clients":     true,
+	"mysql_global_status_slow_queries":        true,
+	"mysql_global_status_commands_total":       true,
 	"mysql_global_variables_innodb_buffer_pool_size": true,
-	"mysql_global_status_innodb_data_reads":          true,
+	"mysql_global_variables_max_connections":         true,
+
+	// Status Metrics: InnoDB (Pages, Row Ops, LSN, Checkpoints)
+	"mysql_global_status_innodb_buffer_pool_pages_data":         true,
+	"mysql_global_status_innodb_buffer_pool_pages_free":         true,
+	"mysql_global_status_innodb_buffer_pool_pages_misc":         true,
+	"mysql_global_status_innodb_buffer_pool_read_ahead":         true,
+	"mysql_global_status_innodb_buffer_pool_read_ahead_evicted": true,
+	"mysql_global_status_innodb_buffer_pool_read_requests":      true,
+	"mysql_global_status_innodb_buffer_pool_reads":              true,
+	"mysql_global_status_innodb_buffer_pool_wait_free":          true,
+	"mysql_global_status_innodb_buffer_pool_write_requests":     true,
+	"mysql_global_status_innodb_data_reads":                     true,
+	"mysql_global_status_innodb_data_writes":                    true,
+	"mysql_global_status_innodb_deadlocks":                      true,
+	"mysql_global_status_innodb_dblwr_pages_written":            true,
+	"mysql_global_status_innodb_dblwr_writes":                   true,
+	"mysql_global_status_innodb_log_waits":                      true,
+	"mysql_global_status_innodb_log_writes":                     true,
+	"mysql_global_status_innodb_os_log_fsyncs":                  true,
+	"mysql_global_status_innodb_row_lock_time":                  true,
+	"mysql_global_status_innodb_row_ops_total":                  true,
+
+	// Variable Metrics: InnoDB settings (log file size, concurrency)
+	"mysql_global_variables_innodb_log_file_size":      true,
+	"mysql_global_variables_innodb_thread_concurrency": true,
+
+	// Information Schema: InnoDB metrics (transaction details, purge, AHI)
+	"mysql_info_schema_innodb_metrics_transaction_trx_rseg_history_len":                true,
+	"mysql_info_schema_innodb_metrics_purge_purge_invoked":                             true,
+	"mysql_info_schema_innodb_metrics_purge_purge_undo_log_pages":                      true,
+	"mysql_info_schema_innodb_metrics_adaptive_hash_index_adaptive_hash_searches":       true,
+	"mysql_info_schema_innodb_metrics_adaptive_hash_index_adaptive_hash_searches_btree": true,
+
+	// Performance Schema: File Events (IO latencies per file type)
+	"mysql_perf_schema_file_events_total":         true,
+	"mysql_perf_schema_file_events_seconds_total": true,
+	"mysql_perf_schema_file_events_bytes_total":   true,
+
+	// Member Status
+	"mysql_perf_schema_replication_group_member_info": true,
+
+	// Replication Lag
+	"mysql_perf_schema_replication_group_worker_lag_in_seconds":         true,
+	"mysql_perf_schema_replication_group_worker_transport_time_seconds": true,
+	"mysql_perf_schema_replication_group_worker_apply_time_seconds":     true,
+
+	// Transaction Certifier
+	"mysql_perf_schema_transactions_checked_total":         true,
+	"mysql_perf_schema_transactions_rows_validating_total": true,
+	"mysql_perf_schema_conflicts_detected_total":           true,
+
+	// Transaction Flow
+	"mysql_perf_schema_transactions_remote_applied_total": true,
+	"mysql_perf_schema_transactions_local_proposed_total": true,
+	"mysql_perf_schema_transactions_in_queue":             true,
 
 	"redis_total_connections_received": true,
 	"redis_rejected_connections":       true,
