@@ -82,9 +82,11 @@ func run(w metricWriter, l limiter, dec decorate.Decorator, g gatherer, aggregat
 		}
 
 		log.Error("failed to send metrics: %v", err)
-		// don't send again immediately or it will fail for sending too frequently
-		// first sleep for the wait duration and then send diagnostic information
-		time.Sleep(l.WaitDuration())
+		// After 429 retries the agent has already spent ~45s backing off, so
+		// an additional full-cycle sleep would create an unnecessarily long
+		// gap (~5 min). Skip it and let the main-loop sleep provide pacing.
+		// The diagnostic write may be blocked by the client-side rate limiter;
+		// that's acceptable — diagnostics are best-effort.
 		writeDiagnostics(w, mfs, err)
 	}
 
