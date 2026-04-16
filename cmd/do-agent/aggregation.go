@@ -25,7 +25,9 @@ var dbaasAggregationSpec = map[string][]string{
 
 	// Advanced MySQL / Percona: collapse high-cardinality labels
 	"mysql_global_status_commands_total":          {"command"},
+	"mysql_global_status_handlers_total":          {"handler"},
 	"mysql_global_status_innodb_row_ops_total":    {"operation"},
+	"mysql_global_status_buffer_pool_pages":       {"state"},
 	"mysql_perf_schema_file_events_total":         {"event_name"},
 	"mysql_perf_schema_file_events_seconds_total": {"event_name"},
 	"mysql_perf_schema_file_events_bytes_total":   {"event_name"},
