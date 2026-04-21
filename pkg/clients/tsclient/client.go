@@ -82,8 +82,6 @@ type HTTPClient struct {
 	dropletID string
 	region    string
 
-	retryBackoffs []time.Duration
-
 	buf *bytes.Buffer
 	w   *snappy.Writer
 }
@@ -234,7 +232,6 @@ func New(opts ...ClientOptFn) Client {
 		bootstrapRequired:        true,
 		trusted:                  opt.IsTrusted,
 		lastSend:                 map[string]int64{},
-		retryBackoffs:            []time.Duration{10 * time.Second, 15 * time.Second, 20 * time.Second},
 	}
 }
 
@@ -446,22 +443,22 @@ func (c *HTTPClient) Flush() error {
 		return err
 	}
 
-	// On 429, retry with increasing backoff (see c.retryBackoffs).
-	// On DOKS nodes the dbaas do-agent sidecar shares a per-droplet
-	// rate-limit bucket with the system do-node-agent DaemonSet. The
-	// metadata proxy enforces a ~10s exclusion window between pushes
-	// from the same droplet ID. Retrying 3 times (10s, 15s, 20s) makes
-	// triple-collision probability < 0.05%. We reset lastFlushAttempt
-	// after each backoff so the internal rate limiter doesn't block the
-	// next cycle's Flush.
-	for attempt, backoff := range c.retryBackoffs {
+	// On 429, retry with increasing backoff. On DOKS nodes the dbaas
+	// do-agent sidecar shares a per-droplet rate-limit bucket with the
+	// system do-node-agent DaemonSet. The metadata proxy enforces a ~10s
+	// exclusion window between pushes from the same droplet ID. Retrying
+	// 3 times (10s, 15s, 20s) makes triple-collision probability < 0.05%.
+	// We reset lastFlushAttempt after each backoff so the internal rate
+	// limiter doesn't block the next cycle's Flush.
+	retryBackoffs := []time.Duration{10 * time.Second, 15 * time.Second, 20 * time.Second}
+	for attempt, backoff := range retryBackoffs {
 		if resp.StatusCode != http.StatusTooManyRequests {
 			break
 		}
 		if resp.Body != nil {
 			resp.Body.Close()
 		}
-		log.Debug("got 429, retry %d/%d after %s backoff", attempt+1, len(c.retryBackoffs), backoff)
+		log.Debug("got 429, retry %d/%d after %s backoff", attempt+1, len(retryBackoffs), backoff)
 		time.Sleep(backoff)
 		c.lastFlushAttempt = time.Now()
 		retryReq, retryErr := http.NewRequest("POST", url, bytes.NewBuffer(c.buf.Bytes()))
@@ -482,7 +479,7 @@ func (c *HTTPClient) Flush() error {
 			}
 			return err
 		}
-		log.Debug("retry %d/%d response: %d", attempt+1, len(c.retryBackoffs), resp.StatusCode)
+		log.Debug("retry %d/%d response: %d", attempt+1, len(retryBackoffs), resp.StatusCode)
 	}
 
 	contentType := resp.Header.Get(contentTypeHeader)
