@@ -442,46 +442,6 @@ func (c *HTTPClient) Flush() error {
 		}
 		return err
 	}
-
-	// On 429, retry with increasing backoff. On DOKS nodes the dbaas
-	// do-agent sidecar shares a per-droplet rate-limit bucket with the
-	// system do-node-agent DaemonSet. The metadata proxy enforces a ~10s
-	// exclusion window between pushes from the same droplet ID. Retrying
-	// 3 times (10s, 15s, 20s) makes triple-collision probability < 0.05%.
-	// We reset lastFlushAttempt after each backoff so the internal rate
-	// limiter doesn't block the next cycle's Flush.
-	retryBackoffs := []time.Duration{10 * time.Second, 15 * time.Second, 20 * time.Second}
-	for attempt, backoff := range retryBackoffs {
-		if resp.StatusCode != http.StatusTooManyRequests {
-			break
-		}
-		if resp.Body != nil {
-			resp.Body.Close()
-		}
-		log.Debug("got 429, retry %d/%d after %s backoff", attempt+1, len(retryBackoffs), backoff)
-		time.Sleep(backoff)
-		c.lastFlushAttempt = time.Now()
-		retryReq, retryErr := http.NewRequest("POST", url, bytes.NewBuffer(c.buf.Bytes()))
-		if retryErr != nil {
-			break
-		}
-		retryReq.Header.Add(userAgentHeader, c.userAgent)
-		if c.wharfEndpointSSLHostname != "" {
-			retryReq.Host = c.wharfEndpointSSLHostname
-		}
-		retryReq.Header.Set(contentTypeHeader, binaryContentType)
-		retryReq.Header.Add(authKeyHeader, c.appKey)
-		resp, err = c.httpClient.Do(retryReq.WithContext(context.Background()))
-		if err != nil {
-			c.numConsecutiveFailures++
-			if c.isZeroTime {
-				c.clearBufferedMetrics()
-			}
-			return err
-		}
-		log.Debug("retry %d/%d response: %d", attempt+1, len(retryBackoffs), resp.StatusCode)
-	}
-
 	contentType := resp.Header.Get(contentTypeHeader)
 	if contentType == jsonContentType {
 		defer c.handleSonarResponse(resp.Body)
