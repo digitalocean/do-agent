@@ -14,7 +14,6 @@ var k8sWhitelist = map[string]bool{
 }
 
 var dbaasWhitelist = map[string]bool{
-
 	"postgresql_pg_stat_activity_conn_count":       true,
 	"postgresql_pg_stat_database_blks_hit":         true,
 	"postgresql_pg_stat_database_blks_read":        true,
