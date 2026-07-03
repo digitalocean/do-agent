@@ -70,6 +70,8 @@ var dbaasWhitelist = map[string]bool{
 
 	// Advanced MySQL / Percona (mysqld_exporter native names; no relabeling)
 	//
+	// MySQL Engine & Database Activity
+	"mysql_up": true,
 	// MySQL Global Status (Gauges & Counters)
 	"mysql_global_status_uptime":                  true,
 	"mysql_global_status_queries":                 true,
