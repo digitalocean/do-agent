@@ -264,3 +264,25 @@ var diAggregationSpec = map[string][]string{
 	"gradient_infra_di_vllm:request_time_per_output_token_seconds_bucket": diLabelsToDrop,
 	"gradient_infra_di_vllm:time_to_first_token_seconds_bucket":           diLabelsToDrop,
 }
+
+// SI metrics: drop high-cardinality labels we don't want to keep.
+var siLabelsToDrop = []string{
+	"container",
+	"job",
+	"otel_scope_name",
+	"otel_scope_schema_url",
+	"otel_scope_version",
+	"resource_uuid",
+}
+
+var siAggregationSpec = map[string][]string{
+	"gen_ai_platform_inference_proxy_http_requests_total":                   siLabelsToDrop,
+	"gen_ai_platform_inference_proxy_http_request_duration_seconds":         siLabelsToDrop,
+	"gen_ai_platform_inference_proxy_token_throughput":                      siLabelsToDrop,
+	"gen_ai_platform_inference_proxy_rate_limit_exceeded":                   siLabelsToDrop,
+	"gen_ai_platform_inference_proxy_cache_hit":                             siLabelsToDrop,
+	"gen_ai_platform_inference_proxy_cache_miss":                            siLabelsToDrop,
+	"gen_ai_platform_inference_proxy_inference_client_ttft_duration":        siLabelsToDrop,
+	"gen_ai_platform_inference_proxy_inference_client_itl_duration_seconds": siLabelsToDrop,
+	"gen_ai_platform_inference_proxy_inference_client_requests_total":       siLabelsToDrop,
+}
