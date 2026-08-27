@@ -372,6 +372,9 @@ func initCollectors() []prometheus.Collector {
 			log.Debug("node_exporter collector registered %q", name)
 		}
 		cols = append(cols, node)
+		// Fills in sidecar volume mounts (e.g. /pgdata) that node_exporter
+		// misses because it reads /proc/1/mounts (pause) instead of self.
+		cols = append(cols, collector.NewSelfFilesystemCollector())
 	}
 
 	return cols
