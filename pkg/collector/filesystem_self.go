@@ -129,7 +129,7 @@ func extraMounts(self, pid1 []fsMount) []fsMount {
 		seenPID1[m.mountPoint] = struct{}{}
 	}
 	seenSelf := make(map[string]struct{})
-	var extra []fsMount
+	extra := make([]fsMount, 0, len(self))
 	for _, m := range self {
 		if _, ok := seenPID1[m.mountPoint]; ok {
 			continue
