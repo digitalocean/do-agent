@@ -57,6 +57,20 @@ func TestConvertLabelPairs(t *testing.T) {
 	require.Empty(t, pairs)
 }
 
+func TestHasAdvancedPGLabel(t *testing.T) {
+	orig := config.additionalLabels
+	t.Cleanup(func() { config.additionalLabels = orig })
+
+	config.additionalLabels = nil
+	assert.False(t, hasAdvancedPGLabel())
+
+	config.additionalLabels = []string{"user_id:1", "service_type:mysql"}
+	assert.False(t, hasAdvancedPGLabel())
+
+	config.additionalLabels = []string{"user_id:1", "service_type:advanced_pg"}
+	assert.True(t, hasAdvancedPGLabel())
+}
+
 func TestInitAggregatorSpecs(t *testing.T) {
 	aggregateSpecs := initAggregatorSpecs()
 	require.Contains(t, aggregateSpecs, "sonar_cpu")
