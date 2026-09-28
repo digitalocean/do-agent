@@ -372,9 +372,21 @@ func initCollectors() []prometheus.Collector {
 			log.Debug("node_exporter collector registered %q", name)
 		}
 		cols = append(cols, node)
+		if hasAdvancedPGLabel() {
+			cols = append(cols, collector.NewSelfFilesystemCollector())
+		}
 	}
 
 	return cols
+}
+
+func hasAdvancedPGLabel() bool {
+	for _, lbl := range config.additionalLabels {
+		if lbl == "service_type:advanced_pg" {
+			return true
+		}
+	}
+	return false
 }
 
 // appendKubernetesCollectors appends a kubernetes metrics collector if it can be initialized successfully
