@@ -115,7 +115,7 @@ github.com/prometheus/client_model/go
 github.com/prometheus/common/expfmt
 github.com/prometheus/common/internal/bitbucket.org/ww/goautoneg
 github.com/prometheus/common/model
-# github.com/prometheus/node_exporter v1.8.1
+# github.com/prometheus/node_exporter v1.8.2
 ## explicit; go 1.21
 github.com/prometheus/node_exporter/collector
 # github.com/prometheus/procfs v0.14.0
