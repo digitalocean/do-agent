@@ -12,7 +12,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Build
-        run: make build
+        run: id;make build
       - name: Test
         run: make test
       - name: Shellcheck
