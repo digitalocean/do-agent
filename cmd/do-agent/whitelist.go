@@ -161,11 +161,15 @@ var dbaasWhitelist = map[string]bool{
 	// Advanced PostgreSQL / Percona (postgres_exporter + patroni_exporter native names; no relabeling)
 	//
 	// PostgreSQL Engine & Database Activity
-	"pg_up":                            true,
-	"pg_postmaster_start_time_seconds": true,
-	"pg_stat_database_numbackends":     true,
-	"pg_stat_database_xact_commit":     true,
-	"pg_stat_database_xact_rollback":   true,
+	"pg_up":                                      true,
+	"pg_postmaster_start_time_seconds":           true,
+	"pg_stat_database_numbackends":               true,
+	"pg_stat_database_xact_commit":               true,
+	"pg_stat_database_xact_rollback":             true,
+	"pg_stat_database_deadlocks":                 true,
+	"pg_database_size_bytes":                     true,
+	"pg_long_running_transactions_over_5s_count": true,
+	"pg_blocked_backends_count":                  true,
 
 	// PostgreSQL Troubleshooting (tuple/index load, dead tuples, storage latency, WAL checkpoints)
 	"pg_stat_database_tup_returned":         true,
