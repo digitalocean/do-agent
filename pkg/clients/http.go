@@ -53,7 +53,7 @@ type DebugHTTPClient struct {
 
 // Do sends the http request and logs headers and body to DEBUG
 func (c *DebugHTTPClient) Do(req *http.Request) (*http.Response, error) {
-	resp, err := c.Client.Do(req)
+	resp, err := c.Client.Do(req) // #nosec G704 -- req is supplied by the caller; this wrapper only logs it
 	if err != nil {
 		return nil, err
 	}

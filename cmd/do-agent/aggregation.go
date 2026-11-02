@@ -1,104 +1,122 @@
 package main
 
+// Label names shared by several metrics in the aggregation tables.
+const (
+	labelTableName                  = "table_name"
+	labelName                       = "name"
+	labelEventName                  = "event_name"
+	labelPasswordDictParsed         = "validate_password_dictionary_file_last_parsed"
+	labelInnodbBufferPoolLoadStatus = "innodb_buffer_pool_load_status"
+	labelInnodbBufferPoolDumpStatus = "innodb_buffer_pool_dump_status"
+	labelTopic                      = "topic"
+	labelClusterName                = "cluster_name"
+	labelNodeHost                   = "node_host"
+	labelNodeAttributeZone          = "node_attribute_zone"
+	labelDeployment                 = "deployment"
+	labelNamespace                  = "namespace"
+	labelDaemonset                  = "daemonset"
+	labelContainer                  = "container"
+)
+
 var dropletAggregationSpec = map[string][]string{
 	"sonar_cpu": {"cpu"},
 }
 
 var dbaasAggregationSpec = map[string][]string{
 
-	"postgresql_pg_stat_user_tables_idx_scan":      {"table_name"},
-	"postgresql_pg_stat_user_tables_n_tup_ins":     {"table_name"},
-	"postgresql_pg_stat_user_tables_n_tup_upd":     {"table_name"},
-	"postgresql_pg_stat_user_tables_seq_scan":      {"table_name"},
-	"postgresql_pg_stat_user_tables_n_tup_del":     {"table_name"},
-	"postgresql_pg_stat_user_tables_idx_tup_fetch": {"table_name"},
-	"postgresql_pg_stat_user_tables_seq_tup_read":  {"table_name"},
+	"postgresql_pg_stat_user_tables_idx_scan":      {labelTableName},
+	"postgresql_pg_stat_user_tables_n_tup_ins":     {labelTableName},
+	"postgresql_pg_stat_user_tables_n_tup_upd":     {labelTableName},
+	"postgresql_pg_stat_user_tables_seq_scan":      {labelTableName},
+	"postgresql_pg_stat_user_tables_n_tup_del":     {labelTableName},
+	"postgresql_pg_stat_user_tables_idx_tup_fetch": {labelTableName},
+	"postgresql_pg_stat_user_tables_seq_tup_read":  {labelTableName},
 
-	"mysql_perf_schema_table_io_waits_total_fetch":          {"name"},
-	"mysql_perf_schema_table_io_waits_total_update":         {"name"},
-	"mysql_perf_schema_table_io_waits_total_delete":         {"name"},
-	"mysql_perf_schema_table_io_waits_total_insert":         {"name"},
-	"mysql_perf_schema_table_io_waits_seconds_total_fetch":  {"name"},
-	"mysql_perf_schema_table_io_waits_seconds_total_update": {"name"},
-	"mysql_perf_schema_table_io_waits_seconds_total_delete": {"name"},
-	"mysql_perf_schema_table_io_waits_seconds_total_insert": {"name"},
+	"mysql_perf_schema_table_io_waits_total_fetch":          {labelName},
+	"mysql_perf_schema_table_io_waits_total_update":         {labelName},
+	"mysql_perf_schema_table_io_waits_total_delete":         {labelName},
+	"mysql_perf_schema_table_io_waits_total_insert":         {labelName},
+	"mysql_perf_schema_table_io_waits_seconds_total_fetch":  {labelName},
+	"mysql_perf_schema_table_io_waits_seconds_total_update": {labelName},
+	"mysql_perf_schema_table_io_waits_seconds_total_delete": {labelName},
+	"mysql_perf_schema_table_io_waits_seconds_total_insert": {labelName},
 
 	// Advanced MySQL / Percona: collapse high-cardinality labels
 	"mysql_global_status_commands_total":          {"command"},
 	"mysql_global_status_handlers_total":          {"handler"},
 	"mysql_global_status_innodb_row_ops_total":    {"operation"},
 	"mysql_global_status_buffer_pool_pages":       {"state"},
-	"mysql_perf_schema_file_events_total":         {"event_name"},
-	"mysql_perf_schema_file_events_seconds_total": {"event_name"},
-	"mysql_perf_schema_file_events_bytes_total":   {"event_name"},
+	"mysql_perf_schema_file_events_total":         {labelEventName},
+	"mysql_perf_schema_file_events_seconds_total": {labelEventName},
+	"mysql_perf_schema_file_events_bytes_total":   {labelEventName},
 
-	"mysql_threads_connected": {"validate_password_dictionary_file_last_parsed"},
-	"mysql_threads_created":   {"validate_password_dictionary_file_last_parsed"},
-	"mysql_threads_running":   {"validate_password_dictionary_file_last_parsed"},
+	"mysql_threads_connected": {labelPasswordDictParsed},
+	"mysql_threads_created":   {labelPasswordDictParsed},
+	"mysql_threads_running":   {labelPasswordDictParsed},
 
-	"mysql_handler_read_first":    {"innodb_buffer_pool_load_status", "innodb_buffer_pool_dump_status"},
-	"mysql_handler_read_key":      {"innodb_buffer_pool_load_status", "innodb_buffer_pool_dump_status"},
-	"mysql_handler_read_last":     {"innodb_buffer_pool_load_status", "innodb_buffer_pool_dump_status"},
-	"mysql_handler_read_next":     {"innodb_buffer_pool_load_status", "innodb_buffer_pool_dump_status"},
-	"mysql_handler_read_prev":     {"innodb_buffer_pool_load_status", "innodb_buffer_pool_dump_status"},
-	"mysql_handler_read_rnd":      {"innodb_buffer_pool_load_status", "innodb_buffer_pool_dump_status"},
-	"mysql_handler_read_rnd_next": {"innodb_buffer_pool_load_status", "innodb_buffer_pool_dump_status"},
+	"mysql_handler_read_first":    {labelInnodbBufferPoolLoadStatus, labelInnodbBufferPoolDumpStatus},
+	"mysql_handler_read_key":      {labelInnodbBufferPoolLoadStatus, labelInnodbBufferPoolDumpStatus},
+	"mysql_handler_read_last":     {labelInnodbBufferPoolLoadStatus, labelInnodbBufferPoolDumpStatus},
+	"mysql_handler_read_next":     {labelInnodbBufferPoolLoadStatus, labelInnodbBufferPoolDumpStatus},
+	"mysql_handler_read_prev":     {labelInnodbBufferPoolLoadStatus, labelInnodbBufferPoolDumpStatus},
+	"mysql_handler_read_rnd":      {labelInnodbBufferPoolLoadStatus, labelInnodbBufferPoolDumpStatus},
+	"mysql_handler_read_rnd_next": {labelInnodbBufferPoolLoadStatus, labelInnodbBufferPoolDumpStatus},
 
 	"kafka_log_log_size_value":                                        {"partition"},
-	"kafka_server_brokertopicmetrics_bytesinpersec_count":             {"topic"},
-	"kafka_server_brokertopicmetrics_bytesoutpersec_count":            {"topic"},
-	"kafka_server_brokertopicmetrics_messagesinpersec_count":          {"topic"},
-	"kafka_server_brokertopicmetrics_replicationbytesinpersec_count":  {"topic"},
-	"kafka_server_brokertopicmetrics_replicationbytesoutpersec_count": {"topic"},
+	"kafka_server_brokertopicmetrics_bytesinpersec_count":             {labelTopic},
+	"kafka_server_brokertopicmetrics_bytesoutpersec_count":            {labelTopic},
+	"kafka_server_brokertopicmetrics_messagesinpersec_count":          {labelTopic},
+	"kafka_server_brokertopicmetrics_replicationbytesinpersec_count":  {labelTopic},
+	"kafka_server_brokertopicmetrics_replicationbytesoutpersec_count": {labelTopic},
 
-	"opensearch_cluster_health_active_shards":         {"name"},
-	"opensearch_cluster_health_relocating_shards":     {"name"},
-	"opensearch_cluster_health_unassigned_shards":     {"name"},
-	"opensearch_cluster_health_number_of_nodes":       {"name"},
-	"opensearch_cluster_health_active_primary_shards": {"name"},
+	"opensearch_cluster_health_active_shards":         {labelName},
+	"opensearch_cluster_health_relocating_shards":     {labelName},
+	"opensearch_cluster_health_unassigned_shards":     {labelName},
+	"opensearch_cluster_health_number_of_nodes":       {labelName},
+	"opensearch_cluster_health_active_primary_shards": {labelName},
 
-	"opensearch_clusterstats_indices_count":               {"cluster_name"},
-	"opensearch_clusterstats_indices_store_size_in_bytes": {"cluster_name"},
-	"opensearch_clusterstats_indices_docs_count":          {"cluster_name"},
-	"opensearch_clusterstats_indices_docs_deleted":        {"cluster_name"},
+	"opensearch_clusterstats_indices_count":               {labelClusterName},
+	"opensearch_clusterstats_indices_store_size_in_bytes": {labelClusterName},
+	"opensearch_clusterstats_indices_docs_count":          {labelClusterName},
+	"opensearch_clusterstats_indices_docs_deleted":        {labelClusterName},
 
-	"opensearch_indices_search_scroll_total":           {"node_host", "node_attribute_zone", "cluster_name"},
-	"opensearch_indices_search_scroll_time_in_millis":  {"node_host", "node_attribute_zone", "cluster_name"},
-	"opensearch_indices_search_query_total":            {"node_host", "node_attribute_zone", "cluster_name"},
-	"opensearch_indices_search_query_time_in_millis":   {"node_host", "node_attribute_zone", "cluster_name"},
-	"opensearch_indices_indexing_index_total":          {"node_host", "node_attribute_zone", "cluster_name"},
-	"opensearch_indices_indexing_index_time_in_millis": {"node_host", "node_attribute_zone", "cluster_name"},
-	"opensearch_indices_merges_total":                  {"node_host", "node_attribute_zone", "cluster_name"},
-	"opensearch_indices_merges_total_time_in_millis":   {"node_host", "node_attribute_zone", "cluster_name"},
-	"opensearch_indices_refresh_total":                 {"node_host", "node_attribute_zone", "cluster_name"},
-	"opensearch_indices_refresh_total_time_in_millis":  {"node_host", "node_attribute_zone", "cluster_name"},
-	"opensearch_indices_search_fetch_total":            {"node_host", "node_attribute_zone", "cluster_name"},
-	"opensearch_indices_search_fetch_time_in_millis":   {"node_host", "node_attribute_zone", "cluster_name"},
-	"opensearch_indices_search_suggest_total":          {"node_host", "node_attribute_zone", "cluster_name"},
-	"opensearch_indices_search_suggest_time_in_millis": {"node_host", "node_attribute_zone", "cluster_name"},
-	"opensearch_indices_query_cache_cache_size":        {"node_host", "node_attribute_zone", "cluster_name"},
-	"opensearch_indices_query_cache_hit_count":         {"node_host", "node_attribute_zone", "cluster_name"},
-	"opensearch_indices_query_cache_miss_count":        {"node_host", "node_attribute_zone", "cluster_name"},
-	"opensearch_indices_query_cache_evictions":         {"node_host", "node_attribute_zone", "cluster_name"},
+	"opensearch_indices_search_scroll_total":           {labelNodeHost, labelNodeAttributeZone, labelClusterName},
+	"opensearch_indices_search_scroll_time_in_millis":  {labelNodeHost, labelNodeAttributeZone, labelClusterName},
+	"opensearch_indices_search_query_total":            {labelNodeHost, labelNodeAttributeZone, labelClusterName},
+	"opensearch_indices_search_query_time_in_millis":   {labelNodeHost, labelNodeAttributeZone, labelClusterName},
+	"opensearch_indices_indexing_index_total":          {labelNodeHost, labelNodeAttributeZone, labelClusterName},
+	"opensearch_indices_indexing_index_time_in_millis": {labelNodeHost, labelNodeAttributeZone, labelClusterName},
+	"opensearch_indices_merges_total":                  {labelNodeHost, labelNodeAttributeZone, labelClusterName},
+	"opensearch_indices_merges_total_time_in_millis":   {labelNodeHost, labelNodeAttributeZone, labelClusterName},
+	"opensearch_indices_refresh_total":                 {labelNodeHost, labelNodeAttributeZone, labelClusterName},
+	"opensearch_indices_refresh_total_time_in_millis":  {labelNodeHost, labelNodeAttributeZone, labelClusterName},
+	"opensearch_indices_search_fetch_total":            {labelNodeHost, labelNodeAttributeZone, labelClusterName},
+	"opensearch_indices_search_fetch_time_in_millis":   {labelNodeHost, labelNodeAttributeZone, labelClusterName},
+	"opensearch_indices_search_suggest_total":          {labelNodeHost, labelNodeAttributeZone, labelClusterName},
+	"opensearch_indices_search_suggest_time_in_millis": {labelNodeHost, labelNodeAttributeZone, labelClusterName},
+	"opensearch_indices_query_cache_cache_size":        {labelNodeHost, labelNodeAttributeZone, labelClusterName},
+	"opensearch_indices_query_cache_hit_count":         {labelNodeHost, labelNodeAttributeZone, labelClusterName},
+	"opensearch_indices_query_cache_miss_count":        {labelNodeHost, labelNodeAttributeZone, labelClusterName},
+	"opensearch_indices_query_cache_evictions":         {labelNodeHost, labelNodeAttributeZone, labelClusterName},
 
-	"opensearch_jvm_mem_heap_used_in_bytes": {"node_host", "node_attribute_zone", "cluster_name"},
-	"opensearch_jvm_threads_count":          {"node_host", "node_attribute_zone", "cluster_name"},
+	"opensearch_jvm_mem_heap_used_in_bytes": {labelNodeHost, labelNodeAttributeZone, labelClusterName},
+	"opensearch_jvm_threads_count":          {labelNodeHost, labelNodeAttributeZone, labelClusterName},
 
-	"opensearch_http_total_opened": {"node_host", "node_attribute_zone", "cluster_name"},
+	"opensearch_http_total_opened": {labelNodeHost, labelNodeAttributeZone, labelClusterName},
 }
 
 var k8sAggregationSpec = map[string][]string{
 
-	"kube_deployment_spec_replicas":               {"deployment", "namespace"},
-	"kube_deployment_status_replicas_available":   {"deployment", "namespace"},
-	"kube_deployment_status_replicas_unavailable": {"deployment", "namespace"},
+	"kube_deployment_spec_replicas":               {labelDeployment, labelNamespace},
+	"kube_deployment_status_replicas_available":   {labelDeployment, labelNamespace},
+	"kube_deployment_status_replicas_unavailable": {labelDeployment, labelNamespace},
 
-	"kube_daemonset_status_desired_number_scheduled": {"daemonset", "namespace"},
-	"kube_daemonset_status_number_available":         {"daemonset", "namespace"},
-	"kube_daemonset_status_number_unavailable":       {"daemonset", "namespace"},
+	"kube_daemonset_status_desired_number_scheduled": {labelDaemonset, labelNamespace},
+	"kube_daemonset_status_number_available":         {labelDaemonset, labelNamespace},
+	"kube_daemonset_status_number_unavailable":       {labelDaemonset, labelNamespace},
 
-	"kube_statefulset_replicas":              {"statefulset", "namespace"},
-	"kube_statefulset_status_replicas_ready": {"statefulset", "namespace"},
+	"kube_statefulset_replicas":              {"statefulset", labelNamespace},
+	"kube_statefulset_status_replicas_ready": {"statefulset", labelNamespace},
 }
 
 var mongoAggregationSpec = map[string][]string{
@@ -108,10 +126,10 @@ var mongoAggregationSpec = map[string][]string{
 // amdAggregatedLabels contains all the labels we want to aggregate on for AMD GPU metrics.
 // keep only gpu_id and hostname
 var amdAggregatedLabels = []string{
-	"card_model", "card_series", "card_vendor", "cluster_name", "container",
+	"card_model", "card_series", "card_vendor", labelClusterName, labelContainer,
 	"driver_version", "gpu_compute_partition_type", "gpu_memory_partition_type",
 	"gpu_partition_id", "gpu_uuid", "job_id", "job_partition", "job_user",
-	"namespace", "pod", "serial_number", "usergroup_id", "vbios_version", "workload_id",
+	labelNamespace, "pod", "serial_number", "usergroup_id", "vbios_version", "workload_id",
 	"link_index",
 }
 
@@ -119,7 +137,7 @@ var amdAggregatedLabels = []string{
 // keep only gpu and Hostname
 var nvidiaAggregatedLabels = []string{
 	"pci_bus_id", "UUID", "device", "modelName", "DCGM_FI_DRIVER_VERSION",
-	"container", "namespace", "pod",
+	labelContainer, labelNamespace, "pod",
 }
 
 var gpuAggregationSpec = map[string][]string{
@@ -233,7 +251,7 @@ var gpuAggregationSpec = map[string][]string{
 // DI metrics: drop high-cardinality labels we don't want to keep.
 // NOTE: do NOT include "le" because bucket-style series need it.
 var diLabelsToDrop = []string{
-	"container",
+	labelContainer,
 	"job",
 	"otel_scope_name",
 	"otel_scope_schema_url",
