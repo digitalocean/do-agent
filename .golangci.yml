@@ -1,11 +1,12 @@
+version: "2"
 linters:
-  disable-all: true
+  default: none
   enable:
     - dupl
     - goconst
     - gocyclo
-    - gofmt
     - gosec
+    - govet
     - ineffassign
     - misspell
     - nakedret
@@ -14,12 +15,30 @@ linters:
     - unconvert
     - unparam
     - unused
-    - govet
-    - gosec
-
-issues:
-  exclude:
-    - G404
-    - G114
-  exclude-files:
-    - ".*_test.go"
+  exclusions:
+    generated: lax
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
+    rules:
+      - path: (.+)\.go$
+        text: G404
+      - path: (.+)\.go$
+        text: G114
+    paths:
+      - .*_test.go
+      - third_party$
+      - builtin$
+      - examples$
+formatters:
+  enable:
+    - gofmt
+  exclusions:
+    generated: lax
+    paths:
+      - .*_test.go
+      - third_party$
+      - builtin$
+      - examples$

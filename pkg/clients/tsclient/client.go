@@ -18,6 +18,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"math"
 	"math/rand"
 	"net"
 	"net/http"
@@ -188,6 +189,9 @@ func New(opts ...ClientOptFn) Client {
 	if opt.MaxBatchSize == 0 {
 		opt.MaxBatchSize = defaultMaxBatchSize
 	}
+	if opt.MaxBatchSize < 0 || opt.MaxBatchSize > math.MaxInt32 || opt.MaxMetricLength < 0 || opt.MaxMetricLength > math.MaxInt32 {
+		panic(fmt.Sprintf("metric limits must fit in int32: batch=%d length=%d", opt.MaxBatchSize, opt.MaxMetricLength))
+	}
 
 	var tlsConfig tls.Config
 	if opt.WharfEndpointSSLHostname != "" {
@@ -227,8 +231,8 @@ func New(opts ...ClientOptFn) Client {
 		appKey:                   opt.AppKey,
 		httpClient:               httpClient,
 		waitIntervalSeconds:      defaultWaitIntervalSeconds,
-		maxBatchSize:             int32(opt.MaxBatchSize),
-		maxMetricLength:          int32(opt.MaxMetricLength),
+		maxBatchSize:             int32(opt.MaxBatchSize),    //nolint:gosec // bounded to int32 above
+		maxMetricLength:          int32(opt.MaxMetricLength), //nolint:gosec // bounded to int32 above
 		bootstrapRequired:        true,
 		trusted:                  opt.IsTrusted,
 		lastSend:                 map[string]int64{},

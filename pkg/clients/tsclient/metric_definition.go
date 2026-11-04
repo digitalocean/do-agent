@@ -72,7 +72,7 @@ func NewDefinition(name string, opts ...DefinitionOpt) *Definition {
 	}
 
 	seen := map[string]bool{}
-	sortedLabels := []definitionLabel{}
+	sortedLabels := make([]definitionLabel, 0, len(def.CommonLabels)+len(def.MeasuredLabelKeys))
 	for k, v := range def.CommonLabels {
 		if _, ok := seen[k]; ok {
 			panic(fmt.Sprintf("duplicate key: %q", k))

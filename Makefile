@@ -61,7 +61,7 @@ shellcheck = \
 	-u "$(shell id -u):$(shell id -g)" \
 	-v "$(CURDIR):$(docker_dir)" \
 	-w "$(docker_dir)" \
-	koalaman/shellcheck:v0.6.0
+	koalaman/shellcheck:v0.11.0
 
 linter = \
 	docker run --rm -i \
@@ -69,7 +69,7 @@ linter = \
 	-e "GO111MODULE=on" \
 	-e "GOFLAGS=-mod=vendor" \
 	-v "$(CURDIR):$(docker_dir)" \
-	golangci/golangci-lint:v1.58.2
+	golangci/golangci-lint:v2.15.0
 
 #############
 ## targets ##
