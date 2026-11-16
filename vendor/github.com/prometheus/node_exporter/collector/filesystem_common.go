@@ -174,13 +174,24 @@ func (c *filesystemCollector) Update(ch chan<- prometheus.Metric) error {
 	if err != nil {
 		return err
 	}
-	// Make sure we expose a metric once, even if there are multiple mounts
-	seen := map[filesystemLabels]bool{}
+	// Make sure we expose a metric once, even if there are multiple mounts.
+	//
+	// Dedup on the exported label set, not the full filesystemLabels
+	// struct - it also carries `options`, which isn't exported, so a
+	// bind mount remounted read-only (same device/mountpoint/fstype,
+	// different options) used to pass as "different" and collide
+	// downstream. See digitalocean/do-agent#367.
+	type exportedFilesystemKey struct {
+		device, mountPoint, fsType, deviceError string
+	}
+	seen := map[exportedFilesystemKey]bool{}
 	for _, s := range stats {
-		if seen[s.labels] {
+		// drop options
+		key := exportedFilesystemKey{s.labels.device, s.labels.mountPoint, s.labels.fsType, s.labels.deviceError}
+		if seen[key] {
 			continue
 		}
-		seen[s.labels] = true
+		seen[key] = true
 
 		ch <- prometheus.MustNewConstMetric(
 			c.deviceErrorDesc, prometheus.GaugeValue,
