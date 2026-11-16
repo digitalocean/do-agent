@@ -174,6 +174,8 @@ func (c *filesystemCollector) Update(ch chan<- prometheus.Metric) error {
 	if err != nil {
 		return err
 	}
+	// collapse bind-mount fan-out (e.g. CageFS, Kubernetes)
+	stats = dedupeByDevice(stats)
 	// Make sure we expose a metric once, even if there are multiple mounts
 	seen := map[filesystemLabels]bool{}
 	for _, s := range stats {
@@ -217,4 +219,45 @@ func (c *filesystemCollector) Update(ch chan<- prometheus.Metric) error {
 		)
 	}
 	return nil
+}
+
+// dedupeByDevice keeps one entry per device, preferring the root mount.
+func dedupeByDevice(in []filesystemStats) []filesystemStats {
+	best := make(map[string]filesystemStats, len(in))
+	order := make([]string, 0, len(in))
+	out := make([]filesystemStats, 0, len(in))
+
+	for _, s := range in {
+		device := s.labels.device
+		if device == "" {
+			out = append(out, s)
+			continue
+		}
+
+		cur, ok := best[device]
+		if !ok {
+			best[device] = s
+			order = append(order, device)
+			continue
+		}
+		if preferredMount(s, cur) {
+			best[device] = s
+		}
+	}
+
+	for _, device := range order {
+		out = append(out, best[device])
+	}
+	return out
+}
+
+// preferredMount prefers "/", otherwise the shorter mount path.
+func preferredMount(candidate, current filesystemStats) bool {
+	if candidate.labels.mountPoint == "/" {
+		return true
+	}
+	if current.labels.mountPoint == "/" {
+		return false
+	}
+	return len(candidate.labels.mountPoint) < len(current.labels.mountPoint)
 }
